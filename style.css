@@ -301,7 +301,8 @@ html, body {
   font-weight: 700;
   color: var(--text-primary);
 }
-#error-badge { color: var(--error-text); }
+#error-badge { color: var(--text-primary); }
+#error-badge.has-errors { color: var(--error-text); }
 .ghdr-sep {
   width: 1px;
   height: 26px;
@@ -444,10 +445,11 @@ html, body {
   color: var(--text-note);
   line-height: 1;
 }
-.note-digit.active { color: var(--accent); font-weight: 700; }
+.note-digit.active { color: #374151; font-weight: 500; }
 .note-digit.note-match {
-  color: #166534 !important;
+  color: #0F172A !important;
   font-weight: 900;
+  font-size: calc(var(--font-note) * 1.18);
   background: #BBF7D0;
   border-radius: 2px;
 }
@@ -950,6 +952,19 @@ html, body {
   100% { transform: scale(1); }
 }
 .num-complete { animation: numComplete .5s cubic-bezier(.36,.07,.19,.97); }
+
+/* ── Animação de vitória — onda diagonal ── */
+@keyframes victoryWave {
+  0%   { background: var(--surface);  transform: scale(1);    }
+  18%  { background: #FCD34D;         transform: scale(1.12); }
+  45%  { background: #86EFAC;         transform: scale(1.06); }
+  72%  { background: #93C5FD;         transform: scale(1.03); }
+  100% { background: var(--surface);  transform: scale(1);    }
+}
+.cell.victory-wave {
+  animation: victoryWave .9s cubic-bezier(.36,.07,.19,.97) forwards;
+  z-index: 2;
+}
 
 /* ── Responsivo desktop ── */
 @media (min-width: 500px) {

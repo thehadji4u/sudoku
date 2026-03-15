@@ -274,15 +274,16 @@ function endGame(won) {
   updateScoreDisplay();
 
   if (won) {
+    celebrateVictory();
     const rankPos = saveToRanking();
-    document.getElementById('v-score').textContent  = STATE.score;
+    document.getElementById('v-score').textContent  = STATE.score.toLocaleString('pt-BR');
     document.getElementById('v-time').textContent   = formatTime(STATE.timerSeconds);
     document.getElementById('v-errors').textContent = STATE.errors;
     document.getElementById('victory-diff-label').textContent =
       `Puzzle ${DIFF_NAMES[STATE.difficulty]} concluído`;
     document.getElementById('v-rank-info').textContent =
       rankPos ? `Você ficou em ${rankPos}º lugar no ranking!` : 'Pontuação salva no ranking!';
-    openModal('modal-victory');
+    setTimeout(() => openModal('modal-victory'), 1500);
   } else {
     document.getElementById('go-time').textContent   = formatTime(STATE.timerSeconds);
     document.getElementById('go-errors').textContent = STATE.errors;
@@ -536,7 +537,9 @@ function handleUndo() {
   STATE.notes  = snap.notes;
   STATE.errors = snap.errors;
   STATE.undoCount++;
+  STATE.score = calculateScore();
   updateErrorDisplay();
+  updateScoreDisplay();
   renderBoard();
   renderNumpad();
   updateProgressBar();
@@ -907,10 +910,11 @@ function updateErrorDisplay() {
   const failOn = STATE.settings.failOnErrors;
   document.getElementById('ghdr-stat-err').classList.toggle('hidden', !failOn);
   document.getElementById('ghdr-sep-err').classList.toggle('hidden', !failOn);
-  if (failOn) {
-    document.getElementById('error-badge').textContent =
-      `${STATE.errors}/${STATE.settings.maxErrors}`;
-  }
+  const badge = document.getElementById('error-badge');
+  badge.textContent = failOn
+    ? `${STATE.errors}/${STATE.settings.maxErrors}`
+    : STATE.errors;
+  badge.classList.toggle('has-errors', STATE.errors > 0);
 }
 
 function handleErase() {
@@ -920,6 +924,22 @@ function handleErase() {
 function handleHint() {
   if (STATE.paused || !STATE.puzzle) return;
   applyAutoAnnotations();
+}
+
+function celebrateVictory() {
+  /* Onda diagonal: cada célula recebe classe 'victory-wave' com delay por (r+c) */
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const el = cellElements[r] && cellElements[r][c];
+      if (!el) continue;
+      const delay = (r + c) * 55;
+      setTimeout(() => {
+        el.classList.remove('victory-wave');
+        void el.offsetWidth;
+        el.classList.add('victory-wave');
+      }, delay);
+    }
+  }
 }
 
 function checkCompletions(r, c) {
