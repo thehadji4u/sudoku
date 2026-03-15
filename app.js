@@ -23,6 +23,7 @@ const STATE = {
   timerRunning:  false,
 
   undoStack: [],       // max 50 snapshots
+  undoCount: 0,        // total de desfazeres (penaliza pontuação)
 
   settings: {
     markErrors:        true,
@@ -218,6 +219,7 @@ function startGame(difficulty) {
     STATE.errors     = 0;
     STATE.score      = 0;
     STATE.undoStack  = [];
+    STATE.undoCount  = 0;
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
     STATE.notesMode  = false;
@@ -496,6 +498,7 @@ function handleUndo() {
   STATE.puzzle = snap.puzzle;
   STATE.notes  = snap.notes;
   STATE.errors = snap.errors;
+  STATE.undoCount++;
   updateErrorDisplay();
   renderBoard();
   renderNumpad();
@@ -526,10 +529,11 @@ function checkWin() {
 }
 
 function calculateScore() {
-  const multiplier  = SudokuGenerator.getMultiplier(STATE.difficulty);
-  const timeBonus   = Math.max(0, 3000 - STATE.timerSeconds);
-  const errorPenalty = STATE.errors * 50;
-  return Math.max(0, Math.floor((timeBonus - errorPenalty) * multiplier));
+  const multiplier   = SudokuGenerator.getMultiplier(STATE.difficulty);
+  const timeBonus    = Math.max(0, 3000 - STATE.timerSeconds);
+  const errorPenalty = STATE.errors   * 50;
+  const undoPenalty  = STATE.undoCount * 20;
+  return Math.max(0, Math.floor((timeBonus - errorPenalty - undoPenalty) * multiplier));
 }
 
 function removeRelatedNotes(r, c, num) {
@@ -624,6 +628,7 @@ function saveSession() {
     score:        STATE.score,
     timerSeconds: STATE.timerSeconds,
     notesMode:    STATE.notesMode,
+    undoCount:    STATE.undoCount,
   };
   localStorage.setItem('sudoku-session', JSON.stringify(session));
 }
@@ -663,6 +668,7 @@ function resumeSession() {
   STATE.selectedRow  = -1;
   STATE.selectedCol  = -1;
   STATE.undoStack    = [];
+  STATE.undoCount    = s.undoCount || 0;
 
   document.getElementById('session-resume').classList.add('hidden');
   document.getElementById('difficulty-badge').textContent = DIFF_NAMES[s.difficulty];
