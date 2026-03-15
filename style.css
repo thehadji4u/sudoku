@@ -22,8 +22,8 @@
   --error-text:       #DC2626;
   --success:          #16A34A;
   --cell-size:        min(calc((100vw - 29px) / 9), 56px);
-  --font-cell:        clamp(17px, 5vw, 28px);
-  --font-note:        clamp(7px, 1.9vw, 11px);
+  --font-cell:        clamp(22px, 6.5vw, 34px);
+  --font-note:        clamp(9px, 2.6vw, 14px);
   --radius:           12px;
   --shadow:           0 2px 12px rgba(0,0,0,.08);
 }
@@ -854,8 +854,8 @@ html, body {
 @media (min-width: 500px) {
   :root {
     --cell-size: 52px;
-    --font-cell: 26px;
-    --font-note: 10px;
+    --font-cell: 32px;
+    --font-note: 13px;
   }
   .modal-sheet { border-radius: 24px; margin: 24px; max-height: 85vh; }
   .modal-overlay { align-items: center; }
