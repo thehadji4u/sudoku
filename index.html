@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sudoku">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <title>Sudoku</title>
+</head>
+<body>
+
+<!-- ═══════════════════════════════
+     TELA DE DIFICULDADE
+═══════════════════════════════ -->
+<div id="screen-difficulty" class="screen active">
+  <div class="diff-logo">
+    <img src="icons/icon.svg" alt="Sudoku">
+    <h1>Sudoku</h1>
+    <p>Escolha a dificuldade</p>
+  </div>
+
+  <div class="diff-grid">
+    <button class="diff-btn d-facil"        data-diff="facil">
+      <span class="diff-name">Fácil</span>
+      <span class="diff-stars">★☆☆☆☆☆</span>
+      <span class="diff-count">45 dadas</span>
+    </button>
+    <button class="diff-btn d-medio"        data-diff="medio">
+      <span class="diff-name">Médio</span>
+      <span class="diff-stars">★★☆☆☆☆</span>
+      <span class="diff-count">39 dadas</span>
+    </button>
+    <button class="diff-btn d-dificil"      data-diff="dificil">
+      <span class="diff-name">Difícil</span>
+      <span class="diff-stars">★★★☆☆☆</span>
+      <span class="diff-count">34 dadas</span>
+    </button>
+    <button class="diff-btn d-especialista" data-diff="especialista">
+      <span class="diff-name">Especialista</span>
+      <span class="diff-stars">★★★★☆☆</span>
+      <span class="diff-count">30 dadas</span>
+    </button>
+    <button class="diff-btn d-mestre"       data-diff="mestre">
+      <span class="diff-name">Mestre</span>
+      <span class="diff-stars">★★★★★☆</span>
+      <span class="diff-count">26 dadas</span>
+    </button>
+    <button class="diff-btn d-extremo"      data-diff="extremo">
+      <span class="diff-name">Extremo</span>
+      <span class="diff-stars">★★★★★★</span>
+      <span class="diff-count">23 dadas</span>
+    </button>
+  </div>
+
+  <div class="diff-footer">
+    <button id="btn-ranking-home">🏆 Ranking</button>
+    <button id="btn-settings-home">⚙️ Ajustes</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     TELA DO JOGO
+═══════════════════════════════ -->
+<div id="screen-game" class="screen">
+
+  <header id="game-header">
+    <button class="header-btn" id="btn-back" title="Voltar">←</button>
+
+    <span id="difficulty-badge">Fácil</span>
+
+    <div class="header-sep"></div>
+
+    <div class="header-stat">
+      <span>Tempo</span>
+      <span id="timer-val">0:00</span>
+    </div>
+
+    <div class="header-sep"></div>
+
+    <div class="header-stat">
+      <span>Pontos</span>
+      <span id="score-val">0</span>
+    </div>
+
+    <div class="header-sep"></div>
+
+    <div class="header-stat">
+      <span>Erros</span>
+      <span id="error-badge">0</span>
+    </div>
+
+    <button class="header-btn" id="btn-settings-game" title="Configurações">⚙</button>
+  </header>
+
+  <!-- Tabuleiro -->
+  <div id="board-wrap">
+    <div id="board"></div>
+  </div>
+
+  <!-- Botões de controle -->
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-undo">
+      <span class="ctrl-icon">↩</span>
+      <span>Desfazer</span>
+    </button>
+    <button class="ctrl-btn" id="btn-notes">
+      <span class="ctrl-icon">✏️</span>
+      <span>Notas</span>
+    </button>
+    <button class="ctrl-btn" id="btn-auto-notes">
+      <span class="ctrl-icon">💡</span>
+      <span>Auto</span>
+    </button>
+  </div>
+
+  <!-- Numpad (gerado por JS) -->
+  <div id="numpad"></div>
+</div>
+
+<!-- ═══════════════════════════════
+     OVERLAY GLOBAL
+═══════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-overlay">
+
+  <!-- Modal Configurações -->
+  <div class="modal-sheet" id="modal-settings">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">Configurações</h2>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Marcar erros em vermelho</div>
+        <div class="setting-desc">Destaca células com valor incorreto</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-markErrors">
+        <label class="toggle-track" for="cfg-markErrors"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Reprovar após X erros</div>
+        <div class="setting-desc">Encerra o jogo ao atingir o limite</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-failOnErrors">
+        <label class="toggle-track" for="cfg-failOnErrors"></label>
+      </div>
+    </div>
+
+    <div class="max-errors-row hidden" id="max-errors-row">
+      <label>Máximo de erros</label>
+      <div class="stepper">
+        <button id="btn-err-dec">−</button>
+        <span id="max-errors-val">3</span>
+        <button id="btn-err-inc">+</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Remover notas automaticamente</div>
+        <div class="setting-desc">Apaga rascunhos ao preencher o número</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-autoRemoveNotes">
+        <label class="toggle-track" for="cfg-autoRemoveNotes"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Seleção aprimorada</div>
+        <div class="setting-desc">Sombreia todas as linhas, colunas e quadrantes com o mesmo número</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-enhancedHighlight">
+        <label class="toggle-track" for="cfg-enhancedHighlight"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Auto-anotações</div>
+        <div class="setting-desc">Preenche rascunhos com candidatos válidos de cada célula vazia</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-autoAnnotations">
+        <label class="toggle-track" for="cfg-autoAnnotations"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ranking -->
+  <div class="modal-sheet hidden" id="modal-ranking">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">🏆 Ranking</h2>
+    <div class="rank-tabs" id="rank-tabs"></div>
+    <table class="rank-table" id="rank-table">
+      <thead>
+        <tr>
+          <th class="rank-pos">#</th>
+          <th>Pontos</th>
+          <th>Tempo</th>
+          <th>Erros</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody id="rank-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Modal Vitória -->
+  <div class="modal-sheet hidden" id="modal-victory">
+    <div class="modal-handle"></div>
+    <div class="result-icon">🎉</div>
+    <div class="result-title">Parabéns!</div>
+    <div class="result-sub" id="victory-diff-label">Puzzle Fácil concluído</div>
+    <div class="result-stats">
+      <div class="result-stat">
+        <div class="rs-val" id="v-score">0</div>
+        <div class="rs-label">Pontos</div>
+      </div>
+      <div class="result-stat">
+        <div class="rs-val" id="v-time">0:00</div>
+        <div class="rs-label">Tempo</div>
+      </div>
+      <div class="result-stat">
+        <div class="rs-val" id="v-errors">0</div>
+        <div class="rs-label">Erros</div>
+      </div>
+    </div>
+    <div class="result-rank-info" id="v-rank-info"></div>
+    <button class="btn-primary" id="btn-new-game-victory">Novo Jogo</button>
+    <button class="btn-secondary" id="btn-retry-victory">Jogar Novamente</button>
+  </div>
+
+  <!-- Modal Game Over -->
+  <div class="modal-sheet hidden" id="modal-gameover">
+    <div class="modal-handle"></div>
+    <div class="result-icon">💀</div>
+    <div class="result-title">Game Over</div>
+    <div class="result-sub" id="gameover-reason">Muitos erros cometidos</div>
+    <div class="result-stats">
+      <div class="result-stat">
+        <div class="rs-val" id="go-time">0:00</div>
+        <div class="rs-label">Tempo</div>
+      </div>
+      <div class="result-stat">
+        <div class="rs-val" id="go-errors">0</div>
+        <div class="rs-label">Erros</div>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-retry-gameover">Tentar Novamente</button>
+    <button class="btn-secondary" id="btn-new-game-gameover">Escolher Nível</button>
+  </div>
+
+</div><!-- /modal-overlay -->
+
+<!-- Loading -->
+<div id="loading-overlay" class="hidden">
+  <div class="spinner"></div>
+  <span>Gerando puzzle…</span>
+</div>
+
+<!-- Banner iOS install -->
+<div id="ios-banner" class="hidden">
+  Para instalar: toque em <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>
+  <br><button id="ios-banner-close">Dispensar</button>
+</div>
+
+<script src="sudoku-generator.js"></script>
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
