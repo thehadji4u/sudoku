@@ -595,7 +595,7 @@ function handleUndo() {
   const snap = STATE.undoStack.pop();
   STATE.puzzle = snap.puzzle;
   STATE.notes  = snap.notes;
-  STATE.errors = snap.errors;   /* restaura contagem de erros exata */
+  /* STATE.errors NÃO é restaurado — erros são permanentes e acumulativos */
   STATE.score  = snap.score;
   STATE.undoCount++;
 
@@ -695,7 +695,6 @@ function pushUndo() {
   STATE.undoStack.push({
     puzzle:         STATE.puzzle.map(row => [...row]),
     notes:          STATE.notes.map(row => row.map(set => new Set(set))),
-    errors:         STATE.errors,
     score:          STATE.score,
     simPlacements:  STATE.simulator.active
                       ? new Map(STATE.simulator.placements)
