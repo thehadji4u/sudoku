@@ -10,9 +10,9 @@
   --border:           #CBD5E1;
   --border-box:       #475569;
   --accent:           #2563EB;
-  --accent-light:     #DBEAFE;   /* célula selecionada */
-  --accent-mid:       #E8F2FF;   /* mesmo número / enhanced */
-  --accent-dim:       #F3F8FF;   /* highlight normal (linha/col/quad) */
+  --accent-light:     #BFDBFE;   /* célula selecionada / mesmo número */
+  --accent-mid:       #BFDBFE;   /* mesmo número / enhanced */
+  --accent-dim:       #EFF6FF;   /* highlight normal (linha/col/quad) */
   --text-primary:     #1E293B;
   --text-given:       #1E293B;
   --text-user:        #2563EB;
@@ -408,7 +408,7 @@ html, body {
 
 /* Tipos de célula */
 .cell.given {
-  background: #EEF2F7;
+  background: #fff;
   color: var(--text-given);
   font-weight: 700;
 }
@@ -469,7 +469,7 @@ html, body {
   background: transparent;
   font-size: clamp(28px, 9vw, 44px);
   font-weight: 800;
-  color: #1E3A8A;
+  color: var(--accent);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -901,6 +901,23 @@ html, body {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ── Animação de conclusão de linha/coluna/quadrante ── */
+@keyframes lineFade {
+  0%   { opacity: .85; }
+  60%  { opacity: .85; }
+  100% { opacity: 0; }
+}
+.cell.line-complete::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #60A5FA;
+  border-radius: 1px;
+  animation: lineFade .65s ease-out forwards;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* ── Animação de erro ── */

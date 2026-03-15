@@ -503,6 +503,8 @@ function doPlaceNumber(r, c, num) {
     }
   } else if (num !== 0) {
     correctPop(r, c);
+    /* Conclusão de linha / coluna / quadrante */
+    setTimeout(() => checkCompletions(r, c), 80);
     /* Verifica se o dígito foi completamente preenchido no tabuleiro */
     let count = 0;
     for (let rr = 0; rr < 9; rr++)
@@ -557,12 +559,14 @@ function checkWin() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       if (STATE.puzzle[r][c] !== STATE.solution[r][c]) return;
-  setTimeout(() => endGame(true), 200);
+  setTimeout(() => endGame(true), 600);
 }
 
 function calculateScore() {
   const multiplier   = SudokuGenerator.getMultiplier(STATE.difficulty);
-  const timeBonus    = Math.max(0, 3000 - STATE.timerSeconds);
+  /* Pontuação de tempo cai apenas a cada 60 segundos — menos pressão */
+  const roundedSecs  = Math.floor(STATE.timerSeconds / 60) * 60;
+  const timeBonus    = Math.max(0, 3000 - roundedSecs);
   const errorPenalty = STATE.errors * 50;
   const undoPenalty  = STATE.undoCount * 20;
   return Math.max(0, Math.floor((timeBonus - errorPenalty - undoPenalty) * multiplier));
@@ -912,6 +916,41 @@ function handleErase() {
 function handleHint() {
   if (STATE.paused || !STATE.puzzle) return;
   applyAutoAnnotations();
+}
+
+function checkCompletions(r, c) {
+  const solved = (rr, cc) => STATE.puzzle[rr][cc] === STATE.solution[rr][cc];
+
+  /* Linha */
+  if (Array.from({length: 9}, (_, cc) => solved(r, cc)).every(Boolean)) {
+    flashLine(Array.from({length: 9}, (_, cc) => cellElements[r][cc]));
+  }
+  /* Coluna */
+  if (Array.from({length: 9}, (_, rr) => solved(rr, c)).every(Boolean)) {
+    flashLine(Array.from({length: 9}, (_, rr) => cellElements[rr][c]));
+  }
+  /* Quadrante */
+  const br = Math.floor(r / 3) * 3;
+  const bc = Math.floor(c / 3) * 3;
+  const boxCells = [];
+  let boxDone = true;
+  for (let rr = br; rr < br + 3; rr++)
+    for (let cc = bc; cc < bc + 3; cc++) {
+      if (!solved(rr, cc)) boxDone = false;
+      boxCells.push(cellElements[rr][cc]);
+    }
+  if (boxDone) flashLine(boxCells);
+}
+
+function flashLine(cells) {
+  cells.forEach((el, i) => {
+    if (!el) return;
+    setTimeout(() => {
+      el.classList.remove('line-complete');
+      void el.offsetWidth;
+      el.classList.add('line-complete');
+    }, i * 35);
+  });
 }
 
 function shakeCell(r, c) {
