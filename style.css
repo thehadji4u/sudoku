@@ -449,8 +449,7 @@ html, body {
 .note-digit.note-match {
   color: #0F172A !important;
   font-weight: 900;
-  font-size: calc(var(--font-note) * 1.18);
-  background: #BBF7D0;
+  background: #93C5FD;
   border-radius: 2px;
 }
 
