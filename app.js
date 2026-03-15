@@ -13,6 +13,7 @@ const STATE = {
   selectedRow: -1,
   selectedCol: -1,
   notesMode:   false,
+  fillNotes:   false,
 
   difficulty: '',
   errors:     0,
@@ -135,7 +136,7 @@ function attachEvents() {
   document.getElementById('btn-undo').addEventListener('click', handleUndo);
   document.getElementById('btn-erase').addEventListener('click', handleErase);
   document.getElementById('btn-notes').addEventListener('click', toggleNotesMode);
-  document.getElementById('btn-hint').addEventListener('click', handleHint);
+  document.getElementById('btn-fill').addEventListener('click', handleFill);
   document.getElementById('btn-sim').addEventListener('click', () => {
     if (!STATE.puzzle || STATE.paused) return;
     if (STATE.simulator.active) deactivateSimulator();
@@ -255,6 +256,7 @@ function startGame(difficulty) {
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
     STATE.notesMode  = false;
+    STATE.fillNotes  = false;
     STATE.simulator  = {
       active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
       savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
@@ -279,6 +281,7 @@ function startGame(difficulty) {
 
     document.getElementById('difficulty-badge').textContent = DIFF_NAMES[difficulty];
 
+    updateFillBtn();
     updateSimBtn();
     updateControlsForSimMode();
     if (STATE.settings.autoAnnotations) applyAutoAnnotations();
@@ -802,6 +805,7 @@ function resumeSession() {
   STATE.undoStack    = [];
   STATE.undoCount    = s.undoCount || 0;
   STATE.paused       = false;
+  STATE.fillNotes    = false;
   STATE.simulator    = {
     active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
     savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
@@ -823,6 +827,7 @@ function resumeSession() {
   updateErrorDisplay();
   updateBestScore();
   updateProgressBar();
+  updateFillBtn();
   updateSimBtn();
   updateControlsForSimMode();
   showGameScreen();
@@ -983,14 +988,11 @@ function updateBestScore() {
 
 function updateErrorDisplay() {
   const failOn = STATE.settings.failOnErrors;
-  /* Mostra o contador sempre que failOnErrors=true OU quando há erros (torna visível que o undo reverteu) */
-  const show = failOn || STATE.errors > 0;
-  document.getElementById('ghdr-stat-err').classList.toggle('hidden', !show);
-  document.getElementById('ghdr-sep-err').classList.toggle('hidden', !show);
+  /* Contador de erros só aparece quando a opção "Reprovar após X erros" está ativa */
+  document.getElementById('ghdr-stat-err').classList.toggle('hidden', !failOn);
+  document.getElementById('ghdr-sep-err').classList.toggle('hidden', !failOn);
   const badge = document.getElementById('error-badge');
-  badge.textContent = failOn
-    ? `${STATE.errors}/${STATE.settings.maxErrors}`
-    : STATE.errors;
+  badge.textContent = `${STATE.errors}/${STATE.settings.maxErrors}`;
   badge.classList.toggle('has-errors', STATE.errors > 0);
 }
 
@@ -1086,9 +1088,27 @@ function handleErase() {
   handleNumberInput(0);
 }
 
-function handleHint() {
+function handleFill() {
   if (STATE.paused || !STATE.puzzle) return;
-  applyAutoAnnotations();
+  STATE.fillNotes = !STATE.fillNotes;
+  if (STATE.fillNotes) {
+    applyAutoAnnotations();
+  } else {
+    /* Limpa todas as anotações do tabuleiro */
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        STATE.notes[r][c] = new Set();
+    renderBoard();
+  }
+  updateFillBtn();
+}
+
+function updateFillBtn() {
+  const btn = document.getElementById('btn-fill');
+  if (!btn) return;
+  btn.classList.toggle('active-mode', STATE.fillNotes);
+  const tag = document.getElementById('fill-mode-tag');
+  if (tag) tag.textContent = STATE.fillNotes ? 'ON' : 'OFF';
 }
 
 function celebrateVictory() {

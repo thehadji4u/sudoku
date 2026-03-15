@@ -469,11 +469,13 @@ html, body {
 .cell.sim-conflict {
   background: #FCA5A5 !important;
 }
-/* Célula sim selecionada → azul prevalece sobre ouro/vermelho */
-.cell.sim-placed.selected,
+/* Célula sim selecionada → âmbar prevalece (não azul) */
+.cell.sim-placed.selected {
+  background: #FCD34D !important;
+}
+/* Célula sim com conflito selecionada → vermelho prevalece */
 .cell.sim-conflict.selected {
-  background: var(--sel-bg, #3B82F6) !important;
-  color: #fff !important;
+  background: #FCA5A5 !important;
 }
 /* Botão simulador ativo */
 .ctrl-btn.sim-active {
@@ -483,6 +485,14 @@ html, body {
 .ctrl-btn.sim-active .ctrl-mode-tag {
   background: #F59E0B;
   color: #fff;
+}
+/* Gear SVG nos botões de configurações */
+.gear-svg {
+  width: 1.15em;
+  height: 1.15em;
+  display: inline-block;
+  vertical-align: middle;
+  pointer-events: none;
 }
 
 /* ── Numpad ── grande, sem borda, azul escuro ── */
