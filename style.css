@@ -453,6 +453,38 @@ html, body {
   border-radius: 2px;
 }
 
+/* ── Modo Simulador ── */
+.cell.sim-placed {
+  background: #FCD34D;
+}
+.cell.sim-blue {
+  color: #1D4ED8 !important;
+  font-weight: 700;
+}
+.cell.sim-red {
+  color: #DC2626 !important;
+  font-weight: 700;
+}
+/* Conflito: mesma linha/col/quad — sobrescreve ouro */
+.cell.sim-conflict {
+  background: #FCA5A5 !important;
+}
+/* Célula sim selecionada → azul prevalece sobre ouro/vermelho */
+.cell.sim-placed.selected,
+.cell.sim-conflict.selected {
+  background: var(--sel-bg, #3B82F6) !important;
+  color: #fff !important;
+}
+/* Botão simulador ativo */
+.ctrl-btn.sim-active {
+  background: rgba(245, 158, 11, 0.12);
+  color: #D97706;
+}
+.ctrl-btn.sim-active .ctrl-mode-tag {
+  background: #F59E0B;
+  color: #fff;
+}
+
 /* ── Numpad ── grande, sem borda, azul escuro ── */
 #numpad {
   display: flex;

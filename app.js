@@ -23,8 +23,19 @@ const STATE = {
   timerRunning:  false,
   paused:        false,
 
-  undoStack: [],       // max 50 snapshots
-  undoCount: 0,        // total de desfazeres (penaliza pontuação)
+  undoStack: [],
+  undoCount: 0,
+
+  simulator: {
+    active:      false,
+    undoStart:   0,
+    placements:  new Map(),  // "r,c" → seq (1-indexed, odd=azul, even=vermelho)
+    nextSeq:     0,
+    savedPuzzle: null,
+    savedNotes:  null,
+    savedErrors: 0,
+    savedScore:  0,
+  },
 
   settings: {
     markErrors:        true,
@@ -33,6 +44,7 @@ const STATE = {
     autoRemoveNotes:   true,
     enhancedHighlight: true,
     autoAnnotations:   false,
+    simulatorMode:     false,
   },
 };
 
@@ -124,6 +136,11 @@ function attachEvents() {
   document.getElementById('btn-erase').addEventListener('click', handleErase);
   document.getElementById('btn-notes').addEventListener('click', toggleNotesMode);
   document.getElementById('btn-hint').addEventListener('click', handleHint);
+  document.getElementById('btn-sim').addEventListener('click', () => {
+    if (!STATE.puzzle || STATE.paused) return;
+    if (STATE.simulator.active) deactivateSimulator();
+    else activateSimulator();
+  });
 
   /* Tabuleiro (delegação) */
   document.getElementById('board').addEventListener('click', e => {
@@ -179,7 +196,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -194,6 +211,9 @@ function setupSettingsEvents() {
       }
       if (key === 'autoAnnotations' && el.checked && STATE.puzzle) {
         applyAutoAnnotations();
+      }
+      if (key === 'simulatorMode') {
+        updateControlsForSimMode();
       }
     });
   });
@@ -235,6 +255,10 @@ function startGame(difficulty) {
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
     STATE.notesMode  = false;
+    STATE.simulator  = {
+      active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
+      savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
+    };
 
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
@@ -255,6 +279,8 @@ function startGame(difficulty) {
 
     document.getElementById('difficulty-badge').textContent = DIFF_NAMES[difficulty];
 
+    updateSimBtn();
+    updateControlsForSimMode();
     if (STATE.settings.autoAnnotations) applyAutoAnnotations();
 
     showLoading(false);
@@ -319,22 +345,27 @@ function renderBoard() {
 }
 
 function updateCellContent(r, c) {
-  const el = cellElements[r][c];
-  const val = STATE.puzzle[r][c];
+  const el      = cellElements[r][c];
+  const val     = STATE.puzzle[r][c];
   const isGiven = STATE.givens.has(`${r},${c}`);
   const noteSet = STATE.notes[r][c];
+  const key     = `${r},${c}`;
 
-  /* Classes base */
   el.className = 'cell';
+
   if (isGiven) {
     el.classList.add('given');
+  } else if (STATE.simulator.active && STATE.simulator.placements.has(key)) {
+    /* Célula colocada no simulador */
+    const seq = STATE.simulator.placements.get(key);
+    el.classList.add('sim-placed');
+    el.classList.add(seq % 2 === 1 ? 'sim-blue' : 'sim-red');
   } else if (val !== 0) {
     if (STATE.settings.markErrors && val !== STATE.solution[r][c]) {
       el.classList.add('error');
     }
   }
 
-  /* Conteúdo */
   if (val !== 0) {
     el.textContent = val;
   } else if (noteSet.size > 0) {
@@ -361,7 +392,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -431,6 +462,9 @@ function renderHighlights() {
     document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
       .forEach(s => s.classList.add('note-match'));
   }
+
+  /* ── Conflitos no modo simulador ── */
+  if (STATE.simulator.active) renderSimConflicts();
 }
 
 function renderNumpad() {
@@ -474,6 +508,11 @@ function handleNumberInput(num) {
   if (r < 0) return;
   if (STATE.givens.has(`${r},${c}`)) return;
 
+  /* Célula já correta não pode ser editada (só desfazer pode reverter) */
+  if (!STATE.simulator.active &&
+      STATE.puzzle[r][c] !== 0 &&
+      STATE.puzzle[r][c] === STATE.solution[r][c]) return;
+
   if (STATE.notesMode && num !== 0) {
     doToggleNote(r, c, num);
   } else {
@@ -484,26 +523,40 @@ function handleNumberInput(num) {
 function doPlaceNumber(r, c, num) {
   pushUndo();
   STATE.puzzle[r][c] = num;
+  const key = `${r},${c}`;
 
+  /* ── Modo Simulador ── */
+  if (STATE.simulator.active) {
+    if (num !== 0) {
+      /* Mantém o nº de sequência original se a célula já foi colocada */
+      if (!STATE.simulator.placements.has(key)) {
+        STATE.simulator.placements.set(key, ++STATE.simulator.nextSeq);
+      }
+    } else {
+      STATE.simulator.placements.delete(key);
+    }
+    if (num !== 0 && STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, num);
+    updateCellContent(r, c);
+    renderHighlights();
+    renderNumpad();
+    updateProgressBar();
+    return;   /* sem erros, sem pontos, sem checkWin */
+  }
+
+  /* ── Modo Normal ── */
   const isError = num !== 0 && num !== STATE.solution[r][c];
   if (isError) {
     STATE.errors++;
     updateErrorDisplay();
   } else if (num !== 0) {
-    /* Acerto: adiciona pontos ao score acumulativo */
     STATE.score += calculateCellPoints();
     updateScoreDisplay();
   }
-
-  if (num !== 0 && STATE.settings.autoRemoveNotes) {
-    removeRelatedNotes(r, c, num);
-  }
-
+  if (num !== 0 && STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, num);
   updateCellContent(r, c);
   renderHighlights();
   renderNumpad();
   updateProgressBar();
-
   if (isError) {
     shakeCell(r, c);
     if (STATE.settings.failOnErrors && STATE.errors >= STATE.settings.maxErrors) {
@@ -512,16 +565,13 @@ function doPlaceNumber(r, c, num) {
     }
   } else if (num !== 0) {
     correctPop(r, c);
-    /* Conclusão de linha / coluna / quadrante */
     setTimeout(() => checkCompletions(r, c), 80);
-    /* Verifica se o dígito foi completamente preenchido no tabuleiro */
     let count = 0;
     for (let rr = 0; rr < 9; rr++)
       for (let cc = 0; cc < 9; cc++)
         if (STATE.puzzle[rr][cc] === num) count++;
     if (count === 9) setTimeout(() => celebrateDigit(num), 80);
   }
-
   checkWin();
 }
 
@@ -536,12 +586,21 @@ function doToggleNote(r, c, num) {
 
 function handleUndo() {
   if (!STATE.undoStack.length) return;
+  /* Em modo simulador: não pode desfazer além do ponto de ativação */
+  if (STATE.simulator.active && STATE.undoStack.length <= STATE.simulator.undoStart) return;
+
   const snap = STATE.undoStack.pop();
   STATE.puzzle = snap.puzzle;
   STATE.notes  = snap.notes;
-  STATE.errors = snap.errors;
-  STATE.score  = snap.score;   /* restaura score exato — erros também voltam */
+  STATE.errors = snap.errors;   /* restaura contagem de erros exata */
+  STATE.score  = snap.score;
   STATE.undoCount++;
+
+  /* Restaura placements do simulador se o snapshot veio de dentro do modo */
+  if (snap.simPlacements !== null) {
+    STATE.simulator.placements = snap.simPlacements;
+  }
+
   updateErrorDisplay();
   updateScoreDisplay();
   renderBoard();
@@ -631,10 +690,13 @@ function isCandidateValid(r, c, n) {
 ═══════════════════════════════════════ */
 function pushUndo() {
   STATE.undoStack.push({
-    puzzle: STATE.puzzle.map(row => [...row]),
-    notes:  STATE.notes.map(row => row.map(set => new Set(set))),
-    errors: STATE.errors,
-    score:  STATE.score,
+    puzzle:         STATE.puzzle.map(row => [...row]),
+    notes:          STATE.notes.map(row => row.map(set => new Set(set))),
+    errors:         STATE.errors,
+    score:          STATE.score,
+    simPlacements:  STATE.simulator.active
+                      ? new Map(STATE.simulator.placements)
+                      : null,
   });
   /* Sem limite — máx. 81 ações por puzzle, memória desprezível */
 }
@@ -740,6 +802,10 @@ function resumeSession() {
   STATE.undoStack    = [];
   STATE.undoCount    = s.undoCount || 0;
   STATE.paused       = false;
+  STATE.simulator    = {
+    active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
+    savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
+  };
 
   document.getElementById('pause-overlay').classList.add('hidden');
   document.getElementById('btn-pause').textContent = '⏸';
@@ -757,6 +823,8 @@ function resumeSession() {
   updateErrorDisplay();
   updateBestScore();
   updateProgressBar();
+  updateSimBtn();
+  updateControlsForSimMode();
   showGameScreen();
 }
 
@@ -915,13 +983,103 @@ function updateBestScore() {
 
 function updateErrorDisplay() {
   const failOn = STATE.settings.failOnErrors;
-  document.getElementById('ghdr-stat-err').classList.toggle('hidden', !failOn);
-  document.getElementById('ghdr-sep-err').classList.toggle('hidden', !failOn);
+  /* Mostra o contador sempre que failOnErrors=true OU quando há erros (torna visível que o undo reverteu) */
+  const show = failOn || STATE.errors > 0;
+  document.getElementById('ghdr-stat-err').classList.toggle('hidden', !show);
+  document.getElementById('ghdr-sep-err').classList.toggle('hidden', !show);
   const badge = document.getElementById('error-badge');
   badge.textContent = failOn
     ? `${STATE.errors}/${STATE.settings.maxErrors}`
     : STATE.errors;
   badge.classList.toggle('has-errors', STATE.errors > 0);
+}
+
+/* ═══════════════════════════════════════
+   MODO SIMULADOR
+═══════════════════════════════════════ */
+function activateSimulator() {
+  if (STATE.paused || !STATE.puzzle) return;
+  STATE.simulator.active      = true;
+  STATE.simulator.undoStart   = STATE.undoStack.length;
+  STATE.simulator.placements  = new Map();
+  STATE.simulator.nextSeq     = 0;
+  STATE.simulator.savedPuzzle = STATE.puzzle.map(row => [...row]);
+  STATE.simulator.savedNotes  = STATE.notes.map(row => row.map(s => new Set(s)));
+  STATE.simulator.savedErrors = STATE.errors;
+  STATE.simulator.savedScore  = STATE.score;
+  updateSimBtn();
+  renderBoard();
+  renderHighlights();
+}
+
+function deactivateSimulator() {
+  /* Restaura exatamente o estado anterior à ativação */
+  STATE.puzzle = STATE.simulator.savedPuzzle;
+  STATE.notes  = STATE.simulator.savedNotes;
+  STATE.errors = STATE.simulator.savedErrors;
+  STATE.score  = STATE.simulator.savedScore;
+  /* Descarta snapshots de undo criados dentro do simulador */
+  STATE.undoStack.length = STATE.simulator.undoStart;
+
+  STATE.simulator.active     = false;
+  STATE.simulator.placements = new Map();
+  STATE.simulator.nextSeq    = 0;
+
+  updateSimBtn();
+  renderBoard();
+  renderNumpad();
+  updateErrorDisplay();
+  updateScoreDisplay();
+  updateProgressBar();
+}
+
+function updateSimBtn() {
+  const btn = document.getElementById('btn-sim');
+  if (!btn) return;
+  btn.classList.toggle('sim-active', STATE.simulator.active);
+  const tag = document.getElementById('sim-mode-tag');
+  if (tag) tag.textContent = STATE.simulator.active ? 'ON' : 'OFF';
+}
+
+function updateControlsForSimMode() {
+  const eraseBtn = document.getElementById('btn-erase');
+  const simBtn   = document.getElementById('btn-sim');
+  if (!eraseBtn || !simBtn) return;
+  if (STATE.settings.simulatorMode) {
+    eraseBtn.classList.add('hidden');
+    simBtn.classList.remove('hidden');
+  } else {
+    eraseBtn.classList.remove('hidden');
+    simBtn.classList.add('hidden');
+    if (STATE.simulator.active) deactivateSimulator();
+  }
+}
+
+function renderSimConflicts() {
+  /* Para cada célula do simulador, verifica se há duplicata em linha/col/quadrante */
+  for (const [key] of STATE.simulator.placements) {
+    const [r, c] = key.split(',').map(Number);
+    const val = STATE.puzzle[r][c];
+    if (!val) continue;
+    const br = Math.floor(r / 3) * 3;
+    const bc = Math.floor(c / 3) * 3;
+    for (let i = 0; i < 9; i++) {
+      if (i !== c && STATE.puzzle[r][i] === val) {
+        cellElements[r][c].classList.add('sim-conflict');
+        cellElements[r][i].classList.add('sim-conflict');
+      }
+      if (i !== r && STATE.puzzle[i][c] === val) {
+        cellElements[r][c].classList.add('sim-conflict');
+        cellElements[i][c].classList.add('sim-conflict');
+      }
+    }
+    for (let rr = br; rr < br + 3; rr++)
+      for (let cc = bc; cc < bc + 3; cc++)
+        if ((rr !== r || cc !== c) && STATE.puzzle[rr][cc] === val) {
+          cellElements[r][c].classList.add('sim-conflict');
+          cellElements[rr][cc].classList.add('sim-conflict');
+        }
+  }
 }
 
 function handleErase() {
@@ -1039,9 +1197,11 @@ function syncSettingsUI() {
   toggle('cfg-autoRemoveNotes',   s.autoRemoveNotes);
   toggle('cfg-enhancedHighlight', s.enhancedHighlight);
   toggle('cfg-autoAnnotations',   s.autoAnnotations);
+  toggle('cfg-simulatorMode',     s.simulatorMode);
 
   document.getElementById('max-errors-val').textContent = s.maxErrors;
   document.getElementById('max-errors-row').classList.toggle('hidden', !s.failOnErrors);
+  updateControlsForSimMode();
 }
 
 /* ═══════════════════════════════════════

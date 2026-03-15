@@ -138,6 +138,13 @@
       <span class="ctrl-icon">⌫</span>
       <span>Apagar</span>
     </button>
+    <button class="ctrl-btn hidden" id="btn-sim">
+      <span class="ctrl-icon-wrap">
+        <span class="ctrl-icon">🔬</span>
+        <span class="ctrl-mode-tag" id="sim-mode-tag">OFF</span>
+      </span>
+      <span>Simulador</span>
+    </button>
     <button class="ctrl-btn" id="btn-notes">
       <span class="ctrl-icon-wrap">
         <span class="ctrl-icon">✏</span>
@@ -223,6 +230,17 @@
       <div class="toggle-wrap">
         <input type="checkbox" class="toggle-input" id="cfg-autoAnnotations">
         <label class="toggle-track" for="cfg-autoAnnotations"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Modo Simulador 🔬</div>
+        <div class="setting-desc">Substitui Apagar por um botão de exploração sem erros ou pontos</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-simulatorMode">
+        <label class="toggle-track" for="cfg-simulatorMode"></label>
       </div>
     </div>
   </div>
