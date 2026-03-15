@@ -405,6 +405,12 @@ html, body {
   line-height: 1;
 }
 .note-digit.active { color: var(--accent); font-weight: 700; }
+.note-digit.note-match {
+  color: #1E3A8A !important;
+  font-weight: 900;
+  background: var(--accent-light);
+  border-radius: 2px;
+}
 
 /* ── Numpad ── grande, sem borda, azul escuro ── */
 #numpad {

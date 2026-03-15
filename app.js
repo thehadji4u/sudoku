@@ -63,8 +63,15 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSavedSession();
 });
 
+/* Salva sessão em múltiplos eventos para garantir persistência */
 window.addEventListener('beforeunload', () => {
-  if (STATE.puzzle && STATE.timerRunning) saveSession();
+  if (STATE.puzzle) saveSession();
+});
+window.addEventListener('pagehide', () => {
+  if (STATE.puzzle) saveSession();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && STATE.puzzle) saveSession();
 });
 
 function buildNumpad() {
@@ -338,7 +345,7 @@ function buildNotesHTML(noteSet) {
   let html = '<div class="notes-grid">';
   for (let n = 1; n <= 9; n++) {
     const active = noteSet.has(n);
-    html += `<span class="note-digit${active ? ' active' : ''}">${active ? n : ''}</span>`;
+    html += `<span class="note-digit${active ? ' active' : ''}" data-note="${n}">${active ? n : ''}</span>`;
   }
   html += '</div>';
   return html;
@@ -347,10 +354,11 @@ function buildNotesHTML(noteSet) {
 function renderHighlights() {
   const { selectedRow: sr, selectedCol: sc, puzzle, settings } = STATE;
 
-  /* Limpa todos os destaques */
+  /* Limpa todos os destaques (células e notas) */
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove('selected', 'highlight', 'highlight-strong', 'same-num');
+  document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
   if (sr < 0 || !cellElements.length) return;
 
@@ -409,6 +417,12 @@ function renderHighlights() {
         }
       }
     }
+  }
+
+  /* ── Destaca dígitos de anotação que coincidem com o número selecionado ── */
+  if (selVal > 0) {
+    document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
+      .forEach(s => s.classList.add('note-match'));
   }
 }
 
