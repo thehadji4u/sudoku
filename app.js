@@ -17,6 +17,7 @@ const STATE = {
   difficulty: '',
   errors:     0,
   score:      0,
+  hintsLeft:  3,
 
   timerSeconds:  0,
   timerInterval: null,
@@ -121,8 +122,9 @@ function attachEvents() {
   /* Controles do jogo */
   document.getElementById('btn-pause').addEventListener('click', togglePause);
   document.getElementById('btn-undo').addEventListener('click', handleUndo);
+  document.getElementById('btn-erase').addEventListener('click', handleErase);
   document.getElementById('btn-notes').addEventListener('click', toggleNotesMode);
-  document.getElementById('btn-auto-notes').addEventListener('click', applyAutoAnnotations);
+  document.getElementById('btn-hint').addEventListener('click', handleHint);
 
   /* Tabuleiro (delegação) */
   document.getElementById('board').addEventListener('click', e => {
@@ -228,6 +230,7 @@ function startGame(difficulty) {
                       );
     STATE.errors     = 0;
     STATE.score      = 0;
+    STATE.hintsLeft  = 3;
     STATE.undoStack  = [];
     STATE.undoCount  = 0;
     STATE.paused     = false;
@@ -249,6 +252,8 @@ function startGame(difficulty) {
     updateNotesBtn();
     updateScoreDisplay();
     updateErrorDisplay();
+    updateBestScore();
+    updateHintBadge();
     updateProgressBar();
 
     document.getElementById('difficulty-badge').textContent = DIFF_NAMES[difficulty];
@@ -435,11 +440,12 @@ function renderNumpad() {
 
   const selVal = (STATE.selectedRow >= 0) ? STATE.puzzle[STATE.selectedRow][STATE.selectedCol] : 0;
 
-  document.querySelectorAll('.num-btn:not(.erase)').forEach(btn => {
+  document.querySelectorAll('.num-btn').forEach(btn => {
     const n = +btn.dataset.num;
-    const remaining = 9 - count[n];
-    btn.classList.toggle('done', remaining <= 0);
-    btn.classList.toggle('selected-num', n === selVal && selVal > 0);
+    const done = count[n] >= 9;
+    btn.textContent = done ? '✓' : n;
+    btn.classList.toggle('done', done);
+    btn.classList.toggle('selected-num', n === selVal && selVal > 0 && !done);
   });
 }
 
@@ -560,9 +566,10 @@ function checkWin() {
 function calculateScore() {
   const multiplier   = SudokuGenerator.getMultiplier(STATE.difficulty);
   const timeBonus    = Math.max(0, 3000 - STATE.timerSeconds);
-  const errorPenalty = STATE.errors   * 50;
+  const errorPenalty = STATE.errors * 50;
   const undoPenalty  = STATE.undoCount * 20;
-  return Math.max(0, Math.floor((timeBonus - errorPenalty - undoPenalty) * multiplier));
+  const hintPenalty  = (3 - STATE.hintsLeft) * 200;
+  return Math.max(0, Math.floor((timeBonus - errorPenalty - undoPenalty - hintPenalty) * multiplier));
 }
 
 function removeRelatedNotes(r, c, num) {
@@ -627,7 +634,7 @@ function togglePause() {
   if (STATE.paused) {
     stopTimer();
     overlay.classList.remove('hidden');
-    btn.textContent = '▶';
+    btn.textContent = '▶ Continuar';
     btn.title = 'Continuar';
   } else {
     overlay.classList.add('hidden');
@@ -642,6 +649,8 @@ function startTimer() {
   STATE.timerInterval = setInterval(() => {
     STATE.timerSeconds++;
     updateTimerDisplay();
+    STATE.score = calculateScore();
+    updateScoreDisplay();
   }, 1000);
 }
 
@@ -673,6 +682,7 @@ function saveSession() {
     difficulty:   STATE.difficulty,
     errors:       STATE.errors,
     score:        STATE.score,
+    hintsLeft:    STATE.hintsLeft,
     timerSeconds: STATE.timerSeconds,
     notesMode:    STATE.notesMode,
     undoCount:    STATE.undoCount,
@@ -710,6 +720,7 @@ function resumeSession() {
   STATE.difficulty   = s.difficulty;
   STATE.errors       = s.errors;
   STATE.score        = s.score;
+  STATE.hintsLeft    = s.hintsLeft !== undefined ? s.hintsLeft : 3;
   STATE.timerSeconds = s.timerSeconds;
   STATE.notesMode    = s.notesMode || false;
   STATE.selectedRow  = -1;
@@ -720,6 +731,7 @@ function resumeSession() {
 
   document.getElementById('pause-overlay').classList.add('hidden');
   document.getElementById('btn-pause').textContent = '⏸';
+  document.getElementById('btn-pause').title = 'Pausar';
   document.getElementById('session-resume').classList.add('hidden');
   document.getElementById('difficulty-badge').textContent = DIFF_NAMES[s.difficulty];
 
@@ -731,6 +743,8 @@ function resumeSession() {
   updateNotesBtn();
   updateScoreDisplay();
   updateErrorDisplay();
+  updateBestScore();
+  updateHintBadge();
   updateProgressBar();
   showGameScreen();
 }
@@ -871,17 +885,66 @@ function toggleNotesMode() {
 }
 
 function updateNotesBtn() {
-  document.getElementById('btn-notes').classList.toggle('active-mode', STATE.notesMode);
+  const btn = document.getElementById('btn-notes');
+  btn.classList.toggle('active-mode', STATE.notesMode);
+  document.getElementById('notes-mode-tag').textContent = STATE.notesMode ? 'ON' : 'OFF';
 }
 
 function updateScoreDisplay() {
-  document.getElementById('score-val').textContent = STATE.score;
+  document.getElementById('score-val').textContent =
+    STATE.score.toLocaleString('pt-BR');
+}
+
+function updateBestScore() {
+  const all = loadRanking().filter(e => e.difficulty === STATE.difficulty);
+  const best = all.length ? Math.max(...all.map(e => e.score)) : 0;
+  document.getElementById('best-score-val').textContent =
+    best.toLocaleString('pt-BR');
 }
 
 function updateErrorDisplay() {
-  const el = document.getElementById('error-badge');
-  el.textContent = STATE.errors;
-  el.classList.toggle('has-errors', STATE.errors > 0);
+  const failOn = STATE.settings.failOnErrors;
+  document.getElementById('ghdr-stat-err').classList.toggle('hidden', !failOn);
+  document.getElementById('ghdr-sep-err').classList.toggle('hidden', !failOn);
+  if (failOn) {
+    document.getElementById('error-badge').textContent =
+      `${STATE.errors}/${STATE.settings.maxErrors}`;
+  }
+}
+
+function updateHintBadge() {
+  const tag = document.getElementById('hint-count-tag');
+  tag.textContent = STATE.hintsLeft;
+  document.getElementById('btn-hint').classList.toggle('disabled', STATE.hintsLeft <= 0);
+}
+
+function handleErase() {
+  handleNumberInput(0);
+}
+
+function handleHint() {
+  if (STATE.paused || STATE.hintsLeft <= 0) return;
+  /* Coleta todas as células vazias ou erradas */
+  const candidates = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (!STATE.givens.has(`${r},${c}`) && STATE.puzzle[r][c] !== STATE.solution[r][c])
+        candidates.push([r, c]);
+  if (!candidates.length) return;
+
+  const [r, c] = candidates[Math.floor(Math.random() * candidates.length)];
+  pushUndo();
+  STATE.puzzle[r][c] = STATE.solution[r][c];
+  STATE.notes[r][c]  = new Set();
+  STATE.hintsLeft--;
+
+  updateCellContent(r, c);
+  renderHighlights();
+  renderNumpad();
+  updateProgressBar();
+  updateHintBadge();
+  correctPop(r, c);
+  checkWin();
 }
 
 function shakeCell(r, c) {

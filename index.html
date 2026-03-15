@@ -67,7 +67,7 @@
   </div>
 
   <div class="diff-copyright">
-    <span class="app-version">v1.3.0</span>
+    <span class="app-version">v1.4.0</span>
     <span class="copyright-sep">·</span>
     <span>© 2026 HadjiWare</span>
   </div>
@@ -79,29 +79,32 @@
 <div id="screen-game" class="screen">
 
   <header id="game-header">
-    <div class="header-row1">
-      <button class="header-icon-btn" id="btn-back" title="Voltar">←</button>
-      <span id="difficulty-badge">Fácil</span>
-      <div style="display:flex;gap:6px">
-        <button class="header-icon-btn" id="btn-pause" title="Pausar">⏸</button>
-        <button class="header-icon-btn" id="btn-settings-game" title="Configurações">⚙</button>
-      </div>
+    <div class="ghdr-top">
+      <button class="ghdr-icon" id="btn-back" title="Voltar">‹</button>
+      <span id="score-val" class="game-score">0</span>
+      <button class="ghdr-icon" id="btn-settings-game" title="Configurações">⚙</button>
     </div>
-    <div class="header-row2">
-      <div class="h-stat">
-        <span class="h-stat-label">Tempo</span>
-        <span class="h-stat-val" id="timer-val">0:00</span>
+    <div class="ghdr-stats">
+      <div class="ghdr-stat">
+        <span class="ghdr-lbl">Sempre 🏆</span>
+        <span class="ghdr-val" id="best-score-val">0</span>
       </div>
-      <div class="h-dot"></div>
-      <div class="h-stat">
-        <span class="h-stat-label">Pontos</span>
-        <span class="h-stat-val" id="score-val">0</span>
+      <div class="ghdr-sep"></div>
+      <div class="ghdr-stat">
+        <span class="ghdr-lbl">Dificuldade</span>
+        <span class="ghdr-val" id="difficulty-badge">Fácil</span>
       </div>
-      <div class="h-dot"></div>
-      <div class="h-stat">
-        <span class="h-stat-label">Erros</span>
-        <span class="h-stat-val" id="error-badge">0</span>
+      <div class="ghdr-sep hidden" id="ghdr-sep-err"></div>
+      <div class="ghdr-stat hidden" id="ghdr-stat-err">
+        <span class="ghdr-lbl">Erros</span>
+        <span class="ghdr-val" id="error-badge">0/3</span>
       </div>
+      <div class="ghdr-sep"></div>
+      <div class="ghdr-stat">
+        <span class="ghdr-lbl">Tempo</span>
+        <span class="ghdr-val" id="timer-val">0:00</span>
+      </div>
+      <button class="ghdr-pause" id="btn-pause" title="Pausar">⏸</button>
     </div>
   </header>
 
@@ -131,13 +134,23 @@
       <span class="ctrl-icon">↩</span>
       <span>Desfazer</span>
     </button>
-    <button class="ctrl-btn" id="btn-notes">
-      <span class="ctrl-icon">✏️</span>
-      <span>Notas</span>
+    <button class="ctrl-btn" id="btn-erase">
+      <span class="ctrl-icon">⌫</span>
+      <span>Apagar</span>
     </button>
-    <button class="ctrl-btn" id="btn-auto-notes">
-      <span class="ctrl-icon">💡</span>
-      <span>Auto</span>
+    <button class="ctrl-btn" id="btn-notes">
+      <span class="ctrl-icon-wrap">
+        <span class="ctrl-icon">✏</span>
+        <span class="ctrl-mode-tag" id="notes-mode-tag">OFF</span>
+      </span>
+      <span>Anotações</span>
+    </button>
+    <button class="ctrl-btn" id="btn-hint">
+      <span class="ctrl-icon-wrap">
+        <span class="ctrl-icon">💡</span>
+        <span class="ctrl-count-tag" id="hint-count-tag">3</span>
+      </span>
+      <span>Dica</span>
     </button>
   </div>
 </div>

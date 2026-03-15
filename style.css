@@ -225,79 +225,104 @@ html, body {
    TELA DO JOGO
 ══════════════════════════════════════════ */
 #screen-game {
-  background: var(--bg);
+  background: #fff;
 }
 
-/* ── Header (2 linhas) ── */
+/* ── Header ── */
 #game-header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 0;
 }
-.header-row1 {
+
+/* Linha topo: ‹ | score | ⚙ */
+.ghdr-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px 4px;
+  padding: 10px 10px 4px;
 }
-.header-icon-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+.ghdr-icon {
+  width: 36px;
+  height: 36px;
   border: none;
-  background: var(--surface2);
-  font-size: 18px;
+  background: transparent;
+  font-size: 26px;
+  font-weight: 300;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-primary);
   flex-shrink: 0;
+  border-radius: 8px;
   transition: background .1s;
 }
-.header-icon-btn:active { background: var(--accent-light); }
-#difficulty-badge {
-  font-size: 15px;
+.ghdr-icon:active { background: var(--accent-light); }
+.game-score {
+  font-size: 26px;
   font-weight: 800;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
 }
-.header-row2 {
+
+/* Linha stats: best | diff | erros? | tempo | ⏸ */
+.ghdr-stats {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 2px 16px 10px;
+  padding: 2px 10px 10px;
+  gap: 8px;
 }
-.h-stat {
+.ghdr-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: 1px;
+  flex-shrink: 0;
 }
-.h-stat-label {
-  font-size: 9px;
+.ghdr-lbl {
+  font-size: 8px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: .8px;
+  letter-spacing: .4px;
   font-weight: 600;
+  white-space: nowrap;
 }
-.h-stat-val {
-  font-size: 20px;
-  font-weight: 800;
+.ghdr-val {
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
-#timer-val { font-variant-numeric: tabular-nums; }
-.h-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
+#difficulty-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+#error-badge { color: var(--error-text); }
+.ghdr-sep {
+  width: 1px;
+  height: 26px;
   background: var(--border);
-  margin-top: 6px;
+  flex-shrink: 0;
 }
-#error-badge.has-errors { color: var(--error-text) !important; }
+.ghdr-pause {
+  margin-left: auto;
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: background .1s;
+  white-space: nowrap;
+}
+.ghdr-pause:active { background: var(--accent-light); }
 
 /* ── Barra de progresso ── */
 #progress-bar {
@@ -458,7 +483,7 @@ html, body {
   transform: scale(0.75);
   background: var(--accent-light);
 }
-.num-btn.done { opacity: .15; pointer-events: none; }
+.num-btn.done { color: var(--success) !important; font-size: clamp(20px, 6.5vw, 32px); pointer-events: none; opacity: 1; }
 .num-btn.selected-num { color: var(--accent); }
 .num-btn.erase {
   font-size: clamp(22px, 7vw, 36px);
@@ -495,8 +520,46 @@ html, body {
   transition: transform .1s, background .1s;
 }
 .ctrl-btn .ctrl-icon {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1;
+}
+.ctrl-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.ctrl-mode-tag {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  background: #94A3B8;
+  color: #fff;
+  font-size: 7px;
+  font-weight: 800;
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1.4;
+  letter-spacing: .3px;
+}
+.ctrl-btn.active-mode .ctrl-mode-tag { background: rgba(255,255,255,.9); color: var(--accent); }
+.ctrl-count-tag {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 2px;
 }
 .ctrl-btn:active { background: var(--accent-light); transform: scale(0.94); }
 .ctrl-btn.active-mode {
@@ -864,10 +927,10 @@ html, body {
 .digit-complete { animation: digitDone .5s ease-in-out; }
 
 @keyframes numComplete {
-  0%   { transform: scale(1);   color: #1E3A8A; }
-  35%  { transform: scale(1.45); color: var(--accent); }
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.45); }
   65%  { transform: scale(0.85); }
-  100% { transform: scale(1);   color: #1E3A8A; }
+  100% { transform: scale(1); }
 }
 .num-complete { animation: numComplete .5s cubic-bezier(.36,.07,.19,.97); }
 
