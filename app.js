@@ -17,7 +17,6 @@ const STATE = {
   difficulty: '',
   errors:     0,
   score:      0,
-  hintsLeft:  3,
 
   timerSeconds:  0,
   timerInterval: null,
@@ -230,7 +229,6 @@ function startGame(difficulty) {
                       );
     STATE.errors     = 0;
     STATE.score      = 0;
-    STATE.hintsLeft  = 3;
     STATE.undoStack  = [];
     STATE.undoCount  = 0;
     STATE.paused     = false;
@@ -253,7 +251,6 @@ function startGame(difficulty) {
     updateScoreDisplay();
     updateErrorDisplay();
     updateBestScore();
-    updateHintBadge();
     updateProgressBar();
 
     document.getElementById('difficulty-badge').textContent = DIFF_NAMES[difficulty];
@@ -568,8 +565,7 @@ function calculateScore() {
   const timeBonus    = Math.max(0, 3000 - STATE.timerSeconds);
   const errorPenalty = STATE.errors * 50;
   const undoPenalty  = STATE.undoCount * 20;
-  const hintPenalty  = (3 - STATE.hintsLeft) * 200;
-  return Math.max(0, Math.floor((timeBonus - errorPenalty - undoPenalty - hintPenalty) * multiplier));
+  return Math.max(0, Math.floor((timeBonus - errorPenalty - undoPenalty) * multiplier));
 }
 
 function removeRelatedNotes(r, c, num) {
@@ -682,7 +678,6 @@ function saveSession() {
     difficulty:   STATE.difficulty,
     errors:       STATE.errors,
     score:        STATE.score,
-    hintsLeft:    STATE.hintsLeft,
     timerSeconds: STATE.timerSeconds,
     notesMode:    STATE.notesMode,
     undoCount:    STATE.undoCount,
@@ -720,7 +715,6 @@ function resumeSession() {
   STATE.difficulty   = s.difficulty;
   STATE.errors       = s.errors;
   STATE.score        = s.score;
-  STATE.hintsLeft    = s.hintsLeft !== undefined ? s.hintsLeft : 3;
   STATE.timerSeconds = s.timerSeconds;
   STATE.notesMode    = s.notesMode || false;
   STATE.selectedRow  = -1;
@@ -744,7 +738,6 @@ function resumeSession() {
   updateScoreDisplay();
   updateErrorDisplay();
   updateBestScore();
-  updateHintBadge();
   updateProgressBar();
   showGameScreen();
 }
@@ -912,39 +905,13 @@ function updateErrorDisplay() {
   }
 }
 
-function updateHintBadge() {
-  const tag = document.getElementById('hint-count-tag');
-  tag.textContent = STATE.hintsLeft;
-  document.getElementById('btn-hint').classList.toggle('disabled', STATE.hintsLeft <= 0);
-}
-
 function handleErase() {
   handleNumberInput(0);
 }
 
 function handleHint() {
-  if (STATE.paused || STATE.hintsLeft <= 0) return;
-  /* Coleta todas as células vazias ou erradas */
-  const candidates = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (!STATE.givens.has(`${r},${c}`) && STATE.puzzle[r][c] !== STATE.solution[r][c])
-        candidates.push([r, c]);
-  if (!candidates.length) return;
-
-  const [r, c] = candidates[Math.floor(Math.random() * candidates.length)];
-  pushUndo();
-  STATE.puzzle[r][c] = STATE.solution[r][c];
-  STATE.notes[r][c]  = new Set();
-  STATE.hintsLeft--;
-
-  updateCellContent(r, c);
-  renderHighlights();
-  renderNumpad();
-  updateProgressBar();
-  updateHintBadge();
-  correctPop(r, c);
-  checkWin();
+  if (STATE.paused || !STATE.puzzle) return;
+  applyAutoAnnotations();
 }
 
 function shakeCell(r, c) {
