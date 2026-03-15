@@ -489,6 +489,10 @@ function doPlaceNumber(r, c, num) {
   if (isError) {
     STATE.errors++;
     updateErrorDisplay();
+  } else if (num !== 0) {
+    /* Acerto: adiciona pontos ao score acumulativo */
+    STATE.score += calculateCellPoints();
+    updateScoreDisplay();
   }
 
   if (num !== 0 && STATE.settings.autoRemoveNotes) {
@@ -536,8 +540,8 @@ function handleUndo() {
   STATE.puzzle = snap.puzzle;
   STATE.notes  = snap.notes;
   STATE.errors = snap.errors;
+  STATE.score  = snap.score;   /* restaura score exato — erros também voltam */
   STATE.undoCount++;
-  STATE.score = calculateScore();
   updateErrorDisplay();
   updateScoreDisplay();
   renderBoard();
@@ -569,14 +573,18 @@ function checkWin() {
   setTimeout(() => endGame(true), 600);
 }
 
+/* Pontuação acumulativa: cada número correto vale pontos que decrescem com o tempo.
+   Não há penalidade por tempo decorrido — pressão vem naturalmente dos pontos menores.
+   Erros custam: o jogador perde o tempo gasto (pontos menores) e precisa desfazer. */
+function calculateCellPoints() {
+  const multiplier = SudokuGenerator.getMultiplier(STATE.difficulty);
+  /* 100 pts no início, diminui 1pt a cada 3s, mínimo 5 pts */
+  const base = Math.max(5, 100 - Math.floor(STATE.timerSeconds / 3));
+  return Math.round(base * multiplier);
+}
+
 function calculateScore() {
-  const multiplier   = SudokuGenerator.getMultiplier(STATE.difficulty);
-  /* Pontuação de tempo cai apenas a cada 60 segundos — menos pressão */
-  const roundedSecs  = Math.floor(STATE.timerSeconds / 60) * 60;
-  const timeBonus    = Math.max(0, 3000 - roundedSecs);
-  const errorPenalty = STATE.errors * 50;
-  const undoPenalty  = STATE.undoCount * 20;
-  return Math.max(0, Math.floor((timeBonus - errorPenalty - undoPenalty) * multiplier));
+  return STATE.score; /* score já é acumulativo — sem recálculo */
 }
 
 function removeRelatedNotes(r, c, num) {
@@ -626,8 +634,9 @@ function pushUndo() {
     puzzle: STATE.puzzle.map(row => [...row]),
     notes:  STATE.notes.map(row => row.map(set => new Set(set))),
     errors: STATE.errors,
+    score:  STATE.score,
   });
-  if (STATE.undoStack.length > 50) STATE.undoStack.shift();
+  /* Sem limite — máx. 81 ações por puzzle, memória desprezível */
 }
 
 /* ═══════════════════════════════════════
@@ -656,8 +665,6 @@ function startTimer() {
   STATE.timerInterval = setInterval(() => {
     STATE.timerSeconds++;
     updateTimerDisplay();
-    STATE.score = calculateScore();
-    updateScoreDisplay();
   }, 1000);
 }
 
