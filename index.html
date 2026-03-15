@@ -38,32 +38,26 @@
     <button class="diff-btn d-facil"        data-diff="facil">
       <span class="diff-name">Fácil</span>
       <span class="diff-stars">★☆☆☆☆☆</span>
-      <span class="diff-count">45 dadas</span>
     </button>
     <button class="diff-btn d-medio"        data-diff="medio">
       <span class="diff-name">Médio</span>
       <span class="diff-stars">★★☆☆☆☆</span>
-      <span class="diff-count">39 dadas</span>
     </button>
     <button class="diff-btn d-dificil"      data-diff="dificil">
       <span class="diff-name">Difícil</span>
       <span class="diff-stars">★★★☆☆☆</span>
-      <span class="diff-count">34 dadas</span>
     </button>
     <button class="diff-btn d-especialista" data-diff="especialista">
       <span class="diff-name">Especialista</span>
       <span class="diff-stars">★★★★☆☆</span>
-      <span class="diff-count">30 dadas</span>
     </button>
     <button class="diff-btn d-mestre"       data-diff="mestre">
       <span class="diff-name">Mestre</span>
       <span class="diff-stars">★★★★★☆</span>
-      <span class="diff-count">26 dadas</span>
     </button>
     <button class="diff-btn d-extremo"      data-diff="extremo">
       <span class="diff-name">Extremo</span>
       <span class="diff-stars">★★★★★★</span>
-      <span class="diff-count">23 dadas</span>
     </button>
   </div>
 
@@ -79,34 +73,31 @@
 <div id="screen-game" class="screen">
 
   <header id="game-header">
-    <button class="header-btn" id="btn-back" title="Voltar">←</button>
-
-    <span id="difficulty-badge">Fácil</span>
-
-    <div class="header-sep"></div>
-
-    <div class="header-stat">
-      <span>Tempo</span>
-      <span id="timer-val">0:00</span>
+    <div class="header-row1">
+      <button class="header-icon-btn" id="btn-settings-game" title="Configurações">⚙</button>
+      <span id="difficulty-badge">Fácil</span>
+      <button class="header-icon-btn" id="btn-pause" title="Pausar">⏸</button>
     </div>
-
-    <div class="header-sep"></div>
-
-    <div class="header-stat">
-      <span>Pontos</span>
-      <span id="score-val">0</span>
+    <div class="header-row2">
+      <div class="h-stat">
+        <span class="h-stat-label">Tempo</span>
+        <span class="h-stat-val" id="timer-val">0:00</span>
+      </div>
+      <div class="h-dot"></div>
+      <div class="h-stat">
+        <span class="h-stat-label">Pontos</span>
+        <span class="h-stat-val" id="score-val">0</span>
+      </div>
+      <div class="h-dot"></div>
+      <div class="h-stat">
+        <span class="h-stat-label">Erros</span>
+        <span class="h-stat-val" id="error-badge">0</span>
+      </div>
     </div>
-
-    <div class="header-sep"></div>
-
-    <div class="header-stat">
-      <span>Erros</span>
-      <span id="error-badge">0</span>
-    </div>
-
-    <button class="header-btn" id="btn-pause" title="Pausar">⏸</button>
-    <button class="header-btn" id="btn-settings-game" title="Configurações">⚙</button>
   </header>
+
+  <!-- Barra de progresso -->
+  <div id="progress-bar"><div id="progress-fill"></div></div>
 
   <!-- Tabuleiro -->
   <div id="board-wrap">
@@ -121,6 +112,9 @@
       <button class="btn-primary" id="btn-resume-pause" onclick="togglePause()">▶ Continuar</button>
     </div>
   </div>
+
+  <!-- Numpad (gerado por JS) -->
+  <div id="numpad"></div>
 
   <!-- Botões de controle -->
   <div id="controls">
@@ -137,9 +131,6 @@
       <span>Auto</span>
     </button>
   </div>
-
-  <!-- Numpad (gerado por JS) -->
-  <div id="numpad"></div>
 </div>
 
 <!-- ═══════════════════════════════
@@ -258,7 +249,7 @@
     </div>
     <div class="result-rank-info" id="v-rank-info"></div>
     <button class="btn-primary" id="btn-new-game-victory">Novo Jogo</button>
-    <button class="btn-secondary" id="btn-retry-victory">Jogar Novamente</button>
+    <button class="btn-secondary" id="btn-retry-victory">Finalizar</button>
   </div>
 
   <!-- Modal Game Over -->

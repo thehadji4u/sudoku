@@ -93,13 +93,6 @@ function attachEvents() {
     btn.addEventListener('click', () => startGame(btn.dataset.diff));
   });
 
-  /* Voltar */
-  document.getElementById('btn-back').addEventListener('click', () => {
-    if (STATE.puzzle && STATE.timerRunning) saveSession();
-    stopTimer();
-    showDifficultyScreen();
-  });
-
   /* Sessão salva */
   document.getElementById('btn-resume').addEventListener('click', resumeSession);
   document.getElementById('btn-discard').addEventListener('click', () => {
@@ -145,8 +138,8 @@ function attachEvents() {
   setupSettingsEvents();
 
   /* Modais de resultado */
-  document.getElementById('btn-new-game-victory').addEventListener('click', showDifficultyScreen);
-  document.getElementById('btn-retry-victory').addEventListener('click', restartGame);
+  document.getElementById('btn-new-game-victory').addEventListener('click', restartGame);
+  document.getElementById('btn-retry-victory').addEventListener('click', showDifficultyScreen);
   document.getElementById('btn-retry-gameover').addEventListener('click', restartGame);
   document.getElementById('btn-new-game-gameover').addEventListener('click', showDifficultyScreen);
 
@@ -247,6 +240,7 @@ function startGame(difficulty) {
     updateNotesBtn();
     updateScoreDisplay();
     updateErrorDisplay();
+    updateProgressBar();
 
     document.getElementById('difficulty-badge').textContent = DIFF_NAMES[difficulty];
 
@@ -309,6 +303,7 @@ function renderBoard() {
   }
 
   renderHighlights();
+  updateProgressBar();
 }
 
 function updateCellContent(r, c) {
@@ -479,14 +474,22 @@ function doPlaceNumber(r, c, num) {
   updateCellContent(r, c);
   renderHighlights();
   renderNumpad();
+  updateProgressBar();
 
-  /* Animação de erro APÓS atualizar o conteúdo */
   if (isError) {
     shakeCell(r, c);
     if (STATE.settings.failOnErrors && STATE.errors >= STATE.settings.maxErrors) {
       setTimeout(() => endGame(false), 400);
       return;
     }
+  } else if (num !== 0) {
+    correctPop(r, c);
+    /* Verifica se o dígito foi completamente preenchido no tabuleiro */
+    let count = 0;
+    for (let rr = 0; rr < 9; rr++)
+      for (let cc = 0; cc < 9; cc++)
+        if (STATE.puzzle[rr][cc] === num) count++;
+    if (count === 9) setTimeout(() => celebrateDigit(num), 80);
   }
 
   checkWin();
@@ -511,6 +514,7 @@ function handleUndo() {
   updateErrorDisplay();
   renderBoard();
   renderNumpad();
+  updateProgressBar();
 }
 
 function handleKeyboard(e) {
@@ -711,6 +715,7 @@ function resumeSession() {
   updateNotesBtn();
   updateScoreDisplay();
   updateErrorDisplay();
+  updateProgressBar();
   showGameScreen();
 }
 
@@ -869,6 +874,42 @@ function shakeCell(r, c) {
   el.classList.remove('shake');
   void el.offsetWidth;
   el.classList.add('shake');
+}
+
+function correctPop(r, c) {
+  const el = cellElements[r] && cellElements[r][c];
+  if (!el) return;
+  el.classList.remove('correct-pop');
+  void el.offsetWidth;
+  el.classList.add('correct-pop');
+}
+
+function celebrateDigit(num) {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (STATE.puzzle[r][c] === num) {
+        const el = cellElements[r][c];
+        el.classList.remove('digit-complete');
+        void el.offsetWidth;
+        el.classList.add('digit-complete');
+      }
+    }
+  }
+  const btn = document.querySelector(`.num-btn[data-num="${num}"]`);
+  if (btn) {
+    btn.classList.remove('num-complete');
+    void btn.offsetWidth;
+    btn.classList.add('num-complete');
+  }
+}
+
+function updateProgressBar() {
+  let filled = 0;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] !== 0) filled++;
+  const fill = document.getElementById('progress-fill');
+  if (fill) fill.style.width = ((filled / 81) * 100) + '%';
 }
 
 function syncSettingsUI() {
