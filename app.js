@@ -14,6 +14,7 @@ const STATE = {
   selectedCol: -1,
   notesMode:   false,
   fillNotes:   false,
+  pinnedNum:   0,
 
   difficulty: '',
   errors:     0,
@@ -51,6 +52,8 @@ const STATE = {
 
 /* Cache dos elementos DOM do tabuleiro */
 let cellElements = [];  // [9][9]
+let _numpadPressTimer  = null;
+let _numpadLongPressed = false;
 
 /* ═══════════════════════════════════════
    CONSTANTES
@@ -150,12 +153,14 @@ function attachEvents() {
     handleCellClick(+cell.dataset.row, +cell.dataset.col);
   });
 
-  /* Numpad (delegação) */
+  /* Numpad (delegação) — clique normal; long-press é tratado em attachNumpadLongPress */
   document.getElementById('numpad').addEventListener('click', e => {
     const btn = e.target.closest('[data-num]');
     if (!btn) return;
+    if (_numpadLongPressed) { _numpadLongPressed = false; return; }
     handleNumberInput(+btn.dataset.num);
   });
+  attachNumpadLongPress();
 
   /* Fechar modal ao clicar no overlay (mas não no sheet) */
   document.getElementById('modal-overlay').addEventListener('click', e => {
@@ -257,6 +262,7 @@ function startGame(difficulty) {
     STATE.selectedCol = -1;
     STATE.notesMode  = false;
     STATE.fillNotes  = false;
+    STATE.pinnedNum  = 0;
     STATE.simulator  = {
       active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
       savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
@@ -466,6 +472,18 @@ function renderHighlights() {
       .forEach(s => s.classList.add('note-match'));
   }
 
+  /* ── Número fixado por long-press no numpad ── */
+  if (STATE.pinnedNum > 0) {
+    const pn = STATE.pinnedNum;
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (STATE.puzzle[r][c] === pn && !(r === sr && c === sc))
+          cellElements[r][c].classList.add('same-num');
+    /* Anotações com o número fixado ficam azuis */
+    document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
+      .forEach(s => s.classList.add('note-match'));
+  }
+
   /* ── Conflitos no modo simulador ── */
   if (STATE.simulator.active) renderSimConflicts();
 }
@@ -485,6 +503,7 @@ function renderNumpad() {
     btn.textContent = done ? '✓' : n;
     btn.classList.toggle('done', done);
     btn.classList.toggle('selected-num', n === selVal && selVal > 0 && !done);
+    btn.classList.toggle('pinned', n === STATE.pinnedNum && STATE.pinnedNum > 0 && !done);
   });
 }
 
@@ -805,6 +824,7 @@ function resumeSession() {
   STATE.undoCount    = s.undoCount || 0;
   STATE.paused       = false;
   STATE.fillNotes    = false;
+  STATE.pinnedNum    = 0;
   STATE.simulator    = {
     active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
     savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
@@ -1085,6 +1105,45 @@ function renderSimConflicts() {
 
 function handleErase() {
   handleNumberInput(0);
+}
+
+/* ── Long-press no numpad para fixar número ── */
+function attachNumpadLongPress() {
+  const pad = document.getElementById('numpad');
+
+  const startPress = (num) => {
+    _numpadLongPressed = false;
+    clearTimeout(_numpadPressTimer);
+    _numpadPressTimer = setTimeout(() => {
+      _numpadLongPressed = true;
+      handleNumpadPin(num);
+    }, 450);
+  };
+  const cancelPress = () => {
+    clearTimeout(_numpadPressTimer);
+    _numpadPressTimer = null;
+  };
+
+  pad.addEventListener('touchstart',  e => {
+    const btn = e.target.closest('[data-num]');
+    if (btn && !btn.classList.contains('done')) startPress(+btn.dataset.num);
+  }, { passive: true });
+  pad.addEventListener('touchend',    cancelPress, { passive: true });
+  pad.addEventListener('touchcancel', cancelPress, { passive: true });
+  pad.addEventListener('touchmove',   cancelPress, { passive: true });
+
+  pad.addEventListener('mousedown', e => {
+    const btn = e.target.closest('[data-num]');
+    if (btn && !btn.classList.contains('done')) startPress(+btn.dataset.num);
+  });
+  pad.addEventListener('mouseup',    cancelPress);
+  pad.addEventListener('mouseleave', cancelPress);
+}
+
+function handleNumpadPin(num) {
+  STATE.pinnedNum = (STATE.pinnedNum === num) ? 0 : num;
+  renderNumpad();
+  renderHighlights();
 }
 
 function handleFill() {
