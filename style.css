@@ -10,9 +10,9 @@
   --border:           #CBD5E1;
   --border-box:       #475569;
   --accent:           #2563EB;
-  --accent-light:     #DBEAFE;
-  --accent-mid:       #BFDBFE;
-  --accent-dim:       #EFF6FF;
+  --accent-light:     #DBEAFE;   /* célula selecionada */
+  --accent-mid:       #E8F2FF;   /* mesmo número / enhanced */
+  --accent-dim:       #F3F8FF;   /* highlight normal (linha/col/quad) */
   --text-primary:     #1E293B;
   --text-given:       #1E293B;
   --text-user:        #2563EB;
@@ -296,6 +296,28 @@ html, body {
   box-shadow: var(--shadow);
   background: var(--surface);
 }
+
+/* ── Overlay de Pausa ── */
+#pause-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(248, 249, 250, 0.92);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+#screen-game { position: relative; }
+.pause-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.pause-icon  { font-size: 48px; opacity: .5; }
+.pause-label { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: 2px; }
+#btn-resume-pause { width: 180px; margin-top: 8px; }
 
 /* ── Células ── */
 .cell {

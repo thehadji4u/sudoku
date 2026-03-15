@@ -104,12 +104,22 @@
       <span id="error-badge">0</span>
     </div>
 
+    <button class="header-btn" id="btn-pause" title="Pausar">⏸</button>
     <button class="header-btn" id="btn-settings-game" title="Configurações">⚙</button>
   </header>
 
   <!-- Tabuleiro -->
   <div id="board-wrap">
     <div id="board"></div>
+  </div>
+
+  <!-- Overlay de pausa -->
+  <div id="pause-overlay" class="hidden">
+    <div class="pause-content">
+      <div class="pause-icon">⏸</div>
+      <div class="pause-label">Pausado</div>
+      <button class="btn-primary" id="btn-resume-pause" onclick="togglePause()">▶ Continuar</button>
+    </div>
   </div>
 
   <!-- Botões de controle -->

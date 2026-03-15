@@ -1,5 +1,5 @@
 /* Service Worker — cache-first, offline-ready */
-const CACHE = 'sudoku-v4';
+const CACHE = 'sudoku-v5';
 const ASSETS = [
   './',
   './index.html',

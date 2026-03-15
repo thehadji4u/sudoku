@@ -21,6 +21,7 @@ const STATE = {
   timerSeconds:  0,
   timerInterval: null,
   timerRunning:  false,
+  paused:        false,
 
   undoStack: [],       // max 50 snapshots
   undoCount: 0,        // total de desfazeres (penaliza pontuação)
@@ -73,7 +74,7 @@ function buildNumpad() {
     const btn = document.createElement('button');
     btn.className = 'num-btn';
     btn.dataset.num = n;
-    btn.innerHTML = `${n}<span class="num-count"></span>`;
+    btn.textContent = n;
     pad.appendChild(btn);
   }
   const erase = document.createElement('button');
@@ -116,6 +117,7 @@ function attachEvents() {
   document.getElementById('btn-settings-game').addEventListener('click', openSettings);
 
   /* Controles do jogo */
+  document.getElementById('btn-pause').addEventListener('click', togglePause);
   document.getElementById('btn-undo').addEventListener('click', handleUndo);
   document.getElementById('btn-notes').addEventListener('click', toggleNotesMode);
   document.getElementById('btn-auto-notes').addEventListener('click', applyAutoAnnotations);
@@ -226,6 +228,7 @@ function startGame(difficulty) {
     STATE.score      = 0;
     STATE.undoStack  = [];
     STATE.undoCount  = 0;
+    STATE.paused     = false;
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
     STATE.notesMode  = false;
@@ -426,8 +429,6 @@ function renderNumpad() {
     const remaining = 9 - count[n];
     btn.classList.toggle('done', remaining <= 0);
     btn.classList.toggle('selected-num', n === selVal && selVal > 0);
-    const cntEl = btn.querySelector('.num-count');
-    if (cntEl) cntEl.textContent = remaining > 0 ? remaining : '';
   });
 }
 
@@ -435,6 +436,7 @@ function renderNumpad() {
    INPUT DO USUÁRIO
 ═══════════════════════════════════════ */
 function handleCellClick(r, c) {
+  if (STATE.paused) return;
   if (STATE.selectedRow === r && STATE.selectedCol === c) {
     /* Clique na mesma célula: deseleciona */
     STATE.selectedRow = -1;
@@ -448,6 +450,7 @@ function handleCellClick(r, c) {
 }
 
 function handleNumberInput(num) {
+  if (STATE.paused) return;
   const { selectedRow: r, selectedCol: c } = STATE;
   if (r < 0) return;
   if (STATE.givens.has(`${r},${c}`)) return;
@@ -596,6 +599,24 @@ function pushUndo() {
 /* ═══════════════════════════════════════
    TIMER
 ═══════════════════════════════════════ */
+function togglePause() {
+  if (!STATE.puzzle) return;
+  STATE.paused = !STATE.paused;
+  const overlay = document.getElementById('pause-overlay');
+  const btn     = document.getElementById('btn-pause');
+  if (STATE.paused) {
+    stopTimer();
+    overlay.classList.remove('hidden');
+    btn.textContent = '▶';
+    btn.title = 'Continuar';
+  } else {
+    overlay.classList.add('hidden');
+    btn.textContent = '⏸';
+    btn.title = 'Pausar';
+    startTimer();
+  }
+}
+
 function startTimer() {
   STATE.timerRunning  = true;
   STATE.timerInterval = setInterval(() => {
@@ -675,7 +696,10 @@ function resumeSession() {
   STATE.selectedCol  = -1;
   STATE.undoStack    = [];
   STATE.undoCount    = s.undoCount || 0;
+  STATE.paused       = false;
 
+  document.getElementById('pause-overlay').classList.add('hidden');
+  document.getElementById('btn-pause').textContent = '⏸';
   document.getElementById('session-resume').classList.add('hidden');
   document.getElementById('difficulty-badge').textContent = DIFF_NAMES[s.difficulty];
 
