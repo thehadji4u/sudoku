@@ -58,6 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
   attachEvents();
   syncSettingsUI();
   checkIOSBanner();
+  checkSavedSession();
+});
+
+window.addEventListener('beforeunload', () => {
+  if (STATE.puzzle && STATE.timerRunning) saveSession();
 });
 
 function buildNumpad() {
@@ -88,8 +93,16 @@ function attachEvents() {
 
   /* Voltar */
   document.getElementById('btn-back').addEventListener('click', () => {
-    if (STATE.timerRunning) stopTimer();
+    if (STATE.puzzle && STATE.timerRunning) saveSession();
+    stopTimer();
     showDifficultyScreen();
+  });
+
+  /* Sessão salva */
+  document.getElementById('btn-resume').addEventListener('click', resumeSession);
+  document.getElementById('btn-discard').addEventListener('click', () => {
+    clearSession();
+    document.getElementById('session-resume').classList.add('hidden');
   });
 
   /* Ranking (home) */
@@ -240,6 +253,7 @@ function restartGame() {
 
 function endGame(won) {
   stopTimer();
+  clearSession();
   STATE.score = calculateScore();
   updateScoreDisplay();
 
@@ -596,6 +610,75 @@ function formatTime(s) {
 }
 
 /* ═══════════════════════════════════════
+   SESSÃO SALVA
+═══════════════════════════════════════ */
+function saveSession() {
+  if (!STATE.puzzle) return;
+  const session = {
+    puzzle:       STATE.puzzle,
+    solution:     STATE.solution,
+    givens:       [...STATE.givens],
+    notes:        STATE.notes.map(row => row.map(s => [...s])),
+    difficulty:   STATE.difficulty,
+    errors:       STATE.errors,
+    score:        STATE.score,
+    timerSeconds: STATE.timerSeconds,
+    notesMode:    STATE.notesMode,
+  };
+  localStorage.setItem('sudoku-session', JSON.stringify(session));
+}
+
+function loadSession() {
+  try { return JSON.parse(localStorage.getItem('sudoku-session') || 'null'); }
+  catch { return null; }
+}
+
+function clearSession() {
+  localStorage.removeItem('sudoku-session');
+}
+
+function checkSavedSession() {
+  const s = loadSession();
+  const card = document.getElementById('session-resume');
+  if (!s) { card.classList.add('hidden'); return; }
+  document.getElementById('session-info').textContent =
+    `${DIFF_NAMES[s.difficulty] || s.difficulty} · ${formatTime(s.timerSeconds)} · ${s.errors} erro(s)`;
+  card.classList.remove('hidden');
+}
+
+function resumeSession() {
+  const s = loadSession();
+  if (!s) return;
+  clearSession();
+
+  STATE.puzzle       = s.puzzle;
+  STATE.solution     = s.solution;
+  STATE.givens       = new Set(s.givens);
+  STATE.notes        = s.notes.map(row => row.map(arr => new Set(arr)));
+  STATE.difficulty   = s.difficulty;
+  STATE.errors       = s.errors;
+  STATE.score        = s.score;
+  STATE.timerSeconds = s.timerSeconds;
+  STATE.notesMode    = s.notesMode || false;
+  STATE.selectedRow  = -1;
+  STATE.selectedCol  = -1;
+  STATE.undoStack    = [];
+
+  document.getElementById('session-resume').classList.add('hidden');
+  document.getElementById('difficulty-badge').textContent = DIFF_NAMES[s.difficulty];
+
+  updateTimerDisplay();
+  stopTimer();
+  startTimer();
+  renderBoard();
+  renderNumpad();
+  updateNotesBtn();
+  updateScoreDisplay();
+  updateErrorDisplay();
+  showGameScreen();
+}
+
+/* ═══════════════════════════════════════
    RANKING / PERSISTÊNCIA
 ═══════════════════════════════════════ */
 function loadRanking() {
@@ -647,6 +730,7 @@ function showDifficultyScreen() {
   closeAllModals();
   document.getElementById('screen-game').classList.remove('active');
   document.getElementById('screen-difficulty').classList.add('active');
+  checkSavedSession();
 }
 
 function showGameScreen() {
