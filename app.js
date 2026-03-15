@@ -77,11 +77,6 @@ function buildNumpad() {
     btn.textContent = n;
     pad.appendChild(btn);
   }
-  const erase = document.createElement('button');
-  erase.className = 'num-btn erase';
-  erase.dataset.num = '0';
-  erase.innerHTML = '⌫';
-  pad.appendChild(erase);
 }
 
 /* ═══════════════════════════════════════
@@ -91,6 +86,13 @@ function attachEvents() {
   /* Dificuldade */
   document.querySelectorAll('.diff-btn').forEach(btn => {
     btn.addEventListener('click', () => startGame(btn.dataset.diff));
+  });
+
+  /* Voltar */
+  document.getElementById('btn-back').addEventListener('click', () => {
+    if (STATE.puzzle && STATE.timerRunning) saveSession();
+    stopTimer();
+    showDifficultyScreen();
   });
 
   /* Sessão salva */
