@@ -178,6 +178,21 @@ html, body {
 }
 .diff-footer button:active { opacity: .75; }
 
+.diff-copyright {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: .3px;
+}
+.app-version {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 11px;
+}
+.copyright-sep { opacity: .5; }
+
 /* Loading overlay */
 #loading-overlay {
   position: fixed;
