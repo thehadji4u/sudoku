@@ -285,11 +285,22 @@
   <br><button id="ios-banner-close">Dispensar</button>
 </div>
 
+<!-- Banner de atualização disponível -->
+<div id="update-banner" class="hidden">
+  <span>Nova versão disponível</span>
+  <button id="btn-update">↻ Atualizar</button>
+</div>
+
 <script src="sudoku-generator.js"></script>
 <script src="app.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
+
+    /* Quando o novo SW assume o controle, mostra o banner */
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      document.getElementById('update-banner').classList.remove('hidden');
+    });
   }
 </script>
 </body>

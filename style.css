@@ -716,6 +716,41 @@ html, body {
 }
 .btn-secondary:active { background: var(--surface2); }
 
+/* ── Banner de atualização ── */
+#update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--success);
+  color: #fff;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 300;
+  animation: slideDown .3s ease-out;
+}
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+#update-banner button {
+  background: rgba(255,255,255,.25);
+  border: none;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#update-banner button:active { background: rgba(255,255,255,.4); }
+
 /* ── Banner iOS ── */
 #ios-banner {
   position: fixed;

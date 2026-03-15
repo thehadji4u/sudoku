@@ -163,6 +163,12 @@ function attachEvents() {
     localStorage.setItem('ios-banner-dismissed', '1');
   });
 
+  /* Botão de atualização: salva sessão e recarrega */
+  document.getElementById('btn-update').addEventListener('click', () => {
+    if (STATE.puzzle && STATE.timerRunning) saveSession();
+    window.location.reload();
+  });
+
   /* Teclado */
   document.addEventListener('keydown', handleKeyboard);
 }
