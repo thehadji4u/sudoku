@@ -295,10 +295,10 @@
   <br><button id="ios-banner-close">Dispensar</button>
 </div>
 
-<!-- Banner de atualização disponível -->
+<!-- Banner de atualização (fallback se controllerchange não disparar) -->
 <div id="update-banner" class="hidden">
   <span>Nova versão disponível</span>
-  <button id="btn-update">↻ Atualizar</button>
+  <button id="btn-update">↻ Atualizar agora</button>
 </div>
 
 <script src="sudoku-generator.js"></script>
@@ -307,9 +307,13 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
 
-    /* Quando o novo SW assume o controle, mostra o banner */
+    /* Quando o novo SW assume o controle, recarrega automaticamente.
+       refreshing evita loop infinito. A sessão é salva pelo beforeunload. */
+    let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      document.getElementById('update-banner').classList.remove('hidden');
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
     });
   }
 </script>
