@@ -405,7 +405,21 @@ function renderHighlights() {
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
-  if (sr < 0 || !cellElements.length) return;
+  if (!cellElements.length) return;
+  /* Se nenhuma célula selecionada mas há número fixado, pula a lógica de seleção */
+  if (sr < 0) {
+    if (STATE.pinnedNum > 0) {
+      const pn = STATE.pinnedNum;
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++)
+          if (puzzle[r][c] === pn)
+            cellElements[r][c].classList.add('same-num');
+      document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
+        .forEach(s => s.classList.add('note-match'));
+      if (STATE.simulator.active) renderSimConflicts();
+    }
+    return;
+  }
 
   const selVal  = puzzle[sr][sc];
   const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
