@@ -395,6 +395,9 @@ function buildNotesHTML(noteSet) {
 }
 
 function renderHighlights() {
+  /* Guard: tabuleiro não renderizado ou puzzle não iniciado */
+  if (!cellElements.length || !cellElements[0] || !STATE.puzzle) return;
+
   const { selectedRow: sr, selectedCol: sc, puzzle, settings } = STATE;
 
   /* Limpa todos os destaques (células e notas) */
@@ -405,19 +408,20 @@ function renderHighlights() {
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
-  if (!cellElements.length) return;
-  /* Se nenhuma célula selecionada mas há número fixado, pula a lógica de seleção */
+  /* Aplica destaques do número fixado por long-press (sempre, mesmo sem seleção) */
+  if (STATE.pinnedNum > 0) {
+    const pn = STATE.pinnedNum;
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (puzzle[r][c] === pn)
+          cellElements[r][c].classList.add('same-num');
+    document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
+      .forEach(s => s.classList.add('note-match'));
+  }
+
+  /* Se nenhuma célula selecionada, só o pinned importa */
   if (sr < 0) {
-    if (STATE.pinnedNum > 0) {
-      const pn = STATE.pinnedNum;
-      for (let r = 0; r < 9; r++)
-        for (let c = 0; c < 9; c++)
-          if (puzzle[r][c] === pn)
-            cellElements[r][c].classList.add('same-num');
-      document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
-        .forEach(s => s.classList.add('note-match'));
-      if (STATE.simulator.active) renderSimConflicts();
-    }
+    if (STATE.simulator.active) renderSimConflicts();
     return;
   }
 
@@ -483,18 +487,6 @@ function renderHighlights() {
   /* ── Destaca dígitos de anotação que coincidem com o número selecionado ── */
   if (selVal > 0) {
     document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
-      .forEach(s => s.classList.add('note-match'));
-  }
-
-  /* ── Número fixado por long-press no numpad ── */
-  if (STATE.pinnedNum > 0) {
-    const pn = STATE.pinnedNum;
-    for (let r = 0; r < 9; r++)
-      for (let c = 0; c < 9; c++)
-        if (STATE.puzzle[r][c] === pn && !(r === sr && c === sc))
-          cellElements[r][c].classList.add('same-num');
-    /* Anotações com o número fixado ficam azuis */
-    document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
       .forEach(s => s.classList.add('note-match'));
   }
 
@@ -632,9 +624,10 @@ function handleUndo() {
   STATE.score  = snap.score;
   STATE.undoCount++;
 
-  /* Restaura placements do simulador se o snapshot veio de dentro do modo */
+  /* Restaura placements + nextSeq do simulador — garante alternância de cor correta */
   if (snap.simPlacements !== null) {
     STATE.simulator.placements = snap.simPlacements;
+    STATE.simulator.nextSeq    = snap.simNextSeq;
   }
 
   updateErrorDisplay();
@@ -729,9 +722,8 @@ function pushUndo() {
     puzzle:         STATE.puzzle.map(row => [...row]),
     notes:          STATE.notes.map(row => row.map(set => new Set(set))),
     score:          STATE.score,
-    simPlacements:  STATE.simulator.active
-                      ? new Map(STATE.simulator.placements)
-                      : null,
+    simPlacements:  STATE.simulator.active ? new Map(STATE.simulator.placements) : null,
+    simNextSeq:     STATE.simulator.active ? STATE.simulator.nextSeq : 0,
   });
   /* Sem limite — máx. 81 ações por puzzle, memória desprezível */
 }

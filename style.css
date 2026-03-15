@@ -463,7 +463,7 @@ html, body {
   font-weight: 700;
 }
 .cell.sim-red {
-  color: #DC2626 !important;
+  color: #15803D !important;  /* verde escuro — não confunde com erro */
   font-weight: 700;
 }
 /* Conflito: mesma linha/col/quad — sobrescreve ouro */
