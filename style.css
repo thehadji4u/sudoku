@@ -23,7 +23,7 @@
   --success:          #16A34A;
   --cell-size:        min(calc((100vw - 29px) / 9), 56px);
   --font-cell:        clamp(22px, 6.5vw, 34px);
-  --font-note:        clamp(9px, 2.6vw, 14px);
+  --font-note:        clamp(11px, 3.2vw, 16px);
   --radius:           12px;
   --shadow:           0 2px 12px rgba(0,0,0,.08);
 }
@@ -421,10 +421,10 @@ html, body {
 }
 
 /* Destaques */
-.cell.highlight      { background: var(--accent-dim); }
-.cell.highlight-strong { background: var(--accent-mid); }
-.cell.same-num       { background: var(--accent-mid); }
-.cell.selected       { background: var(--accent-light) !important; }
+.cell.highlight-sel   { background: #DBEAFE; }            /* zona da selecionada — azul claro */
+.cell.highlight-match { background: #DCFCE7; }            /* zonas das ocorrências — verde claro */
+.cell.same-num        { background: #86EFAC; }            /* mesma ocorrência — verde médio */
+.cell.selected        { background: #93C5FD !important; } /* célula selecionada — azul médio */
 
 /* Notas */
 .notes-grid {
@@ -446,9 +446,9 @@ html, body {
 }
 .note-digit.active { color: var(--accent); font-weight: 700; }
 .note-digit.note-match {
-  color: #1E3A8A !important;
+  color: #166534 !important;
   font-weight: 900;
-  background: var(--accent-light);
+  background: #BBF7D0;
   border-radius: 2px;
 }
 
@@ -938,8 +938,8 @@ html, body {
 
 /* ── Celebração de dígito completo ── */
 @keyframes digitDone {
-  0%, 100% { background: var(--accent-light); }
-  40%       { background: #93C5FD; }
+  0%, 100% { background: #93C5FD; }
+  40%       { background: #60A5FA; }
 }
 .digit-complete { animation: digitDone .5s ease-in-out; }
 
@@ -956,7 +956,7 @@ html, body {
   :root {
     --cell-size: 52px;
     --font-cell: 32px;
-    --font-note: 13px;
+    --font-note: 15px;
   }
   .modal-sheet { border-radius: 24px; margin: 24px; max-height: 85vh; }
   .modal-overlay { align-items: center; }
