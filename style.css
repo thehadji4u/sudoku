@@ -1052,7 +1052,7 @@ html, body {
 /* Seção de análise — reserva slot fixo para o action-bar */
 #analysis-section {
   position: relative;
-  padding-top: 40px;   /* slot sempre reservado para o action-bar — sem layout shift */
+  padding-top: 64px;   /* slot sempre reservado para o action-bar — sem layout shift */
 }
 #analysis-section.hidden {
   display: none;
@@ -1061,7 +1061,7 @@ html, body {
 /* Action bar — ocupa o slot reservado, absolutamente posicionado */
 #action-bar {
   position: absolute;
-  top: 4px;
+  top: 8px;
   left: 12px;
   right: 12px;
   z-index: 10;
