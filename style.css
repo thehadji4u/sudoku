@@ -313,7 +313,7 @@ html, body {
   margin-left: auto;
   padding: 5px 13px;
   border-radius: 20px;
-  border: 1.5px solid var(--border);
+  border: none;
   background: var(--surface2);
   font-size: 13px;
   cursor: pointer;
@@ -520,6 +520,11 @@ html, body {
   vertical-align: middle;
   pointer-events: none;
 }
+/* Engrenagem da tela de jogo — menor que a da tela inicial */
+#btn-settings-game .gear-svg {
+  width: 18px;
+  height: 18px;
+}
 
 /* ── Numpad ── grande, sem borda, azul escuro ── */
 #numpad {
@@ -597,6 +602,7 @@ html, body {
 .ctrl-btn .ctrl-icon {
   font-size: 22px;
   line-height: 1;
+  filter: grayscale(1);   /* ícones emoji em cinza */
 }
 .ctrl-icon-wrap {
   position: relative;
