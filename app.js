@@ -503,7 +503,7 @@ function startGame(difficulty) {
     updateSimBtn();
     updateControlsForSimMode();
     updateAnalysisToolsVisibility();
-    if (STATE.settings.autoAnnotations) applyAutoAnnotations();
+    /* autoAnnotations: only controls btn-fill visibility — no auto-fill on start */
 
     showLoading(false);
     showGameScreen();
@@ -1320,16 +1320,29 @@ function deactivateSimulator() {
 }
 
 function commitSimulator() {
-  /* Mantém o puzzle/notas atuais — apenas desativa o modo simulador */
-  STATE.simulator.active     = false;
-  STATE.simulator.placements = new Map();
-  STATE.simulator.nextSeq    = 0;
+  /* Efetiva: conta erros das células colocadas no simulador */
+  for (const [key] of STATE.simulator.placements) {
+    const [r, c] = key.split(',').map(Number);
+    const val = STATE.puzzle[r][c];
+    if (val !== 0 && val !== STATE.solution[r][c]) {
+      STATE.errors++;
+    }
+  }
+  STATE.simulator.active      = false;
+  STATE.simulator.placements  = new Map();
+  STATE.simulator.nextSeq     = 0;
   STATE.simulator.savedPuzzle = null;
   STATE.simulator.savedNotes  = null;
   updateSimBtn();
   renderBoard();
   renderNumpad();
+  updateErrorDisplay();
   updateProgressBar();
+  if (STATE.settings.failOnErrors && STATE.errors >= STATE.settings.maxErrors) {
+    setTimeout(() => endGame(false), 400);
+    return;
+  }
+  checkWin();
 }
 
 function updateSimBtn() {
@@ -1704,6 +1717,8 @@ function _cancelOtherAnalysis(except) {
   if (except !== 'xwing')      { an.xwingActive = false; an.xwings = []; an.xwingIndex = 0; an.xwingBatch = false; updateXWingBtn(); }
   if (except !== 'ywing')      { an.ywingActive = false; an.ywings = []; an.ywingIndex = 0; an.ywingBatch = false; updateYWingBtn(); }
   if (except !== 'wwing')      { an.wwingActive = false; an.wwings = []; an.wwingIndex = 0; an.wwingBatch = false; updateWWingBtn(); }
+  /* Limpa visualmente os destaques da análise cancelada */
+  renderHighlights(); renderNumpad();
 }
 
 /* ─── Únicas / Ocultas — cycling com pin do número no dial ─── */
