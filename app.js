@@ -43,10 +43,12 @@ const STATE = {
     /* Únicas (Naked Singles) */
     singlesActive:      false,
     singles:            [],        // [{r, c, val}]
+    singlesIndex:       0,
 
     /* Ocultas (Hidden Singles) */
     hiddenActive:       false,
     hiddens:            [],        // [{r, c, val}]
+    hiddensIndex:       0,
 
     /* Pares Nus (Naked Pairs) — auto-detect cycling */
     nakedPairsActive:   false,
@@ -90,6 +92,8 @@ const STATE = {
 let cellElements = [];  // [9][9]
 let _numpadPressTimer  = null;
 let _numpadLongPressed = false;
+let _toolLongPressTimer     = null;
+let _toolLongPressTriggered = false;
 
 /* ═══════════════════════════════════════
    CONSTANTES
@@ -196,30 +200,11 @@ function attachEvents() {
     else activateSimulator();
   });
 
-  document.getElementById('btn-singles').addEventListener('click', () => {
-    if (!STATE.puzzle || STATE.paused) return;
-    toggleSingles();
-  });
-
-  document.getElementById('btn-nakedpairs').addEventListener('click', () => {
-    if (!STATE.puzzle || STATE.paused) return;
-    toggleNakedPairs();
-  });
-
-  document.getElementById('btn-pointing').addEventListener('click', () => {
-    if (!STATE.puzzle || STATE.paused) return;
-    togglePointing();
-  });
-
-  document.getElementById('btn-xwing').addEventListener('click', () => {
-    if (!STATE.puzzle || STATE.paused) return;
-    toggleXWing();
-  });
-
-  document.getElementById('btn-ywing').addEventListener('click', () => {
-    if (!STATE.puzzle || STATE.paused) return;
-    toggleYWing();
-  });
+  attachToolBtn('btn-singles',    toggleSingles,    longPressSingles);
+  attachToolBtn('btn-nakedpairs', toggleNakedPairs, longPressNakedPairs);
+  attachToolBtn('btn-pointing',   togglePointing,   longPressPointing);
+  attachToolBtn('btn-xwing',      toggleXWing,      longPressXWing);
+  attachToolBtn('btn-ywing',      toggleYWing,      longPressYWing);
 
   document.getElementById('btn-action-confirm').addEventListener('click', handleActionConfirm);
   document.getElementById('btn-action-cancel').addEventListener('click', handleActionCancel);
@@ -317,6 +302,63 @@ function setupSettingsEvents() {
     document.getElementById('max-errors-val').textContent = STATE.settings.maxErrors;
     saveSettings();
   });
+}
+
+/*
+ * attachToolBtn — registra clique (tap) e long-press (500ms) num botão de análise.
+ * Long-press executa a ação imediatamente; tap normal chama a função toggle/cycle.
+ */
+function attachToolBtn(btnId, tapFn, longPressFn) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+
+  const startPress = () => {
+    _toolLongPressTimer = setTimeout(() => {
+      _toolLongPressTriggered = true;
+      _toolLongPressTimer = null;
+      if (!STATE.puzzle || STATE.paused) return;
+      longPressFn();
+    }, 500);
+  };
+  const cancelPress = () => {
+    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
+  };
+
+  btn.addEventListener('click', () => {
+    if (_toolLongPressTriggered) { _toolLongPressTriggered = false; return; }
+    if (!STATE.puzzle || STATE.paused) return;
+    tapFn();
+  });
+  btn.addEventListener('touchstart',  e => { e.preventDefault(); startPress(); }, { passive: false });
+  btn.addEventListener('touchend',    cancelPress);
+  btn.addEventListener('touchcancel', cancelPress);
+  btn.addEventListener('mousedown',   startPress);
+  btn.addEventListener('mouseup',     cancelPress);
+  btn.addEventListener('mouseleave',  cancelPress);
+}
+
+/* Long-press actions — executa imediatamente sem precisar confirmar */
+function longPressSingles() {
+  const an = STATE.analysis;
+  if (!an.singlesActive && !an.hiddenActive) toggleSingles(); // ativa primeiro
+  if (an.singlesActive && an.singles.length) { executeFillSingles(); return; }
+  if (an.hiddenActive  && an.hiddens.length) { executeFillHiddenSingles(); }
+}
+function longPressNakedPairs() {
+  if (!STATE.analysis.nakedPairsActive) toggleNakedPairs();
+  if (STATE.analysis.nakedPairsActive && STATE.analysis.nakedPairs.length) executeNakedPairs();
+}
+function longPressPointing() {
+  if (!STATE.analysis.pointingActive) togglePointing();
+  if (STATE.analysis.pointingActive && STATE.analysis.pointings.length) executePointing();
+}
+function longPressXWing() {
+  if (!STATE.analysis.xwingActive) toggleXWing();
+  if (STATE.analysis.xwingActive && STATE.analysis.xwings.length) executeXWing();
+}
+function longPressYWing() {
+  if (!STATE.analysis.ywingActive) toggleYWing();
+  if (STATE.analysis.ywingActive && STATE.analysis.ywings.length) executeYWing();
 }
 
 /* ═══════════════════════════════════════
@@ -1536,26 +1578,38 @@ function updatePointingBtn() {
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.pointingActive);
 }
 
-/* ─── Únicas / Ocultas (Naked Singles → Hidden Singles cascade) ─── */
+/* ─── Únicas / Ocultas — cycling com pin do número no dial ─── */
 
 /*
- * Comportamento do botão "① Únicas":
- *  1. Se singlesActive ou hiddenActive → desativa tudo e volta ao nome "Únicas"
- *  2. Se enableNakedSingles → busca Naked Singles (célula com 1 candidato)
- *     - Se encontrar: ativa singlesActive, mantém nome "Únicas"
- *     - Se não encontrar: cai no passo 3
- *  3. Se enableHiddenSingles → busca Hidden Singles (número único na casa)
- *     - Se encontrar: ativa hiddenActive, renomeia botão para "Ocultas"
+ * Ciclo do botão "① Únicas":
+ *  IDLE  → detecta Naked Singles; se não achar → detecta Hidden Singles
+ *  ATIVO → avança para o próximo (cycling); ao passar do último, desativa
+ *  Cada single exibido faz "pin" do número no dial (linhas verdes visíveis).
+ *  Confirmar preenche apenas o atual; Cancelar / fim do ciclo → desativa + despin.
  */
 function toggleSingles() {
   const an = STATE.analysis;
   const s  = STATE.settings;
 
-  /* Desativa qualquer modo ativo */
-  if (an.singlesActive) { deactivateSingles(); return; }
-  if (an.hiddenActive)  { deactivateHiddenSingles(); return; }
+  /* Cycling Naked Singles */
+  if (an.singlesActive) {
+    an.singlesIndex++;
+    if (an.singlesIndex >= an.singles.length) { deactivateSingles(); return; }
+    _pinSingle(an.singles[an.singlesIndex]);
+    updateSinglesBtn(); updateActionBar(); renderHighlights();
+    return;
+  }
 
-  /* Tenta Naked Singles primeiro (se habilitado) */
+  /* Cycling Hidden Singles */
+  if (an.hiddenActive) {
+    an.hiddensIndex++;
+    if (an.hiddensIndex >= an.hiddens.length) { deactivateHiddenSingles(); return; }
+    _pinSingle(an.hiddens[an.hiddensIndex]);
+    updateSinglesBtn(); updateActionBar(); renderHighlights();
+    return;
+  }
+
+  /* Idle — detecta Naked Singles primeiro */
   if (s.enableNakedSingles) {
     const singles = [];
     for (let r = 0; r < 9; r++)
@@ -1563,24 +1617,36 @@ function toggleSingles() {
         if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
           singles.push({ r, c, val: [...STATE.notes[r][c]][0] });
     if (singles.length > 0) {
-      an.singlesActive = true; an.singles = singles;
+      an.singlesActive = true; an.singles = singles; an.singlesIndex = 0;
       STATE.selectedRow = -1; STATE.selectedCol = -1;
-      updateSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
+      _pinSingle(singles[0]);
+      updateSinglesBtn(); updateActionBar(); renderHighlights();
       return;
     }
   }
 
-  /* Nenhum Naked Single — tenta Hidden Singles (se habilitado) */
+  /* Sem Naked Singles — tenta Hidden Singles */
   if (s.enableHiddenSingles) {
-    _computeAndActivateHiddenSingles();
+    const hiddens = _computeHiddenSingles();
+    if (hiddens.length > 0) {
+      an.hiddenActive = true; an.hiddens = hiddens; an.hiddensIndex = 0;
+      STATE.selectedRow = -1; STATE.selectedCol = -1;
+      _pinSingle(hiddens[0]);
+      updateSinglesBtn(); updateActionBar(); renderHighlights();
+    }
   }
 }
 
-function _computeAndActivateHiddenSingles() {
-  const an = STATE.analysis;
+/* Pina o número de um single no dial (igual ao long-press do numpad) */
+function _pinSingle({ val }) {
+  STATE.pinnedNum = val;
+  renderNumpad();
+}
+
+/* Computa Hidden Singles sem efeitos colaterais */
+function _computeHiddenSingles() {
   const puz = STATE.puzzle, notes = STATE.notes;
   const found = new Map();
-
   function checkGroup(cells) {
     for (let num = 1; num <= 9; num++) {
       const cands = cells.filter(({ r, c }) => puz[r][c] === 0 && notes[r][c].has(num));
@@ -1591,7 +1657,6 @@ function _computeAndActivateHiddenSingles() {
       }
     }
   }
-
   for (let r = 0; r < 9; r++)
     checkGroup(Array.from({ length: 9 }, (_, c) => ({ r, c })));
   for (let c = 0; c < 9; c++)
@@ -1604,55 +1669,56 @@ function _computeAndActivateHiddenSingles() {
           cells.push({ r: rr, c: cc });
       checkGroup(cells);
     }
-
-  an.hiddenActive = true;
-  an.hiddens = [...found.values()];
-  STATE.selectedRow = -1; STATE.selectedCol = -1;
-  updateSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
+  return [...found.values()];
 }
 
 function deactivateSingles() {
   const an = STATE.analysis;
-  an.singlesActive = false; an.singles = [];
-  updateSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
+  an.singlesActive = false; an.singles = []; an.singlesIndex = 0;
+  STATE.pinnedNum = 0;
+  updateSinglesBtn(); updateActionBar(); renderHighlights();
 }
 
 function deactivateHiddenSingles() {
   const an = STATE.analysis;
-  an.hiddenActive = false; an.hiddens = [];
-  updateSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
+  an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0;
+  STATE.pinnedNum = 0;
+  updateSinglesBtn(); updateActionBar(); renderHighlights();
 }
 
+/* Preenche apenas o single atual e desativa */
 function executeFillSingles() {
   const an = STATE.analysis;
   if (!an.singlesActive || !an.singles.length) return;
-  pushUndo();
-  for (const { r, c, val } of an.singles) {
-    if (STATE.puzzle[r][c] !== 0) continue;
+  const { r, c, val } = an.singles[an.singlesIndex];
+  if (STATE.puzzle[r][c] === 0) {
+    pushUndo();
     STATE.puzzle[r][c] = val;
     STATE.score += calculateCellPoints();
     if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
     updateCellContent(r, c);
+    updateScoreDisplay(); renderNumpad(); updateProgressBar();
+    checkWin();
   }
   deactivateSingles();
-  updateScoreDisplay(); renderNumpad(); updateProgressBar(); renderHighlights();
-  checkWin();
+  renderHighlights();
 }
 
 function executeFillHiddenSingles() {
   const an = STATE.analysis;
   if (!an.hiddenActive || !an.hiddens.length) return;
-  pushUndo();
-  for (const { r, c, val } of an.hiddens) {
-    if (STATE.puzzle[r][c] !== 0) continue;
+  const { r, c, val } = an.hiddens[an.hiddensIndex];
+  if (STATE.puzzle[r][c] === 0) {
+    pushUndo();
     STATE.puzzle[r][c] = val;
     STATE.score += calculateCellPoints();
     if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
     updateCellContent(r, c);
+    updateScoreDisplay(); renderNumpad(); updateProgressBar();
+    checkWin();
   }
   deactivateHiddenSingles();
-  updateScoreDisplay(); renderNumpad(); updateProgressBar(); renderHighlights();
-  checkWin();
+  renderHighlights();
 }
 
 /* Atualiza btn-singles: active-mode + renomeia para "Ocultas" quando hiddenActive */
@@ -1695,12 +1761,13 @@ function updateActionBar() {
 
   const an = STATE.analysis;
 
-  /* Únicas */
+  /* Únicas — cycling */
   if (an.singlesActive) {
     bar.classList.remove('hidden');
     if (an.singles.length) {
-      label.textContent   = `${an.singles.length} única(s) encontrada(s)`;
-      confirm.textContent = '① Preencher todas';
+      const s = an.singles[an.singlesIndex];
+      label.textContent   = `Única ${an.singlesIndex + 1}/${an.singles.length} · nº${s.val}`;
+      confirm.textContent = '① Preencher';
       confirm.disabled    = false;
     } else {
       label.textContent   = 'Nenhuma única encontrada';
@@ -1710,12 +1777,13 @@ function updateActionBar() {
     return;
   }
 
-  /* Ocultas (Hidden Singles) */
+  /* Ocultas — cycling */
   if (an.hiddenActive) {
     bar.classList.remove('hidden');
     if (an.hiddens.length) {
-      label.textContent   = `${an.hiddens.length} oculta(s) encontrada(s)`;
-      confirm.textContent = '① Preencher todas';
+      const h = an.hiddens[an.hiddensIndex];
+      label.textContent   = `Oculta ${an.hiddensIndex + 1}/${an.hiddens.length} · nº${h.val}`;
+      confirm.textContent = '① Preencher';
       confirm.disabled    = false;
     } else {
       label.textContent   = 'Nenhuma oculta encontrada';
@@ -1820,8 +1888,8 @@ function updateAnalysisToolsVisibility() {
 
 function resetAnalysis() {
   STATE.analysis = {
-    singlesActive: false, singles: [],
-    hiddenActive: false, hiddens: [],
+    singlesActive: false, singles: [], singlesIndex: 0,
+    hiddenActive: false, hiddens: [], hiddensIndex: 0,
     nakedPairsActive: false, nakedPairs: [], nakedPairsIndex: 0,
     pointingActive: false, pointings: [], pointingIndex: 0,
     xwingActive: false, xwings: [], xwingIndex: 0,
@@ -2065,18 +2133,21 @@ function renderAnalysisHighlights() {
 
   const an = STATE.analysis;
 
-  /* Únicas */
-  if (an.singlesActive)
-    for (const { r, c } of an.singles)
-      cellElements[r][c].classList.add('singles-match');
+  /* Únicas — apenas o single no índice atual */
+  if (an.singlesActive && an.singles.length > 0) {
+    const sg = an.singles[an.singlesIndex];
+    if (sg) cellElements[sg.r][sg.c].classList.add('singles-match');
+  }
 
-  /* Ocultas — destaca a célula + marca o dígito específico em verde */
-  if (an.hiddenActive)
-    for (const { r, c, val } of an.hiddens) {
-      cellElements[r][c].classList.add('singles-match');
-      const span = cellElements[r][c].querySelector(`.note-digit[data-note="${val}"]`);
+  /* Ocultas — apenas o hidden single no índice atual, dígito em verde */
+  if (an.hiddenActive && an.hiddens.length > 0) {
+    const hd = an.hiddens[an.hiddensIndex];
+    if (hd) {
+      cellElements[hd.r][hd.c].classList.add('singles-match');
+      const span = cellElements[hd.r][hd.c].querySelector(`.note-digit[data-note="${hd.val}"]`);
       if (span) span.classList.add('note-hidden-single');
     }
+  }
 
   /* Pares Nus — apenas padrão atual */
   if (an.nakedPairsActive && an.nakedPairs.length > 0) {
