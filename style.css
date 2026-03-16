@@ -128,9 +128,9 @@ html, body {
 .diff-btn.d-especialista { border-color: #FDBA74; }
 .diff-btn.d-mestre       { border-color: #F87171; }
 .diff-btn.d-extremo      { border-color: #C084FC; background: #FAF5FF; }
-.diff-btn.d-diabolico   { border-color: #1E293B; background: #0F172A; color: #F1F5F9; }
-.diff-btn.d-diabolico .diff-name { color: #F1F5F9; }
-.diff-btn.d-diabolico .diff-stars { color: #F97316; }
+.diff-btn.d-diabolico   { border-color: #DC2626; background: #1C0505; color: #FECACA; }
+.diff-btn.d-diabolico .diff-name { color: #FEF2F2; font-weight: 800; }
+.diff-btn.d-diabolico .diff-stars { color: #EF4444; letter-spacing: 0; }
 
 /* ── Card de sessão salva ── */
 #session-resume {
@@ -1064,17 +1064,18 @@ html, body {
 ═══════════════════════════════════ */
 #analysis-tools {
   display: flex;
-  justify-content: space-evenly;
-  gap: 0;
-  padding: 4px 0 0;
+  gap: 6px;
+  padding: 4px 8px 0;
 }
 
 .tool-btn {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 6px 10px;
+  padding: 6px 4px;
   border: 1.5px solid #CBD5E1;
   border-radius: 20px;
   background: #F8FAFC;

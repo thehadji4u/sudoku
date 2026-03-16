@@ -1716,14 +1716,14 @@ function deactivateSingles() {
   const an = STATE.analysis;
   an.singlesActive = false; an.singles = []; an.singlesIndex = 0;
   STATE.pinnedNum = 0;
-  updateSinglesBtn(); updateActionBar(); renderHighlights();
+  updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
 }
 
 function deactivateHiddenSingles() {
   const an = STATE.analysis;
   an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0;
   STATE.pinnedNum = 0;
-  updateSinglesBtn(); updateActionBar(); renderHighlights();
+  updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
 }
 
 /* Preenche apenas o single atual e desativa */
@@ -1902,7 +1902,12 @@ function updateActionBar() {
 
 function updateSinglesBtn() {
   const btn = document.getElementById('btn-singles');
-  if (btn) btn.classList.toggle('active-mode', STATE.analysis.singlesActive);
+  if (!btn) return;
+  const an = STATE.analysis;
+  btn.classList.toggle('active-mode', an.singlesActive || an.hiddenActive);
+  const lbl = btn.querySelector('span:last-child');
+  if (lbl) lbl.textContent = an.hiddenActive ? 'Ocultas' : 'Únicas';
+  btn.title = an.hiddenActive ? 'Ocultas (Hidden Singles)' : 'Únicas';
 }
 
 function updateAnalysisToolsVisibility() {
@@ -2174,10 +2179,19 @@ function renderAnalysisHighlights() {
 
   const an = STATE.analysis;
 
-  /* Únicas — apenas o single no índice atual */
+  /* Únicas — célula alvo em verde + linha/coluna/quadrante em âmbar */
   if (an.singlesActive && an.singles.length > 0) {
     const sg = an.singles[an.singlesIndex];
-    if (sg) cellElements[sg.r][sg.c].classList.add('singles-match');
+    if (sg) {
+      const boxR = Math.floor(sg.r / 3) * 3, boxC = Math.floor(sg.c / 3) * 3;
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++) {
+          if (r === sg.r && c === sg.c) continue;
+          if (r === sg.r || c === sg.c || (r >= boxR && r < boxR + 3 && c >= boxC && c < boxC + 3))
+            cellElements[r][c].classList.add('hidden-unit');
+        }
+      cellElements[sg.r][sg.c].classList.add('singles-match');
+    }
   }
 
   /* Ocultas — apenas o hidden single no índice atual:
