@@ -2058,6 +2058,7 @@ function renderAnalysisHighlights() {
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target'
       );
   document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
+  document.querySelectorAll('.note-digit.note-hidden-single').forEach(s => s.classList.remove('note-hidden-single'));
   document.querySelectorAll('.note-digit.note-xwing').forEach(s => s.classList.remove('note-xwing'));
   document.querySelectorAll('.note-digit.note-ywing-pivot').forEach(s => s.classList.remove('note-ywing-pivot'));
   document.querySelectorAll('.note-digit.note-ywing-pincer').forEach(s => s.classList.remove('note-ywing-pincer'));
@@ -2069,10 +2070,13 @@ function renderAnalysisHighlights() {
     for (const { r, c } of an.singles)
       cellElements[r][c].classList.add('singles-match');
 
-  /* Ocultas */
+  /* Ocultas — destaca a célula + marca o dígito específico em verde */
   if (an.hiddenActive)
-    for (const { r, c } of an.hiddens)
+    for (const { r, c, val } of an.hiddens) {
       cellElements[r][c].classList.add('singles-match');
+      const span = cellElements[r][c].querySelector(`.note-digit[data-note="${val}"]`);
+      if (span) span.classList.add('note-hidden-single');
+    }
 
   /* Pares Nus — apenas padrão atual */
   if (an.nakedPairsActive && an.nakedPairs.length > 0) {
