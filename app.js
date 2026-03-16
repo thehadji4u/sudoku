@@ -74,6 +74,12 @@ const STATE = {
     ywings:             [],
     ywingIndex:         0,
     ywingBatch:         false,
+
+    /* W-Wing */
+    wwingActive:        false,
+    wwings:             [],
+    wwingIndex:         0,
+    wwingBatch:         false,
   },
 
   settings: {
@@ -90,6 +96,7 @@ const STATE = {
     enablePointingPairs: true,
     enableXWing:         true,
     enableYWing:         true,
+    enableWWing:         true,
   },
 };
 
@@ -212,6 +219,7 @@ function attachEvents() {
   attachToolBtn('btn-pointing',   togglePointing,   longPressPointing);
   attachToolBtn('btn-xwing',      toggleXWing,      longPressXWing);
   attachToolBtn('btn-ywing',      toggleYWing,      longPressYWing);
+  attachToolBtn('btn-wwing',      toggleWWing,      longPressWWing);
 
   document.getElementById('btn-action-confirm').addEventListener('click', handleActionConfirm);
   document.getElementById('btn-action-cancel').addEventListener('click', handleActionCancel);
@@ -274,7 +282,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -305,7 +313,10 @@ function setupSettingsEvents() {
       if (key === 'simulatorMode') {
         updateControlsForSimMode();
       }
-      if (['enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing'].includes(key)) {
+      if (key === 'autoAnnotations') {
+        updateFillBtnVisibility();
+      }
+      if (['enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing'].includes(key)) {
         updateAnalysisToolsVisibility();
       }
     });
@@ -488,6 +499,7 @@ function startGame(difficulty) {
     document.getElementById('difficulty-badge').textContent = DIFF_NAMES[difficulty];
 
     updateFillBtn();
+    updateFillBtnVisibility();
     updateSimBtn();
     updateControlsForSimMode();
     updateAnalysisToolsVisibility();
@@ -757,6 +769,12 @@ function handleCellClick(r, c) {
   } else {
     STATE.selectedRow = r;
     STATE.selectedCol = c;
+    /* Simulator pin-click: auto-fill if cell has pinned number as note */
+    if (STATE.simulator.active && STATE.pinnedNum > 0 &&
+        STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(STATE.pinnedNum)) {
+      handleNumberInput(STATE.pinnedNum);
+      return;
+    }
   }
   renderHighlights();
   renderNumpad();
@@ -1091,6 +1109,7 @@ function resumeSession() {
   updateBestScore();
   updateProgressBar();
   updateFillBtn();
+  updateFillBtnVisibility();
   updateSimBtn();
   updateControlsForSimMode();
   resetAnalysis();
@@ -1329,7 +1348,7 @@ function updateControlsForSimMode() {
     eraseBtn.classList.add('hidden');
     simBtn.classList.remove('hidden');
   } else {
-    eraseBtn.classList.remove('hidden');
+    eraseBtn.classList.add('hidden');  // also hidden when simulator disabled
     simBtn.classList.add('hidden');
     if (STATE.simulator.active) deactivateSimulator();
   }
@@ -1427,6 +1446,11 @@ function updateFillBtn() {
   const btn = document.getElementById('btn-fill');
   if (!btn) return;
   btn.classList.toggle('active-mode', STATE.fillNotes);
+}
+
+function updateFillBtnVisibility() {
+  const btn = document.getElementById('btn-fill');
+  if (btn) btn.classList.toggle('hidden', !STATE.settings.autoAnnotations);
 }
 
 function celebrateVictory() {
@@ -1540,6 +1564,7 @@ function detectNakedPairs() {
 function toggleNakedPairs() {
   const an = STATE.analysis;
   if (!an.nakedPairsActive) {
+    _cancelOtherAnalysis('nakedpairs');
     an.nakedPairs      = detectNakedPairs();
     an.nakedPairsIndex = 0;
     an.nakedPairsActive = true;
@@ -1628,6 +1653,7 @@ function detectPointingPairs() {
 function togglePointing() {
   const an = STATE.analysis;
   if (!an.pointingActive) {
+    _cancelOtherAnalysis('pointing');
     an.pointings      = detectPointingPairs();
     an.pointingIndex  = 0;
     an.pointingActive = true;
@@ -1665,6 +1691,21 @@ function updatePointingBtn() {
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.pointingActive);
 }
 
+/* ─── Cancelar outras análises ao activar uma ─── */
+function _cancelOtherAnalysis(except) {
+  const an = STATE.analysis;
+  if (except !== 'singles') {
+    an.singlesActive = false; an.singles = []; an.singlesIndex = 0; an.singlesBatch = false;
+    an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0;
+    STATE.pinnedNum = 0; updateSinglesBtn();
+  }
+  if (except !== 'nakedpairs') { an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0; an.nakedPairsBatch = false; updateNakedPairsBtn(); }
+  if (except !== 'pointing')   { an.pointingActive = false; an.pointings = []; an.pointingIndex = 0; an.pointingBatch = false; updatePointingBtn(); }
+  if (except !== 'xwing')      { an.xwingActive = false; an.xwings = []; an.xwingIndex = 0; an.xwingBatch = false; updateXWingBtn(); }
+  if (except !== 'ywing')      { an.ywingActive = false; an.ywings = []; an.ywingIndex = 0; an.ywingBatch = false; updateYWingBtn(); }
+  if (except !== 'wwing')      { an.wwingActive = false; an.wwings = []; an.wwingIndex = 0; an.wwingBatch = false; updateWWingBtn(); }
+}
+
 /* ─── Únicas / Ocultas — cycling com pin do número no dial ─── */
 
 /*
@@ -1697,6 +1738,7 @@ function toggleSingles() {
   }
 
   /* Idle — detecta Naked Singles primeiro */
+  _cancelOtherAnalysis('singles');
   if (s.enableNakedSingles) {
     const singles = [];
     for (let r = 0; r < 9; r++)
@@ -1847,6 +1889,7 @@ function handleActionConfirm() {
   if (an.pointingActive       && an.pointings.length)      { executePointing();          return; }
   if (an.xwingActive          && an.xwings.length)         { executeXWing();             return; }
   if (an.ywingActive          && an.ywings.length)         { executeYWing();             return; }
+  if (an.wwingActive          && an.wwings.length)         { executeWWing();             return; }
 }
 
 function handleActionCancel() {
@@ -1857,6 +1900,7 @@ function handleActionCancel() {
   if (an.pointingActive)     { deactivatePointing();  return; }
   if (an.xwingActive)        { deactivateXWing();     return; }
   if (an.ywingActive)        { deactivateYWing();     return; }
+  if (an.wwingActive)        { deactivateWWing();     return; }
 }
 
 function updateActionBar() {
@@ -1997,6 +2041,28 @@ function updateActionBar() {
     return;
   }
 
+  /* W-Wing */
+  if (an.wwingActive) {
+    bar.classList.remove('hidden');
+    if (an.wwings.length) {
+      if (an.wwingBatch) {
+        const total = an.wwings.reduce((s, ww) => s + ww.targets.length, 0);
+        label.textContent   = `W-Wing: ${an.wwings.length} padrão(ões) · ${total} eliminação(ões)`;
+        confirm.textContent = '𝕎 Eliminar todos';
+      } else {
+        const ww = an.wwings[an.wwingIndex];
+        label.textContent   = `W-Wing ${an.wwingIndex + 1}/${an.wwings.length} · elimina ${ww.elimVal} · ${ww.targets.length} célula(s)`;
+        confirm.textContent = '𝕎 Eliminar';
+      }
+      confirm.disabled = false;
+    } else {
+      label.textContent   = 'Nenhum W-Wing encontrado';
+      confirm.textContent = '𝕎 Eliminar';
+      confirm.disabled    = true;
+    }
+    return;
+  }
+
   bar.classList.add('hidden');
 }
 
@@ -2018,6 +2084,7 @@ function updateAnalysisToolsVisibility() {
     ['btn-pointing',   s.enablePointingPairs],
     ['btn-xwing',      s.enableXWing],
     ['btn-ywing',      s.enableYWing],
+    ['btn-wwing',      s.enableWWing],
   ];
   ids.forEach(([id, visible]) => {
     const btn = document.getElementById(id);
@@ -2039,18 +2106,21 @@ function resetAnalysis() {
     pointingActive: false, pointings: [], pointingIndex: 0, pointingBatch: false,
     xwingActive: false, xwings: [], xwingIndex: 0, xwingBatch: false,
     ywingActive: false, ywings: [], ywingIndex: 0, ywingBatch: false,
+    wwingActive: false, wwings: [], wwingIndex: 0, wwingBatch: false,
   };
   const bar = document.getElementById('action-bar');
   if (bar) bar.classList.add('hidden');
   updateSinglesBtn();
   updateNakedPairsBtn();
   updatePointingBtn();
+  updateWWingBtn();
 }
 
 /* ─── X-Wing ─── */
 function toggleXWing() {
   const an = STATE.analysis;
   if (!an.xwingActive) {
+    _cancelOtherAnalysis('xwing');
     /* Primeira ativação */
     an.xwings     = detectXWings();
     an.xwingIndex = 0;
@@ -2159,6 +2229,7 @@ function updateXWingBtn() {
 function toggleYWing() {
   const an = STATE.analysis;
   if (!an.ywingActive) {
+    _cancelOtherAnalysis('ywing');
     /* Primeira ativação */
     an.ywings     = detectYWings();
     an.ywingIndex = 0;
@@ -2261,6 +2332,113 @@ function updateYWingBtn() {
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.ywingActive);
 }
 
+/* ─── W-Wing ─── */
+function detectWWings() {
+  const found = [];
+  const puz = STATE.puzzle, notes = STATE.notes;
+  const seen = new Set();
+  // Find bivalue cells
+  const bivalue = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (puz[r][c] === 0 && notes[r][c].size === 2)
+        bivalue.push({ r, c });
+  // For each pair of bivalue cells with same candidates
+  for (let i = 0; i < bivalue.length; i++) {
+    for (let j = i + 1; j < bivalue.length; j++) {
+      const w1 = bivalue[i], w2 = bivalue[j];
+      if (!setsEqual(notes[w1.r][w1.c], notes[w2.r][w2.c])) continue;
+      const [A, B] = [...notes[w1.r][w1.c]];
+      // Try each candidate as bridge value
+      for (const bridgeVal of [A, B]) {
+        const elimVal = bridgeVal === A ? B : A;
+        // Find units with exactly 2 occurrences of bridgeVal
+        const unitGroups = [];
+        for (let r = 0; r < 9; r++) {
+          const cs = [];
+          for (let c = 0; c < 9; c++) if (puz[r][c] === 0 && notes[r][c].has(bridgeVal)) cs.push({r, c});
+          if (cs.length === 2) unitGroups.push(cs);
+        }
+        for (let c = 0; c < 9; c++) {
+          const rs = [];
+          for (let r = 0; r < 9; r++) if (puz[r][c] === 0 && notes[r][c].has(bridgeVal)) rs.push({r, c});
+          if (rs.length === 2) unitGroups.push(rs);
+        }
+        for (let br = 0; br < 9; br += 3) for (let bc = 0; bc < 9; bc += 3) {
+          const cs = [];
+          for (let rr = br; rr < br + 3; rr++) for (let cc = bc; cc < bc + 3; cc++)
+            if (puz[rr][cc] === 0 && notes[rr][cc].has(bridgeVal)) cs.push({r: rr, c: cc});
+          if (cs.length === 2) unitGroups.push(cs);
+        }
+        for (const [p1, p2] of unitGroups) {
+          for (const [pa, pb] of [[p1, p2], [p2, p1]]) {
+            if (pa.r === w1.r && pa.c === w1.c) continue;
+            if (pb.r === w2.r && pb.c === w2.c) continue;
+            if (!cellSees(pa.r, pa.c, w1.r, w1.c)) continue;
+            if (!cellSees(pb.r, pb.c, w2.r, w2.c)) continue;
+            const targets = [];
+            for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+              if (puz[r][c] !== 0 || !notes[r][c].has(elimVal)) continue;
+              if (r === w1.r && c === w1.c) continue;
+              if (r === w2.r && c === w2.c) continue;
+              if (cellSees(r, c, w1.r, w1.c) && cellSees(r, c, w2.r, w2.c)) targets.push({r, c});
+            }
+            if (!targets.length) continue;
+            const key = [w1.r, w1.c, w2.r, w2.c, pa.r, pa.c, pb.r, pb.c, elimVal].join(',');
+            if (seen.has(key)) continue;
+            seen.add(key);
+            found.push({cells: [w1, w2], bridge: [pa, pb], bridgeVal, elimVal, targets});
+          }
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function toggleWWing() {
+  const an = STATE.analysis;
+  if (!an.wwingActive) {
+    _cancelOtherAnalysis('wwing');
+    an.wwings = detectWWings(); an.wwingIndex = 0; an.wwingActive = true;
+  } else {
+    an.wwingIndex++;
+    if (an.wwingIndex >= an.wwings.length) { deactivateWWing(); return; }
+  }
+  STATE.selectedRow = -1; STATE.selectedCol = -1;
+  updateWWingBtn(); updateActionBar(); renderHighlights();
+}
+
+function deactivateWWing() {
+  const an = STATE.analysis;
+  an.wwingActive = false; an.wwings = []; an.wwingIndex = 0; an.wwingBatch = false;
+  updateWWingBtn(); updateActionBar(); renderHighlights();
+}
+
+function executeWWing() {
+  const an = STATE.analysis;
+  const wings = an.wwingBatch ? an.wwings : [an.wwings[an.wwingIndex]].filter(Boolean);
+  if (!wings.length) { deactivateWWing(); return; }
+  pushUndo();
+  wings.forEach(ww => ww.targets.forEach(({r, c}) => {
+    STATE.notes[r][c].delete(ww.elimVal); updateCellContent(r, c);
+  }));
+  deactivateWWing(); renderHighlights();
+}
+
+function longPressWWing() {
+  const an = STATE.analysis;
+  if (!an.wwingActive) toggleWWing();
+  if (an.wwingActive && an.wwings.length > 0) {
+    an.wwingBatch = true; updateWWingBtn(); updateActionBar(); renderHighlights();
+  }
+}
+
+function updateWWingBtn() {
+  const btn = document.getElementById('btn-wwing');
+  if (btn) btn.classList.toggle('active-mode', STATE.analysis.wwingActive);
+}
+
 function renderAnalysisHighlights() {
   if (!cellElements.length || !cellElements[0]) return;
   for (let r = 0; r < 9; r++)
@@ -2269,13 +2447,15 @@ function renderAnalysisHighlights() {
         'singles-match', 'hidden-unit',
         'pair-select', 'pair-affected',
         'pointing-select', 'pointing-affected',
-        'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target'
+        'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target',
+        'wwing-cell', 'wwing-bridge', 'wwing-target'
       );
   document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
   document.querySelectorAll('.note-digit.note-hidden-single').forEach(s => s.classList.remove('note-hidden-single'));
   document.querySelectorAll('.note-digit.note-xwing').forEach(s => s.classList.remove('note-xwing'));
   document.querySelectorAll('.note-digit.note-ywing-pivot').forEach(s => s.classList.remove('note-ywing-pivot'));
   document.querySelectorAll('.note-digit.note-ywing-pincer').forEach(s => s.classList.remove('note-ywing-pincer'));
+  document.querySelectorAll('.note-digit.note-wwing').forEach(s => s.classList.remove('note-wwing'));
 
   const an = STATE.analysis;
 
@@ -2407,6 +2587,26 @@ function renderAnalysisHighlights() {
       });
     });
   }
+
+  /* W-Wing — padrão atual ou todos (batch) */
+  if (an.wwingActive && an.wwings.length > 0) {
+    const wings = an.wwingBatch ? an.wwings : [an.wwings[an.wwingIndex]].filter(Boolean);
+    wings.forEach(ww => {
+      ww.cells.forEach(({r, c}) => {
+        cellElements[r][c].classList.add('wwing-cell');
+        STATE.notes[r][c].forEach(n => {
+          const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-wwing');
+        });
+      });
+      ww.bridge.forEach(({r, c}) => cellElements[r][c].classList.add('wwing-bridge'));
+      ww.targets.forEach(({r, c}) => {
+        cellElements[r][c].classList.add('wwing-target');
+        const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${ww.elimVal}"]`);
+        if (sp) sp.classList.add('note-eliminate');
+      });
+    });
+  }
 }
 
 function checkCompletions(r, c) {
@@ -2513,11 +2713,14 @@ function syncSettingsUI() {
   toggle('cfg-enableXWing',          s.enableXWing);
   toggle('cfg-enableYWing',          s.enableYWing);
 
+  toggle('cfg-enableWWing',          s.enableWWing);
+
   document.getElementById('max-errors-val').textContent = s.maxErrors;
   document.getElementById('max-errors-row').classList.toggle('hidden', !s.failOnErrors);
   const hiddenRow = document.getElementById('setting-row-hidden-singles');
   if (hiddenRow) hiddenRow.classList.toggle('hidden', !s.enableNakedSingles);
   updateControlsForSimMode();
+  updateFillBtnVisibility();
   updateAnalysisToolsVisibility();
 }
 

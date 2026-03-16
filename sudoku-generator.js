@@ -63,17 +63,15 @@ const SudokuGenerator = (() => {
 
   function countSolutions(board, limit) {
     let count = 0;
-    function bt(depth) {
+    function bt() {
       if (count >= limit) return;
-      // Limite de profundidade para puzzles extremos/diabólicos (performance)
-      if (depth > 70) { count = limit; return; }
       for (let r = 0; r < 9; r++) {
         for (let c = 0; c < 9; c++) {
           if (board[r][c] === 0) {
             for (let n = 1; n <= 9; n++) {
               if (isValid(board, r, c, n)) {
                 board[r][c] = n;
-                bt(depth + 1);
+                bt();
                 board[r][c] = 0;
                 if (count >= limit) return;
               }
@@ -84,7 +82,7 @@ const SudokuGenerator = (() => {
       }
       count++;
     }
-    bt(0);
+    bt();
     return count;
   }
 
@@ -92,21 +90,22 @@ const SudokuGenerator = (() => {
 
   function removeCells(solved, targetCount) {
     const puzzle = solved.map(r => [...r]);
-    const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
     let removed = 0;
-
-    for (const pos of positions) {
-      if (removed >= targetCount) break;
-      const r = Math.floor(pos / 9);
-      const c = pos % 9;
-      const backup = puzzle[r][c];
-      puzzle[r][c] = 0;
-
-      const copy = puzzle.map(row => [...row]);
-      if (countSolutions(copy, 2) === 1) {
-        removed++;
-      } else {
-        puzzle[r][c] = backup;
+    let progress = true;
+    while (progress && removed < targetCount) {
+      progress = false;
+      const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
+      for (const pos of positions) {
+        if (removed >= targetCount) break;
+        const r = Math.floor(pos / 9), c = pos % 9;
+        if (puzzle[r][c] === 0) continue;
+        const backup = puzzle[r][c];
+        puzzle[r][c] = 0;
+        if (countSolutions(puzzle.map(row => [...row]), 2) === 1) {
+          removed++; progress = true;
+        } else {
+          puzzle[r][c] = backup;
+        }
       }
     }
     return puzzle;
@@ -116,12 +115,21 @@ const SudokuGenerator = (() => {
 
   function generate(difficulty) {
     const cfg = DIFFICULTY[difficulty] || DIFFICULTY.facil;
-    const solution = createEmpty();
-    solveRandom(solution);
-    const puzzle = removeCells(solution.map(r => [...r]), cfg.remove);
+    const attempts = cfg.remove >= 64 ? 3 : 1;
+    let bestPuzzle = null, bestSolution = null, bestRemoved = -1;
+    for (let att = 0; att < attempts; att++) {
+      const solution = createEmpty();
+      solveRandom(solution);
+      const puzzle = removeCells(solution.map(r => [...r]), cfg.remove);
+      const removed = puzzle.flat().filter(x => x === 0).length;
+      if (removed > bestRemoved) {
+        bestRemoved = removed; bestPuzzle = puzzle; bestSolution = solution;
+      }
+      if (bestRemoved >= cfg.remove) break;
+    }
     return {
-      puzzle:   puzzle.map(r => [...r]),
-      solution: solution.map(r => [...r]),
+      puzzle:   bestPuzzle.map(r => [...r]),
+      solution: bestSolution.map(r => [...r]),
     };
   }
 
