@@ -278,6 +278,18 @@ function setupSettingsEvents() {
       if (key === 'failOnErrors') {
         document.getElementById('max-errors-row').classList.toggle('hidden', !el.checked);
       }
+      if (key === 'enableNakedSingles') {
+        const row = document.getElementById('setting-row-hidden-singles');
+        if (row) row.classList.toggle('hidden', !el.checked);
+        /* Se desativou Únicas, desativa Ocultas também */
+        if (!el.checked) {
+          STATE.settings.enableHiddenSingles = false;
+          const hEl = document.getElementById('cfg-enableHiddenSingles');
+          if (hEl) hEl.checked = false;
+          saveSettings();
+          updateAnalysisToolsVisibility();
+        }
+      }
       if (key === 'markErrors' || key === 'enhancedHighlight') {
         if (STATE.puzzle) renderBoard();
       }
@@ -1646,7 +1658,20 @@ function toggleSingles() {
       STATE.selectedRow = -1; STATE.selectedCol = -1;
       _pinSingle(hiddens[0]);
       updateSinglesBtn(); updateActionBar(); renderHighlights();
+      return;
     }
+  }
+
+  /* Nada encontrado — exibe mensagem "não encontrado" na action bar */
+  STATE.selectedRow = -1; STATE.selectedCol = -1;
+  if (s.enableNakedSingles) {
+    /* Buscou Únicas (+ Ocultas opcionalmente): mostra via singlesActive vazio */
+    an.singlesActive = true; an.singles = []; an.singlesIndex = 0;
+    updateSinglesBtn(); updateActionBar(); renderHighlights();
+  } else if (s.enableHiddenSingles) {
+    /* Buscou só Ocultas */
+    an.hiddenActive = true; an.hiddens = []; an.hiddensIndex = 0;
+    updateSinglesBtn(); updateActionBar(); renderHighlights();
   }
 }
 
@@ -2364,6 +2389,8 @@ function syncSettingsUI() {
 
   document.getElementById('max-errors-val').textContent = s.maxErrors;
   document.getElementById('max-errors-row').classList.toggle('hidden', !s.failOnErrors);
+  const hiddenRow = document.getElementById('setting-row-hidden-singles');
+  if (hiddenRow) hiddenRow.classList.toggle('hidden', !s.enableNakedSingles);
   updateControlsForSimMode();
   updateAnalysisToolsVisibility();
 }
