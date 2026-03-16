@@ -320,21 +320,42 @@ function attachToolBtn(btnId, tapFn, longPressFn) {
       longPressFn();
     }, 500);
   };
-  const cancelPress = () => {
-    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
-  };
 
+  /* TOUCH: preventDefault suprime o evento 'click' no mobile.
+     Por isso o tap é tratado no touchend quando o timer ainda estava ativo. */
+  btn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    startPress();
+  }, { passive: false });
+
+  btn.addEventListener('touchend', () => {
+    if (_toolLongPressTimer) {
+      /* Timer ainda rodando = press curto = tap */
+      clearTimeout(_toolLongPressTimer);
+      _toolLongPressTimer = null;
+      if (!STATE.puzzle || STATE.paused) return;
+      tapFn();
+    }
+    /* Se timer já disparou = long-press já foi executado — não faz nada */
+  });
+
+  btn.addEventListener('touchcancel', () => {
+    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
+  });
+
+  /* MOUSE/DESKTOP: usa click normalmente; mousedown só inicia o timer de long-press */
+  btn.addEventListener('mousedown', startPress);
+  btn.addEventListener('mouseup', () => {
+    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
+  });
+  btn.addEventListener('mouseleave', () => {
+    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
+  });
   btn.addEventListener('click', () => {
     if (_toolLongPressTriggered) { _toolLongPressTriggered = false; return; }
     if (!STATE.puzzle || STATE.paused) return;
     tapFn();
   });
-  btn.addEventListener('touchstart',  e => { e.preventDefault(); startPress(); }, { passive: false });
-  btn.addEventListener('touchend',    cancelPress);
-  btn.addEventListener('touchcancel', cancelPress);
-  btn.addEventListener('mousedown',   startPress);
-  btn.addEventListener('mouseup',     cancelPress);
-  btn.addEventListener('mouseleave',  cancelPress);
 }
 
 /* Long-press actions — executa imediatamente sem precisar confirmar */
