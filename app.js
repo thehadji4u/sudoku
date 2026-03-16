@@ -517,9 +517,10 @@ function renderHighlights() {
       .forEach(s => s.classList.add('note-match'));
   }
 
-  /* Se nenhuma célula selecionada, só o pinned importa */
+  /* Se nenhuma célula selecionada, encerra após pinned e análise */
   if (sr < 0) {
     if (STATE.simulator.active) renderSimConflicts();
+    renderAnalysisHighlights();   /* garante que análises ativas continuam visíveis */
     return;
   }
 

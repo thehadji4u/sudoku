@@ -457,20 +457,26 @@ html, body {
   color: #EF4444 !important;
   font-weight: 800;
 }
-/* Dígito pivô X-Wing — violeta */
+/* Dígito pivô X-Wing — violeta com fundo */
 .note-digit.note-xwing {
-  color: #7C3AED !important;
-  font-weight: 800;
+  color: #6D28D9 !important;
+  font-weight: 900;
+  background: #EDE9FE;
+  border-radius: 2px;
 }
-/* Dígitos do pivot Y-Wing — âmbar */
+/* Dígitos do pivot Y-Wing — âmbar com fundo */
 .note-digit.note-ywing-pivot {
-  color: #B45309 !important;
-  font-weight: 800;
+  color: #92400E !important;
+  font-weight: 900;
+  background: #FEF3C7;
+  border-radius: 2px;
 }
-/* Dígitos dos pincers Y-Wing — azul */
+/* Dígitos dos pincers Y-Wing — azul com fundo */
 .note-digit.note-ywing-pincer {
-  color: #1D4ED8 !important;
-  font-weight: 800;
+  color: #1E40AF !important;
+  font-weight: 900;
+  background: #DBEAFE;
+  border-radius: 2px;
 }
 
 /* ── Modo Simulador ── */
