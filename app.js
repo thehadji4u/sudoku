@@ -2466,7 +2466,8 @@ function renderAnalysisHighlights() {
         'pair-select', 'pair-affected',
         'pointing-select', 'pointing-affected',
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target',
-        'wwing-cell', 'wwing-bridge', 'wwing-target'
+        'wwing-cell', 'wwing-bridge', 'wwing-target',
+        'genio-fill', 'genio-key', 'genio-pivot', 'genio-elim', 'genio-unit'
       );
   document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
   document.querySelectorAll('.note-digit.note-hidden-single').forEach(s => s.classList.remove('note-hidden-single'));
@@ -2757,6 +2758,7 @@ function checkIOSBanner() {
 /* ═══════════════════════════════════════
    GÊNIO DA LÂMPADA — solucionador secreto
    Ativado com 3 cliques rápidos em #score-val
+   Tabuleiro permanece visível com highlights animados
 ═══════════════════════════════════════ */
 
 let _genioClicks = 0;
@@ -2774,15 +2776,122 @@ function _attachGenioTrigger() {
       _genioClickTimer = setTimeout(() => { _genioClicks = 0; }, 700);
     }
   });
+  document.getElementById('btn-genio-cancel').addEventListener('click', _hideGenioPanel);
 }
 
-/* Formata "Linha X · Coluna Y" */
+/* Formata coordenada legível */
 function _gCell(r, c) { return `L${r + 1}·C${c + 1}`; }
+
+/* ── Highlights no tabuleiro ── */
+function _clearGenioHighlights() {
+  if (!cellElements.length || !cellElements[0]) return;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      cellElements[r][c].classList.remove('genio-fill', 'genio-key', 'genio-pivot', 'genio-elim', 'genio-unit');
+  document.querySelectorAll('.note-genio-elim, .note-genio-key').forEach(s =>
+    s.classList.remove('note-genio-elim', 'note-genio-key'));
+}
+
+function _applyGenioHighlights(move) {
+  _clearGenioHighlights();
+  if (move.type === 'fill') {
+    const { r, c, val, strategy } = move;
+    cellElements[r][c].classList.add('genio-fill');
+    /* Contexto: linha, coluna e quadrante */
+    const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
+    for (let i = 0; i < 9; i++) {
+      if (i !== c) cellElements[r][i].classList.add('genio-unit');
+      if (i !== r) cellElements[i][c].classList.add('genio-unit');
+    }
+    for (let rr = br; rr < br + 3; rr++)
+      for (let cc = bc; cc < bc + 3; cc++)
+        if (!(rr === r && cc === c)) cellElements[rr][cc].classList.add('genio-unit');
+    /* Para Única Oculta, destaca a nota alvo */
+    if (strategy === 'Única Oculta') {
+      const span = cellElements[r][c].querySelector(`.note-digit[data-note="${val}"]`);
+      if (span) span.classList.add('note-genio-key');
+    }
+    /* Para Hidden Single: âmbar na unidade forçadora */
+    if (strategy === 'Única Oculta' && move.data) {
+      const hd = move.data;
+      for (let rr = 0; rr < 9; rr++) for (let cc = 0; cc < 9; cc++) {
+        if (rr === r && cc === c) continue;
+        let inUnit = false;
+        if (hd.unitType === 'row' && rr === hd.unitIdx) inUnit = true;
+        if (hd.unitType === 'col' && cc === hd.unitIdx) inUnit = true;
+        if (hd.unitType === 'box') {
+          const ubr = Math.floor(hd.unitIdx / 3) * 3, ubc = (hd.unitIdx % 3) * 3;
+          if (rr >= ubr && rr < ubr + 3 && cc >= ubc && cc < ubc + 3) inUnit = true;
+        }
+        if (inUnit) cellElements[rr][cc].classList.add('genio-unit');
+      }
+    }
+  } else {
+    const d = move.data;
+    if (move.strategy === 'Par Nu') {
+      d.pairCells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
+      d.affected.forEach(({ r, c, nums }) => {
+        cellElements[r][c].classList.add('genio-elim');
+        nums.forEach(n => {
+          const s = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (s) s.classList.add('note-genio-elim');
+        });
+      });
+    } else if (move.strategy === 'Par Apontador') {
+      d.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
+      d.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('genio-elim');
+        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.num}"]`);
+        if (s) s.classList.add('note-genio-elim');
+      });
+    } else if (move.strategy === 'X-Wing') {
+      d.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
+      d.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('genio-elim');
+        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.num}"]`);
+        if (s) s.classList.add('note-genio-elim');
+      });
+    } else if (move.strategy === 'Y-Wing') {
+      cellElements[d.pivot.r][d.pivot.c].classList.add('genio-pivot');
+      d.pincers.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
+      d.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('genio-elim');
+        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.elimVal}"]`);
+        if (s) s.classList.add('note-genio-elim');
+      });
+    } else if (move.strategy === 'W-Wing') {
+      d.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
+      d.bridge.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-unit'));
+      d.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('genio-elim');
+        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.elimVal}"]`);
+        if (s) s.classList.add('note-genio-elim');
+      });
+    }
+  }
+}
+
+/* ── Painel deslizante ── */
+function _showGenioPanel(move) {
+  _applyGenioHighlights(move);
+  document.getElementById('genio-strategy').textContent = move.strategy;
+  document.getElementById('genio-explain').innerHTML = move.explain;
+  document.getElementById('btn-genio-confirm').onclick = () => {
+    _hideGenioPanel();
+    _execGenioMove(move);
+  };
+  document.getElementById('genio-panel').classList.add('genio-visible');
+}
+
+function _hideGenioPanel() {
+  document.getElementById('genio-panel').classList.remove('genio-visible');
+  _clearGenioHighlights();
+}
 
 function activateGenio() {
   if (!STATE.puzzle) return;
 
-  /* Garante notas populadas para as estratégias funcionarem */
+  /* Garante notas populadas */
   let hasNotes = false;
   outer: for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
@@ -2797,9 +2906,9 @@ function activateGenio() {
       if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1) {
         const val = [...STATE.notes[r][c]][0];
         move = {
-          type: 'fill', r, c, val, strategy: 'Única Nua',
-          explain: `A célula <b>${_gCell(r, c)}</b> tem apenas um candidato possível: o número <b>${val}</b>.<br><br>` +
-            `Isso acontece quando todos os outros valores foram eliminados pelos números já presentes na mesma linha, coluna e quadrante. Com apenas um candidato restante, esse valor é certo — não há outra escolha.`
+          type: 'fill', r, c, val, strategy: 'Única Nua', data: null,
+          explain: `A célula <b>${_gCell(r, c)}</b> (destacada em amarelo pulsante) tem apenas um candidato possível: o número <b>${val}</b>.<br><br>` +
+            `Todos os outros valores foram eliminados pelos números já presentes na mesma linha, coluna e quadrante (sombreados). Com apenas um candidato restante, esse valor é certo — não há outra escolha.`
         };
         break outer1;
       }
@@ -2813,9 +2922,9 @@ function activateGenio() {
                    h.unitType === 'col' ? `coluna ${h.unitIdx + 1}` :
                    `quadrante ${h.unitIdx + 1}`;
       move = {
-        type: 'fill', r: h.r, c: h.c, val: h.val, strategy: 'Única Oculta',
-        explain: `O número <b>${h.val}</b> só pode ocupar a célula <b>${_gCell(h.r, h.c)}</b> dentro da ${unid}.<br><br>` +
-          `Embora essa célula tenha outros candidatos, as demais células da ${unid} têm restrições que eliminam o ${h.val} — portanto, independentemente dos outros candidatos dessa célula, o ${h.val} obrigatoriamente vai aqui.`
+        type: 'fill', r: h.r, c: h.c, val: h.val, strategy: 'Única Oculta', data: h,
+        explain: `O número <b>${h.val}</b> (nota em azul) só pode ocupar a célula <b>${_gCell(h.r, h.c)}</b> dentro da ${unid} (sombreada).<br><br>` +
+          `Embora a célula tenha outros candidatos, as demais células da ${unid} têm restrições que eliminam o ${h.val} — portanto, independentemente dos outros candidatos, o ${h.val} obrigatoriamente vai aqui.`
       };
     }
   }
@@ -2829,14 +2938,14 @@ function activateGenio() {
       const [p1, p2] = np.pairCells;
       const totalElim = np.affected.reduce((s, a) => s + a.nums.size, 0);
       move = {
-        type: 'elim', strategy: 'Par Nu',
+        type: 'elim', strategy: 'Par Nu', data: np,
         exec: () => {
           pushUndo();
           np.affected.forEach(({ r, c, nums }) => { nums.forEach(n => STATE.notes[r][c].delete(n)); updateCellContent(r, c); });
           renderHighlights();
         },
-        explain: `As células <b>${_gCell(p1.r, p1.c)}</b> e <b>${_gCell(p2.r, p2.c)}</b> formam um <i>Par Nu</i> — ambas têm exatamente os candidatos <b>${n1}</b> e <b>${n2}</b>, sem mais nenhum outro.<br><br>` +
-          `Como esses dois números estão confinados a esse par dentro da mesma casa, nenhuma outra célula da casa pode contê-los. O gênio vai eliminar <b>${totalElim} candidato(s)</b> das células vizinhas.`
+        explain: `As células em azul (<b>${_gCell(p1.r, p1.c)}</b> e <b>${_gCell(p2.r, p2.c)}</b>) formam um <i>Par Nu</i> — ambas têm exatamente os candidatos <b>${n1}</b> e <b>${n2}</b>, sem mais nenhum.<br><br>` +
+          `Como esses dois números estão confinados ao par, nenhuma outra célula da mesma casa pode contê-los. As notas em vermelho nas células avermelhadas serão eliminadas (${totalElim} eliminação(ões)).`
       };
     }
   }
@@ -2849,14 +2958,14 @@ function activateGenio() {
       const rows = new Set(pt.cells.map(x => x.r));
       const dir = rows.size === 1 ? `linha ${pt.cells[0].r + 1}` : `coluna ${pt.cells[0].c + 1}`;
       move = {
-        type: 'elim', strategy: 'Par Apontador',
+        type: 'elim', strategy: 'Par Apontador', data: pt,
         exec: () => {
           pushUndo();
           pt.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(pt.num); updateCellContent(r, c); });
           renderHighlights();
         },
-        explain: `O número <b>${pt.num}</b> só aparece em ${pt.cells.length} célula(s) dentro de um quadrante — e todas estão na mesma <b>${dir}</b>.<br><br>` +
-          `Isso cria um <i>Par Apontador</i>: como o ${pt.num} precisa cair nessa ${dir} dentro do quadrante, ele não pode existir em nenhuma outra célula dessa mesma ${dir} fora do quadrante. O gênio vai eliminar <b>${pt.targets.length} candidato(s)</b>.`
+        explain: `As células azuis mostram onde o número <b>${pt.num}</b> pode ficar dentro de um quadrante — e todas estão na mesma <b>${dir}</b>.<br><br>` +
+          `Isso cria um <i>Par Apontador</i>: como o ${pt.num} precisa cair nessa ${dir} dentro do quadrante, ele não pode existir nas demais células dessa ${dir} fora do quadrante. As notas em vermelho serão eliminadas (${pt.targets.length} eliminação(ões)).`
       };
     }
   }
@@ -2867,14 +2976,14 @@ function activateGenio() {
     if (xwings.length > 0) {
       const xw = xwings[0];
       move = {
-        type: 'elim', strategy: 'X-Wing',
+        type: 'elim', strategy: 'X-Wing', data: xw,
         exec: () => {
           pushUndo();
           xw.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(xw.num); updateCellContent(r, c); });
           renderHighlights();
         },
-        explain: `O número <b>${xw.num}</b> forma um padrão <i>X-Wing</i>: aparece exatamente em dois lugares em cada uma de duas linhas (ou colunas), e essas posições se alinham em retângulo no tabuleiro.<br><br>` +
-          `Qualquer que seja a diagonal do retângulo que o ${xw.num} ocupe, ele bloqueia as colunas (ou linhas) compartilhadas para qualquer outro candidato fora do retângulo. O gênio vai eliminar <b>${xw.targets.length} candidato(s)</b>.`
+        explain: `As 4 células azuis formam o retângulo do <i>X-Wing</i> para o número <b>${xw.num}</b>: ele aparece exatamente em dois lugares em cada uma de duas linhas (ou colunas), alinhados em retângulo.<br><br>` +
+          `Qualquer que seja a diagonal do retângulo que o ${xw.num} ocupe, ele elimina os candidatos nas colunas (ou linhas) compartilhadas. As notas em vermelho serão eliminadas (${xw.targets.length} eliminação(ões)).`
       };
     }
   }
@@ -2887,14 +2996,14 @@ function activateGenio() {
       const [pa, pb] = yw.pincers;
       const pvList = [...STATE.notes[yw.pivot.r][yw.pivot.c]].join(' e ');
       move = {
-        type: 'elim', strategy: 'Y-Wing',
+        type: 'elim', strategy: 'Y-Wing', data: yw,
         exec: () => {
           pushUndo();
           yw.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(yw.elimVal); updateCellContent(r, c); });
           renderHighlights();
         },
-        explain: `A célula pivô <b>${_gCell(yw.pivot.r, yw.pivot.c)}</b> tem os candidatos <b>${pvList}</b>. Cada um é compartilhado com um <i>pincer</i>: <b>${_gCell(pa.r, pa.c)}</b> e <b>${_gCell(pb.r, pb.c)}</b>. Os dois pincers compartilham o valor de eliminação <b>${yw.elimVal}</b>.<br><br>` +
-          `No padrão <i>Y-Wing</i>, qualquer célula que enxergue ambos os pincers ao mesmo tempo não pode conter o ${yw.elimVal} — pois em qualquer solução válida, pelo menos um dos pincers sempre terá esse valor. O gênio vai eliminar <b>${yw.targets.length} candidato(s)</b>.`
+        explain: `A célula <b>roxa</b> (<b>${_gCell(yw.pivot.r, yw.pivot.c)}</b>) é o pivô com candidatos <b>${pvList}</b>. Cada valor é compartilhado com um <i>pincer</i> azul: <b>${_gCell(pa.r, pa.c)}</b> e <b>${_gCell(pb.r, pb.c)}</b>, que compartilham o valor de eliminação <b>${yw.elimVal}</b>.<br><br>` +
+          `No <i>Y-Wing</i>, qualquer célula que enxergue ambos os pincers não pode ter o ${yw.elimVal} — em qualquer solução válida, um dos pincers sempre terá esse valor. As notas em vermelho serão eliminadas (${yw.targets.length} eliminação(ões)).`
       };
     }
   }
@@ -2906,14 +3015,14 @@ function activateGenio() {
       const ww = wwings[0];
       const [w1, w2] = ww.cells;
       move = {
-        type: 'elim', strategy: 'W-Wing',
+        type: 'elim', strategy: 'W-Wing', data: ww,
         exec: () => {
           pushUndo();
           ww.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(ww.elimVal); updateCellContent(r, c); });
           renderHighlights();
         },
-        explain: `As células <b>${_gCell(w1.r, w1.c)}</b> e <b>${_gCell(w2.r, w2.c)}</b> são bivalores idênticas. Elas se conectam através de uma "ponte" formada pelo valor <b>${ww.bridgeVal}</b>, que aparece exatamente em dois lugares em uma unidade compartilhada.<br><br>` +
-          `No padrão <i>W-Wing</i>, isso garante que o valor <b>${ww.elimVal}</b> não pode existir em nenhuma célula que enxergue ambas ao mesmo tempo. O gênio vai eliminar <b>${ww.targets.length} candidato(s)</b>.`
+        explain: `As células <b>azuis</b> (<b>${_gCell(w1.r, w1.c)}</b> e <b>${_gCell(w2.r, w2.c)}</b>) são bivalores idênticas. As células <b>âmbar</b> formam a "ponte" pelo valor <b>${ww.bridgeVal}</b>.<br><br>` +
+          `No <i>W-Wing</i>, qualquer célula que enxergue ambas as células azuis não pode ter o valor <b>${ww.elimVal}</b>. As notas em vermelho serão eliminadas (${ww.targets.length} eliminação(ões)).`
       };
     }
   }
@@ -2925,25 +3034,15 @@ function activateGenio() {
         if (STATE.puzzle[r][c] === 0) {
           const val = STATE.solution[r][c];
           move = {
-            type: 'fill', r, c, val, strategy: 'Força Bruta',
-            explain: `Nenhuma estratégia lógica identificou um próximo passo seguro. O gênio recorre à <i>Força Bruta</i> para revelar que a célula <b>${_gCell(r, c)}</b> deve receber o número <b>${val}</b>.<br><br>` +
-              `Este valor é extraído diretamente da solução calculada do puzzle — não por dedução lógica. Use com moderação, somente em emergências reais.`
+            type: 'fill', r, c, val, strategy: 'Força Bruta', data: null,
+            explain: `Nenhuma estratégia lógica identificou um próximo passo. O gênio usa <i>Força Bruta</i>: a célula <b>${_gCell(r, c)}</b> (pulsando) deve receber o número <b>${val}</b>.<br><br>` +
+              `Este valor é extraído diretamente da solução do puzzle — não por dedução. Use somente em emergências reais.`
           };
         }
   }
 
-  if (!move) return; /* puzzle já resolvido */
-  _showGenioModal(move);
-}
-
-function _showGenioModal(move) {
-  document.getElementById('genio-strategy').textContent = move.strategy;
-  document.getElementById('genio-explain').innerHTML = move.explain;
-  document.getElementById('btn-genio-confirm').onclick = () => {
-    closeAllModals();
-    _execGenioMove(move);
-  };
-  openModal('modal-genio');
+  if (!move) return;
+  _showGenioPanel(move);
 }
 
 function _execGenioMove(move) {

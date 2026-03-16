@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.47</span>
+      <span class="app-version">v1.48</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -462,24 +462,24 @@
       <button class="btn-secondary" id="btn-new-game-gameover">Escolher Nível</button>
     </div>
 
-    <!-- Modal Gênio da Lâmpada -->
-    <div class="modal-sheet hidden" id="modal-genio">
-      <div class="modal-handle"></div>
-      <div class="genio-header">
-        <span class="genio-lamp">🧞</span>
-        <div class="genio-header-text">
-          <h2 class="modal-title">Gênio da Lâmpada</h2>
-          <span class="genio-strategy-badge" id="genio-strategy">—</span>
-        </div>
-      </div>
-      <p class="genio-explain" id="genio-explain"></p>
-      <div class="modal-btn-row">
-        <button class="btn-secondary" onclick="closeAllModals()">✕ Fechar</button>
-        <button class="btn-primary" id="btn-genio-confirm">✨ Realizar</button>
+  </div><!-- /modal-overlay -->
+
+  <!-- Painel Gênio da Lâmpada (fora do overlay — tabuleiro permanece visível) -->
+  <div id="genio-panel">
+    <div class="genio-handle"></div>
+    <div class="genio-panel-header">
+      <span class="genio-lamp">🧞</span>
+      <div class="genio-panel-title">
+        <span class="genio-title-text">Gênio da Lâmpada</span>
+        <span class="genio-strategy-badge" id="genio-strategy">—</span>
       </div>
     </div>
-
-  </div><!-- /modal-overlay -->
+    <p class="genio-explain" id="genio-explain"></p>
+    <div class="genio-btns">
+      <button class="btn-secondary" id="btn-genio-cancel">✕ Fechar</button>
+      <button class="btn-primary" id="btn-genio-confirm">✨ Realizar</button>
+    </div>
+  </div>
 
   <!-- Loading -->
   <div id="loading-overlay" class="hidden">
