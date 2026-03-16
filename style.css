@@ -58,8 +58,8 @@ html, body {
 #screen-difficulty {
   align-items: center;
   justify-content: center;
-  gap: 28px;
-  padding: 32px 24px;
+  gap: 14px;
+  padding: 16px 20px;
 }
 
 .diff-logo {
@@ -69,25 +69,25 @@ html, body {
   gap: 6px;
 }
 .diff-logo img {
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
 }
 .diff-logo h1 {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: -1px;
   color: var(--accent);
 }
 .diff-logo p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
 .diff-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   max-width: 340px;
 }
@@ -97,8 +97,8 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 16px 8px;
+  gap: 3px;
+  padding: 10px 6px;
   border-radius: var(--radius);
   border: 2px solid transparent;
   background: var(--surface);
@@ -128,9 +128,14 @@ html, body {
 .diff-btn.d-especialista { border-color: #FDBA74; }
 .diff-btn.d-mestre       { border-color: #F87171; }
 .diff-btn.d-extremo      { border-color: #C084FC; background: #FAF5FF; }
-.diff-btn.d-diabolico   { border-color: #DC2626; background: #1C0505; color: #FECACA; }
-.diff-btn.d-diabolico .diff-name { color: #FEF2F2; font-weight: 800; }
-.diff-btn.d-diabolico .diff-stars { color: #EF4444; letter-spacing: 0; }
+.diff-btn.d-diabolico   { border-color: #18181B; background: var(--surface); }
+.diff-btn.d-diabolico .diff-name { color: #18181B; font-weight: 800; }
+.diff-btn.d-diabolico .diff-stars { color: #DC2626; letter-spacing: 0; }
+.diff-btn.d-diabolico {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc(50% - 4px);
+}
 
 /* ── Card de sessão salva ── */
 #session-resume {
@@ -502,7 +507,7 @@ html, body {
   font-weight: 700;
 }
 .cell.sim-red {
-  color: #15803D !important;  /* verde escuro — não confunde com erro */
+  color: #B45309 !important;  /* âmbar escuro — visível no branco e no fundo âmbar */
   font-weight: 700;
 }
 /* Conflito: mesma linha/col/quad — sobrescreve ouro */

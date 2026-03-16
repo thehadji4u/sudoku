@@ -44,31 +44,36 @@ const STATE = {
     singlesActive:      false,
     singles:            [],        // [{r, c, val}]
     singlesIndex:       0,
+    singlesBatch:       false,     // true = mostra todos de uma vez
 
-    /* Ocultas (Hidden Singles) */
+    /* Ocultas (Hidden Singles) — compartilha singlesBatch */
     hiddenActive:       false,
-    hiddens:            [],        // [{r, c, val}]
+    hiddens:            [],        // [{r, c, val, unitType, unitIdx}]
     hiddensIndex:       0,
 
     /* Pares Nus (Naked Pairs) — auto-detect cycling */
     nakedPairsActive:   false,
     nakedPairs:         [],        // [{pairNums, pairCells:[{r,c}], affected:[{r,c,nums:Set}]}]
     nakedPairsIndex:    0,
+    nakedPairsBatch:    false,
 
     /* Par Apontador (Pointing Pairs) — auto-detect cycling */
     pointingActive:     false,
     pointings:          [],        // [{num, cells:[{r,c}], targets:[{r,c}]}]
     pointingIndex:      0,
+    pointingBatch:      false,
 
     /* X-Wing */
     xwingActive:        false,
     xwings:             [],
     xwingIndex:         0,
+    xwingBatch:         false,
 
     /* Y-Wing */
     ywingActive:        false,
     ywings:             [],
     ywingIndex:         0,
+    ywingBatch:         false,
   },
 
   settings: {
@@ -195,11 +200,12 @@ function attachEvents() {
   document.getElementById('btn-erase').addEventListener('click', handleErase);
   document.getElementById('btn-notes').addEventListener('click', toggleNotesMode);
   document.getElementById('btn-fill').addEventListener('click', handleFill);
-  document.getElementById('btn-sim').addEventListener('click', () => {
-    if (!STATE.puzzle || STATE.paused) return;
-    if (STATE.simulator.active) deactivateSimulator();
-    else activateSimulator();
-  });
+  attachToolBtn('btn-sim',
+    /* tap  — descarta modificações */
+    () => { if (STATE.simulator.active) deactivateSimulator(); else activateSimulator(); },
+    /* long-press — efetiva modificações */
+    () => { if (STATE.simulator.active) commitSimulator(); else activateSimulator(); }
+  );
 
   attachToolBtn('btn-singles',    toggleSingles,    longPressSingles);
   attachToolBtn('btn-nakedpairs', toggleNakedPairs, longPressNakedPairs);
@@ -358,32 +364,75 @@ function attachToolBtn(btnId, tapFn, longPressFn) {
   });
 }
 
-/* Long-press actions — executa o item atual SE já estiver ativo; caso contrário age como tap. */
+/* Long-press — ativa modo lote (batch): mostra TODOS os achados de uma vez.
+   Se já estiver ativo: entra em lote. Se não estiver ativo: detecta e entra em lote. */
 function longPressSingles() {
   const an = STATE.analysis;
-  if (an.singlesActive && an.singles.length) { executeFillSingles(); return; }
-  if (an.hiddenActive  && an.hiddens.length) { executeFillHiddenSingles(); return; }
-  toggleSingles(); // ainda não estava ativo: mostra primeiro
+  const s  = STATE.settings;
+  /* Já ativo: entra em modo lote */
+  if (an.singlesActive && an.singles.length > 0) {
+    an.singlesBatch = true; STATE.pinnedNum = 0;
+    updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
+  }
+  if (an.hiddenActive && an.hiddens.length > 0) {
+    an.singlesBatch = true; STATE.pinnedNum = 0;
+    updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
+  }
+  /* Não ativo: detecta e ativa em lote */
+  if (s.enableNakedSingles) {
+    const singles = [];
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
+          singles.push({ r, c, val: [...STATE.notes[r][c]][0] });
+    if (singles.length > 0) {
+      an.singlesActive = true; an.singles = singles; an.singlesIndex = 0; an.singlesBatch = true;
+      STATE.selectedRow = -1; STATE.selectedCol = -1; STATE.pinnedNum = 0;
+      updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
+    }
+  }
+  if (s.enableHiddenSingles) {
+    const hiddens = _computeHiddenSingles();
+    if (hiddens.length > 0) {
+      an.hiddenActive = true; an.hiddens = hiddens; an.hiddensIndex = 0; an.singlesBatch = true;
+      STATE.selectedRow = -1; STATE.selectedCol = -1; STATE.pinnedNum = 0;
+      updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
+    }
+  }
+  /* Nada encontrado: age igual ao tap */
+  toggleSingles();
 }
 function longPressNakedPairs() {
   const an = STATE.analysis;
-  if (an.nakedPairsActive && an.nakedPairs.length) { executeNakedPairs(); return; }
-  toggleNakedPairs();
+  if (!an.nakedPairsActive) toggleNakedPairs();
+  if (an.nakedPairsActive && an.nakedPairs.length > 0) {
+    an.nakedPairsBatch = true;
+    updateNakedPairsBtn(); updateActionBar(); renderHighlights();
+  }
 }
 function longPressPointing() {
   const an = STATE.analysis;
-  if (an.pointingActive && an.pointings.length) { executePointing(); return; }
-  togglePointing();
+  if (!an.pointingActive) togglePointing();
+  if (an.pointingActive && an.pointings.length > 0) {
+    an.pointingBatch = true;
+    updatePointingBtn(); updateActionBar(); renderHighlights();
+  }
 }
 function longPressXWing() {
   const an = STATE.analysis;
-  if (an.xwingActive && an.xwings.length) { executeXWing(); return; }
-  toggleXWing();
+  if (!an.xwingActive) toggleXWing();
+  if (an.xwingActive && an.xwings.length > 0) {
+    an.xwingBatch = true;
+    updateXWingBtn(); updateActionBar(); renderHighlights();
+  }
 }
 function longPressYWing() {
   const an = STATE.analysis;
-  if (an.ywingActive && an.ywings.length) { executeYWing(); return; }
-  toggleYWing();
+  if (!an.ywingActive) toggleYWing();
+  if (an.ywingActive && an.ywings.length > 0) {
+    an.ywingBatch = true;
+    updateYWingBtn(); updateActionBar(); renderHighlights();
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -1251,6 +1300,19 @@ function deactivateSimulator() {
   updateProgressBar();
 }
 
+function commitSimulator() {
+  /* Mantém o puzzle/notas atuais — apenas desativa o modo simulador */
+  STATE.simulator.active     = false;
+  STATE.simulator.placements = new Map();
+  STATE.simulator.nextSeq    = 0;
+  STATE.simulator.savedPuzzle = null;
+  STATE.simulator.savedNotes  = null;
+  updateSimBtn();
+  renderBoard();
+  renderNumpad();
+  updateProgressBar();
+}
+
 function updateSimBtn() {
   const btn = document.getElementById('btn-sim');
   if (!btn) return;
@@ -1493,19 +1555,19 @@ function toggleNakedPairs() {
 
 function deactivateNakedPairs() {
   const an = STATE.analysis;
-  an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0;
+  an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0; an.nakedPairsBatch = false;
   updateNakedPairsBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeNakedPairs() {
   const an = STATE.analysis;
-  const np = an.nakedPairs[an.nakedPairsIndex];
-  if (!np) { deactivateNakedPairs(); return; }
+  const pairs = an.nakedPairsBatch ? an.nakedPairs : [an.nakedPairs[an.nakedPairsIndex]].filter(Boolean);
+  if (!pairs.length) { deactivateNakedPairs(); return; }
   pushUndo();
-  np.affected.forEach(({ r, c, nums }) => {
+  pairs.forEach(np => np.affected.forEach(({ r, c, nums }) => {
     nums.forEach(n => STATE.notes[r][c].delete(n));
     updateCellContent(r, c);
-  });
+  }));
   deactivateNakedPairs();
   renderHighlights();
 }
@@ -1581,19 +1643,19 @@ function togglePointing() {
 
 function deactivatePointing() {
   const an = STATE.analysis;
-  an.pointingActive = false; an.pointings = []; an.pointingIndex = 0;
+  an.pointingActive = false; an.pointings = []; an.pointingIndex = 0; an.pointingBatch = false;
   updatePointingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executePointing() {
   const an = STATE.analysis;
-  const pt = an.pointings[an.pointingIndex];
-  if (!pt) { deactivatePointing(); return; }
+  const pts = an.pointingBatch ? an.pointings : [an.pointings[an.pointingIndex]].filter(Boolean);
+  if (!pts.length) { deactivatePointing(); return; }
   pushUndo();
-  pt.targets.forEach(({ r, c }) => {
+  pts.forEach(pt => pt.targets.forEach(({ r, c }) => {
     STATE.notes[r][c].delete(pt.num);
     updateCellContent(r, c);
-  });
+  }));
   deactivatePointing();
   renderHighlights();
 }
@@ -1714,32 +1776,34 @@ function _computeHiddenSingles() {
 
 function deactivateSingles() {
   const an = STATE.analysis;
-  an.singlesActive = false; an.singles = []; an.singlesIndex = 0;
+  an.singlesActive = false; an.singles = []; an.singlesIndex = 0; an.singlesBatch = false;
   STATE.pinnedNum = 0;
   updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
 }
 
 function deactivateHiddenSingles() {
   const an = STATE.analysis;
-  an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0;
+  an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0; an.singlesBatch = false;
   STATE.pinnedNum = 0;
   updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
 }
 
-/* Preenche apenas o single atual e desativa */
+/* Preenche o single atual (ou todos em batch) e desativa */
 function executeFillSingles() {
   const an = STATE.analysis;
   if (!an.singlesActive || !an.singles.length) return;
-  const { r, c, val } = an.singles[an.singlesIndex];
-  if (STATE.puzzle[r][c] === 0) {
-    pushUndo();
-    STATE.puzzle[r][c] = val;
-    STATE.score += calculateCellPoints();
-    if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
-    updateCellContent(r, c);
-    updateScoreDisplay(); renderNumpad(); updateProgressBar();
-    checkWin();
+  pushUndo();
+  const items = an.singlesBatch ? an.singles : [an.singles[an.singlesIndex]];
+  for (const { r, c, val } of items) {
+    if (STATE.puzzle[r][c] === 0) {
+      STATE.puzzle[r][c] = val;
+      STATE.score += calculateCellPoints();
+      if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
+      updateCellContent(r, c);
+    }
   }
+  updateScoreDisplay(); renderNumpad(); updateProgressBar();
+  checkWin();
   deactivateSingles();
   renderHighlights();
 }
@@ -1747,16 +1811,18 @@ function executeFillSingles() {
 function executeFillHiddenSingles() {
   const an = STATE.analysis;
   if (!an.hiddenActive || !an.hiddens.length) return;
-  const { r, c, val } = an.hiddens[an.hiddensIndex];
-  if (STATE.puzzle[r][c] === 0) {
-    pushUndo();
-    STATE.puzzle[r][c] = val;
-    STATE.score += calculateCellPoints();
-    if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
-    updateCellContent(r, c);
-    updateScoreDisplay(); renderNumpad(); updateProgressBar();
-    checkWin();
+  pushUndo();
+  const items = an.singlesBatch ? an.hiddens : [an.hiddens[an.hiddensIndex]];
+  for (const { r, c, val } of items) {
+    if (STATE.puzzle[r][c] === 0) {
+      STATE.puzzle[r][c] = val;
+      STATE.score += calculateCellPoints();
+      if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
+      updateCellContent(r, c);
+    }
   }
+  updateScoreDisplay(); renderNumpad(); updateProgressBar();
+  checkWin();
   deactivateHiddenSingles();
   renderHighlights();
 }
@@ -1801,14 +1867,19 @@ function updateActionBar() {
 
   const an = STATE.analysis;
 
-  /* Únicas — cycling */
+  /* Únicas — cycling ou batch */
   if (an.singlesActive) {
     bar.classList.remove('hidden');
     if (an.singles.length) {
-      const s = an.singles[an.singlesIndex];
-      label.textContent   = `Única ${an.singlesIndex + 1}/${an.singles.length} · nº${s.val}`;
-      confirm.textContent = '① Preencher';
-      confirm.disabled    = false;
+      if (an.singlesBatch) {
+        label.textContent   = `Únicas: ${an.singles.length} célula(s) — Preencher todas`;
+        confirm.textContent = '① Preencher todas';
+      } else {
+        const s = an.singles[an.singlesIndex];
+        label.textContent   = `Única ${an.singlesIndex + 1}/${an.singles.length} · nº${s.val}`;
+        confirm.textContent = '① Preencher';
+      }
+      confirm.disabled = false;
     } else {
       label.textContent   = 'Nenhuma única encontrada';
       confirm.textContent = '① Preencher';
@@ -1817,14 +1888,19 @@ function updateActionBar() {
     return;
   }
 
-  /* Ocultas — cycling */
+  /* Ocultas — cycling ou batch */
   if (an.hiddenActive) {
     bar.classList.remove('hidden');
     if (an.hiddens.length) {
-      const h = an.hiddens[an.hiddensIndex];
-      label.textContent   = `Oculta ${an.hiddensIndex + 1}/${an.hiddens.length} · nº${h.val}`;
-      confirm.textContent = '① Preencher';
-      confirm.disabled    = false;
+      if (an.singlesBatch) {
+        label.textContent   = `Ocultas: ${an.hiddens.length} célula(s) — Preencher todas`;
+        confirm.textContent = '① Preencher todas';
+      } else {
+        const h = an.hiddens[an.hiddensIndex];
+        label.textContent   = `Oculta ${an.hiddensIndex + 1}/${an.hiddens.length} · nº${h.val}`;
+        confirm.textContent = '① Preencher';
+      }
+      confirm.disabled = false;
     } else {
       label.textContent   = 'Nenhuma oculta encontrada';
       confirm.textContent = '① Preencher';
@@ -1837,10 +1913,16 @@ function updateActionBar() {
   if (an.nakedPairsActive) {
     bar.classList.remove('hidden');
     if (an.nakedPairs.length) {
-      const np = an.nakedPairs[an.nakedPairsIndex];
-      label.textContent   = `Par Nu ${an.nakedPairsIndex + 1}/${an.nakedPairs.length} · [${np.pairNums.join(',')}] · ${np.affected.length} eliminação(ões)`;
-      confirm.textContent = '✓ Eliminar';
-      confirm.disabled    = false;
+      if (an.nakedPairsBatch) {
+        const total = an.nakedPairs.reduce((s, np) => s + np.affected.length, 0);
+        label.textContent   = `Pares Nus: ${an.nakedPairs.length} par(es) · ${total} eliminação(ões)`;
+        confirm.textContent = '✓ Eliminar todos';
+      } else {
+        const np = an.nakedPairs[an.nakedPairsIndex];
+        label.textContent   = `Par Nu ${an.nakedPairsIndex + 1}/${an.nakedPairs.length} · [${np.pairNums.join(',')}] · ${np.affected.length} eliminação(ões)`;
+        confirm.textContent = '✓ Eliminar';
+      }
+      confirm.disabled = false;
     } else {
       label.textContent   = 'Nenhum Par Nu encontrado';
       confirm.textContent = '✓ Eliminar';
@@ -1853,10 +1935,16 @@ function updateActionBar() {
   if (an.pointingActive) {
     bar.classList.remove('hidden');
     if (an.pointings.length) {
-      const pt = an.pointings[an.pointingIndex];
-      label.textContent   = `Apontador ${an.pointingIndex + 1}/${an.pointings.length} · nº${pt.num} · ${pt.targets.length} eliminação(ões)`;
-      confirm.textContent = '↗ Atirar';
-      confirm.disabled    = false;
+      if (an.pointingBatch) {
+        const total = an.pointings.reduce((s, pt) => s + pt.targets.length, 0);
+        label.textContent   = `Apontador: ${an.pointings.length} padrão(ões) · ${total} eliminação(ões)`;
+        confirm.textContent = '↗ Atirar todos';
+      } else {
+        const pt = an.pointings[an.pointingIndex];
+        label.textContent   = `Apontador ${an.pointingIndex + 1}/${an.pointings.length} · nº${pt.num} · ${pt.targets.length} eliminação(ões)`;
+        confirm.textContent = '↗ Atirar';
+      }
+      confirm.disabled = false;
     } else {
       label.textContent   = 'Nenhum Par Apontador encontrado';
       confirm.textContent = '↗ Atirar';
@@ -1869,10 +1957,16 @@ function updateActionBar() {
   if (an.xwingActive) {
     bar.classList.remove('hidden');
     if (an.xwings.length) {
-      const xw = an.xwings[an.xwingIndex];
-      label.textContent   = `X-Wing ${an.xwingIndex + 1}/${an.xwings.length} · nº${xw.num} · ${xw.targets.length} eliminação(ões)`;
-      confirm.textContent = '♟ Eliminar';
-      confirm.disabled    = false;
+      if (an.xwingBatch) {
+        const total = an.xwings.reduce((s, xw) => s + xw.targets.length, 0);
+        label.textContent   = `X-Wing: ${an.xwings.length} padrão(ões) · ${total} eliminação(ões)`;
+        confirm.textContent = '♟ Eliminar todos';
+      } else {
+        const xw = an.xwings[an.xwingIndex];
+        label.textContent   = `X-Wing ${an.xwingIndex + 1}/${an.xwings.length} · nº${xw.num} · ${xw.targets.length} eliminação(ões)`;
+        confirm.textContent = '♟ Eliminar';
+      }
+      confirm.disabled = false;
     } else {
       label.textContent   = 'Nenhum X-Wing encontrado';
       confirm.textContent = '♟ Eliminar';
@@ -1885,10 +1979,16 @@ function updateActionBar() {
   if (an.ywingActive) {
     bar.classList.remove('hidden');
     if (an.ywings.length) {
-      const yw = an.ywings[an.ywingIndex];
-      label.textContent   = `Y-Wing ${an.ywingIndex + 1}/${an.ywings.length} · elimina ${yw.elimVal} · ${yw.targets.length} célula(s)`;
-      confirm.textContent = '♟ Eliminar';
-      confirm.disabled    = false;
+      if (an.ywingBatch) {
+        const total = an.ywings.reduce((s, yw) => s + yw.targets.length, 0);
+        label.textContent   = `Y-Wing: ${an.ywings.length} padrão(ões) · ${total} eliminação(ões)`;
+        confirm.textContent = '♟ Eliminar todos';
+      } else {
+        const yw = an.ywings[an.ywingIndex];
+        label.textContent   = `Y-Wing ${an.ywingIndex + 1}/${an.ywings.length} · elimina ${yw.elimVal} · ${yw.targets.length} célula(s)`;
+        confirm.textContent = '♟ Eliminar';
+      }
+      confirm.disabled = false;
     } else {
       label.textContent   = 'Nenhum Y-Wing encontrado';
       confirm.textContent = '♟ Eliminar';
@@ -1933,12 +2033,12 @@ function updateAnalysisToolsVisibility() {
 
 function resetAnalysis() {
   STATE.analysis = {
-    singlesActive: false, singles: [], singlesIndex: 0,
+    singlesActive: false, singles: [], singlesIndex: 0, singlesBatch: false,
     hiddenActive: false, hiddens: [], hiddensIndex: 0,
-    nakedPairsActive: false, nakedPairs: [], nakedPairsIndex: 0,
-    pointingActive: false, pointings: [], pointingIndex: 0,
-    xwingActive: false, xwings: [], xwingIndex: 0,
-    ywingActive: false, ywings: [], ywingIndex: 0,
+    nakedPairsActive: false, nakedPairs: [], nakedPairsIndex: 0, nakedPairsBatch: false,
+    pointingActive: false, pointings: [], pointingIndex: 0, pointingBatch: false,
+    xwingActive: false, xwings: [], xwingIndex: 0, xwingBatch: false,
+    ywingActive: false, ywings: [], ywingIndex: 0, ywingBatch: false,
   };
   const bar = document.getElementById('action-bar');
   if (bar) bar.classList.add('hidden');
@@ -1973,19 +2073,19 @@ function toggleXWing() {
 
 function deactivateXWing() {
   const an = STATE.analysis;
-  an.xwingActive = false; an.xwings = []; an.xwingIndex = 0;
+  an.xwingActive = false; an.xwings = []; an.xwingIndex = 0; an.xwingBatch = false;
   updateXWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeXWing() {
   const an = STATE.analysis;
-  const xw = an.xwings[an.xwingIndex];
-  if (!xw) { deactivateXWing(); return; }
+  const wings = an.xwingBatch ? an.xwings : [an.xwings[an.xwingIndex]].filter(Boolean);
+  if (!wings.length) { deactivateXWing(); return; }
   pushUndo();
-  xw.targets.forEach(({ r, c }) => {
+  wings.forEach(xw => xw.targets.forEach(({ r, c }) => {
     STATE.notes[r][c].delete(xw.num);
     updateCellContent(r, c);
-  });
+  }));
   deactivateXWing();
   renderHighlights();
 }
@@ -2081,19 +2181,19 @@ function toggleYWing() {
 
 function deactivateYWing() {
   const an = STATE.analysis;
-  an.ywingActive = false; an.ywings = []; an.ywingIndex = 0;
+  an.ywingActive = false; an.ywings = []; an.ywingIndex = 0; an.ywingBatch = false;
   updateYWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeYWing() {
   const an = STATE.analysis;
-  const yw = an.ywings[an.ywingIndex];
-  if (!yw) { deactivateYWing(); return; }
+  const wings = an.ywingBatch ? an.ywings : [an.ywings[an.ywingIndex]].filter(Boolean);
+  if (!wings.length) { deactivateYWing(); return; }
   pushUndo();
-  yw.targets.forEach(({ r, c }) => {
+  wings.forEach(yw => yw.targets.forEach(({ r, c }) => {
     STATE.notes[r][c].delete(yw.elimVal);
     updateCellContent(r, c);
-  });
+  }));
   deactivateYWing();
   renderHighlights();
 }
@@ -2179,53 +2279,65 @@ function renderAnalysisHighlights() {
 
   const an = STATE.analysis;
 
-  /* Únicas — célula alvo em verde + linha/coluna/quadrante em âmbar */
+  /* Únicas — célula alvo em verde + linha/coluna/quadrante em âmbar (single) ou todas as células (batch) */
   if (an.singlesActive && an.singles.length > 0) {
-    const sg = an.singles[an.singlesIndex];
-    if (sg) {
-      const boxR = Math.floor(sg.r / 3) * 3, boxC = Math.floor(sg.c / 3) * 3;
-      for (let r = 0; r < 9; r++)
-        for (let c = 0; c < 9; c++) {
-          if (r === sg.r && c === sg.c) continue;
-          if (r === sg.r || c === sg.c || (r >= boxR && r < boxR + 3 && c >= boxC && c < boxC + 3))
-            cellElements[r][c].classList.add('hidden-unit');
-        }
-      cellElements[sg.r][sg.c].classList.add('singles-match');
-    }
-  }
-
-  /* Ocultas — apenas o hidden single no índice atual:
-     - Célula alvo: verde (singles-match + nota em negrito verde)
-     - Unidade responsável (linha / coluna / quadrante): âmbar (hidden-unit) */
-  if (an.hiddenActive && an.hiddens.length > 0) {
-    const hd = an.hiddens[an.hiddensIndex];
-    if (hd) {
-      /* Âmbar na unidade que "força" o número */
-      for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-          if (r === hd.r && c === hd.c) continue; // célula alvo não recebe âmbar
-          let inUnit = false;
-          if (hd.unitType === 'row' && r === hd.unitIdx) inUnit = true;
-          if (hd.unitType === 'col' && c === hd.unitIdx) inUnit = true;
-          if (hd.unitType === 'box') {
-            const br = Math.floor(hd.unitIdx / 3) * 3;
-            const bc = (hd.unitIdx % 3) * 3;
-            if (r >= br && r < br + 3 && c >= bc && c < bc + 3) inUnit = true;
+    if (an.singlesBatch) {
+      /* Batch: todos os alvos em verde, sem âmbar */
+      for (const sg of an.singles) cellElements[sg.r][sg.c].classList.add('singles-match');
+    } else {
+      /* Single: célula atual + unidades em âmbar */
+      const sg = an.singles[an.singlesIndex];
+      if (sg) {
+        const boxR = Math.floor(sg.r / 3) * 3, boxC = Math.floor(sg.c / 3) * 3;
+        for (let r = 0; r < 9; r++)
+          for (let c = 0; c < 9; c++) {
+            if (r === sg.r && c === sg.c) continue;
+            if (r === sg.r || c === sg.c || (r >= boxR && r < boxR + 3 && c >= boxC && c < boxC + 3))
+              cellElements[r][c].classList.add('hidden-unit');
           }
-          if (inUnit) cellElements[r][c].classList.add('hidden-unit');
-        }
+        cellElements[sg.r][sg.c].classList.add('singles-match');
       }
-      /* Verde na célula alvo */
-      cellElements[hd.r][hd.c].classList.add('singles-match');
-      const span = cellElements[hd.r][hd.c].querySelector(`.note-digit[data-note="${hd.val}"]`);
-      if (span) span.classList.add('note-hidden-single');
     }
   }
 
-  /* Pares Nus — apenas padrão atual */
+  /* Ocultas — hidden single: verde + nota em verde; unidade responsável em âmbar (ou batch: todos) */
+  if (an.hiddenActive && an.hiddens.length > 0) {
+    if (an.singlesBatch) {
+      /* Batch: todos os alvos em verde + suas notas destacadas */
+      for (const hd of an.hiddens) {
+        cellElements[hd.r][hd.c].classList.add('singles-match');
+        const span = cellElements[hd.r][hd.c].querySelector(`.note-digit[data-note="${hd.val}"]`);
+        if (span) span.classList.add('note-hidden-single');
+      }
+    } else {
+      const hd = an.hiddens[an.hiddensIndex];
+      if (hd) {
+        /* Âmbar na unidade que "força" o número */
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (r === hd.r && c === hd.c) continue;
+            let inUnit = false;
+            if (hd.unitType === 'row' && r === hd.unitIdx) inUnit = true;
+            if (hd.unitType === 'col' && c === hd.unitIdx) inUnit = true;
+            if (hd.unitType === 'box') {
+              const br = Math.floor(hd.unitIdx / 3) * 3;
+              const bc = (hd.unitIdx % 3) * 3;
+              if (r >= br && r < br + 3 && c >= bc && c < bc + 3) inUnit = true;
+            }
+            if (inUnit) cellElements[r][c].classList.add('hidden-unit');
+          }
+        }
+        cellElements[hd.r][hd.c].classList.add('singles-match');
+        const span = cellElements[hd.r][hd.c].querySelector(`.note-digit[data-note="${hd.val}"]`);
+        if (span) span.classList.add('note-hidden-single');
+      }
+    }
+  }
+
+  /* Pares Nus — padrão atual ou todos (batch) */
   if (an.nakedPairsActive && an.nakedPairs.length > 0) {
-    const np = an.nakedPairs[an.nakedPairsIndex];
-    if (np) {
+    const pairs = an.nakedPairsBatch ? an.nakedPairs : [an.nakedPairs[an.nakedPairsIndex]].filter(Boolean);
+    pairs.forEach(np => {
       np.pairCells.forEach(({ r, c }) => cellElements[r][c].classList.add('pair-select'));
       np.affected.forEach(({ r, c, nums }) => {
         cellElements[r][c].classList.add('pair-affected');
@@ -2234,13 +2346,13 @@ function renderAnalysisHighlights() {
           if (span) span.classList.add('note-eliminate');
         });
       });
-    }
+    });
   }
 
-  /* Par Apontador — apenas padrão atual */
+  /* Par Apontador — padrão atual ou todos (batch) */
   if (an.pointingActive && an.pointings.length > 0) {
-    const pt = an.pointings[an.pointingIndex];
-    if (pt) {
+    const pts = an.pointingBatch ? an.pointings : [an.pointings[an.pointingIndex]].filter(Boolean);
+    pts.forEach(pt => {
       pt.cells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('pointing-select');
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${pt.num}"]`);
@@ -2251,13 +2363,13 @@ function renderAnalysisHighlights() {
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${pt.num}"]`);
         if (span) span.classList.add('note-eliminate');
       });
-    }
+    });
   }
 
-  /* X-Wing — apenas padrão atual */
+  /* X-Wing — padrão atual ou todos (batch) */
   if (an.xwingActive && an.xwings.length > 0) {
-    const xw = an.xwings[an.xwingIndex];
-    if (xw) {
+    const wings = an.xwingBatch ? an.xwings : [an.xwings[an.xwingIndex]].filter(Boolean);
+    wings.forEach(xw => {
       xw.cells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('xwing-cell');
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${xw.num}"]`);
@@ -2268,13 +2380,13 @@ function renderAnalysisHighlights() {
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${xw.num}"]`);
         if (span) span.classList.add('note-eliminate');
       });
-    }
+    });
   }
 
-  /* Y-Wing — apenas padrão atual */
+  /* Y-Wing — padrão atual ou todos (batch) */
   if (an.ywingActive && an.ywings.length > 0) {
-    const yw = an.ywings[an.ywingIndex];
-    if (yw) {
+    const wings = an.ywingBatch ? an.ywings : [an.ywings[an.ywingIndex]].filter(Boolean);
+    wings.forEach(yw => {
       const { r: pr, c: pc } = yw.pivot;
       cellElements[pr][pc].classList.add('ywing-pivot');
       STATE.notes[pr][pc].forEach(n => {
@@ -2293,7 +2405,7 @@ function renderAnalysisHighlights() {
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${yw.elimVal}"]`);
         if (span) span.classList.add('note-eliminate');
       });
-    }
+    });
   }
 }
 
