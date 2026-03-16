@@ -67,7 +67,7 @@
   </div>
 
   <div class="diff-copyright">
-    <span class="app-version">v2.0.0</span>
+    <span class="app-version">v1.30</span>
     <span class="copyright-sep">·</span>
     <span>© 2026 HadjiWare</span>
   </div>
@@ -127,12 +127,14 @@
 
   <!-- Seção de análise: barra de ação flutua acima dos botões sem deslocar o layout -->
   <div id="analysis-section">
-    <!-- Barra de ação (análise) — posicionada absolutamente acima dos botões -->
-    <div id="action-bar" class="hidden">
-      <span id="action-bar-label">—</span>
-      <div class="action-bar-btns">
-        <button class="action-btn primary" id="btn-action-confirm" disabled>Confirmar</button>
-        <button class="action-btn secondary" id="btn-action-cancel">✕</button>
+    <!-- Slot reservado de altura fixa — action-bar fica invisível mas ocupa espaço (sem layout shift) -->
+    <div id="action-bar-slot">
+      <div id="action-bar" class="hidden">
+        <span id="action-bar-label">—</span>
+        <div class="action-bar-btns">
+          <button class="action-btn primary" id="btn-action-confirm" disabled>Confirmar</button>
+          <button class="action-btn secondary" id="btn-action-cancel">✕</button>
+        </div>
       </div>
     </div>
 

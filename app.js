@@ -60,10 +60,12 @@ const STATE = {
     /* X-Wing */
     xwingActive:   false,
     xwings:        [],   // [{num, cells:[{r,c}×4], targets:[{r,c}]}]
+    xwingIndex:    0,    // padrão atual exibido
 
     /* Y-Wing */
     ywingActive:   false,
     ywings:        [],   // [{pivot:{r,c}, pincers:[{r,c}×2], targets:[{r,c}], elimVal}]
+    ywingIndex:    0,    // padrão atual exibido
   },
 
   settings: {
@@ -1551,6 +1553,8 @@ function activateSingles() {
   const an = STATE.analysis;
   an.singlesActive = true;
   an.singles = [];
+  STATE.selectedRow = -1;
+  STATE.selectedCol = -1;
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
@@ -1674,9 +1678,9 @@ function updateActionBar() {
   /* X-Wing */
   if (an.xwingActive) {
     bar.classList.remove('hidden');
-    const totalTargets = an.xwings.reduce((s, xw) => s + xw.targets.length, 0);
     if (an.xwings.length) {
-      label.textContent   = `X-Wing: ${an.xwings.length} padrão(ões) · ${totalTargets} eliminação(ões)`;
+      const xw = an.xwings[an.xwingIndex];
+      label.textContent   = `X-Wing ${an.xwingIndex + 1}/${an.xwings.length} · nº${xw.num} · ${xw.targets.length} eliminação(ões)`;
       confirm.textContent = '♟ Eliminar';
       confirm.disabled    = false;
     } else {
@@ -1690,9 +1694,9 @@ function updateActionBar() {
   /* Y-Wing */
   if (an.ywingActive) {
     bar.classList.remove('hidden');
-    const totalTargets = an.ywings.reduce((s, yw) => s + yw.targets.length, 0);
     if (an.ywings.length) {
-      label.textContent   = `Y-Wing: ${an.ywings.length} padrão(ões) · ${totalTargets} eliminação(ões)`;
+      const yw = an.ywings[an.ywingIndex];
+      label.textContent   = `Y-Wing ${an.ywingIndex + 1}/${an.ywings.length} · elimina ${yw.elimVal} · ${yw.targets.length} célula(s)`;
       confirm.textContent = '♟ Eliminar';
       confirm.disabled    = false;
     } else {
@@ -1736,8 +1740,8 @@ function resetAnalysis() {
     singlesActive: false, singles: [],
     pairsPhase: 'idle', pairCells: [], pairTarget: null, pairTargetCount: 0, pairAffected: [],
     pointingPhase: 'idle', pointingCells: [], pointingAffected: [], pointingCondition: true,
-    xwingActive: false, xwings: [],
-    ywingActive: false, ywings: [],
+    xwingActive: false, xwings: [], xwingIndex: 0,
+    ywingActive: false, ywings: [], ywingIndex: 0,
   };
   const bar = document.getElementById('action-bar');
   if (bar) bar.classList.add('hidden');
@@ -1746,32 +1750,41 @@ function resetAnalysis() {
 
 /* ─── X-Wing ─── */
 function toggleXWing() {
-  STATE.analysis.xwingActive ? deactivateXWing() : activateXWing();
-}
-
-function activateXWing() {
   const an = STATE.analysis;
-  an.xwingActive = true;
-  an.xwings = detectXWings();
+  if (!an.xwingActive) {
+    /* Primeira ativação */
+    an.xwings     = detectXWings();
+    an.xwingIndex = 0;
+    an.xwingActive = true;
+  } else {
+    /* Avança para o próximo padrão; se acabou, desativa */
+    an.xwingIndex++;
+    if (an.xwingIndex >= an.xwings.length) {
+      deactivateXWing();
+      return;
+    }
+  }
+  /* Deseleciona tabuleiro ao ativar/ciclar */
+  STATE.selectedRow = -1;
+  STATE.selectedCol = -1;
   updateXWingBtn();
   updateActionBar();
-  renderAnalysisHighlights();
+  renderHighlights();
 }
 
 function deactivateXWing() {
   const an = STATE.analysis;
-  an.xwingActive = false; an.xwings = [];
-  updateXWingBtn(); updateActionBar(); renderAnalysisHighlights();
+  an.xwingActive = false; an.xwings = []; an.xwingIndex = 0;
+  updateXWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeXWing() {
   const an = STATE.analysis;
+  const xw = an.xwings[an.xwingIndex];
+  if (!xw) { deactivateXWing(); return; }
   pushUndo();
-  const targets = new Set();
-  an.xwings.forEach(xw => xw.targets.forEach(t => targets.add(`${t.r},${t.c},${xw.num}`)));
-  targets.forEach(key => {
-    const [r, c, num] = key.split(',').map(Number);
-    STATE.notes[r][c].delete(num);
+  xw.targets.forEach(({ r, c }) => {
+    STATE.notes[r][c].delete(xw.num);
     updateCellContent(r, c);
   });
   deactivateXWing();
@@ -1845,32 +1858,42 @@ function updateXWingBtn() {
 
 /* ─── Y-Wing ─── */
 function toggleYWing() {
-  STATE.analysis.ywingActive ? deactivateYWing() : activateYWing();
-}
-
-function activateYWing() {
   const an = STATE.analysis;
-  an.ywingActive = true;
-  an.ywings = detectYWings();
+  if (!an.ywingActive) {
+    /* Primeira ativação */
+    an.ywings     = detectYWings();
+    an.ywingIndex = 0;
+    an.ywingActive = true;
+  } else {
+    /* Avança para o próximo padrão; se acabou, desativa */
+    an.ywingIndex++;
+    if (an.ywingIndex >= an.ywings.length) {
+      deactivateYWing();
+      return;
+    }
+  }
+  /* Deseleciona tabuleiro ao ativar/ciclar */
+  STATE.selectedRow = -1;
+  STATE.selectedCol = -1;
   updateYWingBtn();
   updateActionBar();
-  renderAnalysisHighlights();
+  renderHighlights();
 }
 
 function deactivateYWing() {
   const an = STATE.analysis;
-  an.ywingActive = false; an.ywings = [];
-  updateYWingBtn(); updateActionBar(); renderAnalysisHighlights();
+  an.ywingActive = false; an.ywings = []; an.ywingIndex = 0;
+  updateYWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeYWing() {
   const an = STATE.analysis;
+  const yw = an.ywings[an.ywingIndex];
+  if (!yw) { deactivateYWing(); return; }
   pushUndo();
-  an.ywings.forEach(yw => {
-    yw.targets.forEach(({ r, c }) => {
-      STATE.notes[r][c].delete(yw.elimVal);
-      updateCellContent(r, c);
-    });
+  yw.targets.forEach(({ r, c }) => {
+    STATE.notes[r][c].delete(yw.elimVal);
+    updateCellContent(r, c);
   });
   deactivateYWing();
   renderHighlights();
@@ -1978,51 +2001,46 @@ function renderAnalysisHighlights() {
     for (const { r, c } of an.pointingAffected)
       cellElements[r][c].classList.add('pointing-affected');
 
-  /* X-Wing */
-  if (an.xwingActive) {
-    an.xwings.forEach(xw => {
+  /* X-Wing — apenas o padrão no índice atual */
+  if (an.xwingActive && an.xwings.length > 0) {
+    const xw = an.xwings[an.xwingIndex];
+    if (xw) {
       xw.cells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('xwing-cell');
-        /* Destaca o dígito pivô com cor violeta */
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${xw.num}"]`);
         if (span) span.classList.add('note-xwing');
       });
       xw.targets.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('xwing-target');
-        /* Marca o dígito eliminado em vermelho */
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${xw.num}"]`);
         if (span) span.classList.add('note-eliminate');
       });
-    });
+    }
   }
 
-  /* Y-Wing */
-  if (an.ywingActive) {
-    an.ywings.forEach(yw => {
+  /* Y-Wing — apenas o padrão no índice atual */
+  if (an.ywingActive && an.ywings.length > 0) {
+    const yw = an.ywings[an.ywingIndex];
+    if (yw) {
       const { r: pr, c: pc } = yw.pivot;
       cellElements[pr][pc].classList.add('ywing-pivot');
-      /* Destaca todos os candidatos do pivot com âmbar */
       STATE.notes[pr][pc].forEach(n => {
         const span = cellElements[pr][pc].querySelector(`.note-digit[data-note="${n}"]`);
         if (span) span.classList.add('note-ywing-pivot');
       });
-
       yw.pincers.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('ywing-pincer');
-        /* Destaca todos os candidatos dos pincers com azul */
         STATE.notes[r][c].forEach(n => {
           const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
           if (span) span.classList.add('note-ywing-pincer');
         });
       });
-
       yw.targets.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('ywing-target');
-        /* Marca o dígito eliminado em vermelho */
         const span = cellElements[r][c].querySelector(`.note-digit[data-note="${yw.elimVal}"]`);
         if (span) span.classList.add('note-eliminate');
       });
-    });
+    }
   }
 }
 
