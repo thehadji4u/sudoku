@@ -8,6 +8,7 @@ const SudokuGenerator = (() => {
     especialista: { remove: 51, multiplier: 3   },
     mestre:       { remove: 55, multiplier: 4   },
     extremo:      { remove: 58, multiplier: 6   },
+    diabolico:    { remove: 64, multiplier: 10  },
   };
 
   /* ── helpers ── */
@@ -64,8 +65,8 @@ const SudokuGenerator = (() => {
     let count = 0;
     function bt(depth) {
       if (count >= limit) return;
-      // Limite de profundidade para puzzles extremos (performance)
-      if (depth > 60) { count = limit; return; }
+      // Limite de profundidade para puzzles extremos/diabólicos (performance)
+      if (depth > 70) { count = limit; return; }
       for (let r = 0; r < 9; r++) {
         for (let c = 0; c < 9; c++) {
           if (board[r][c] === 0) {

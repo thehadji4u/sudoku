@@ -105,6 +105,7 @@ const DIFF_NAMES = {
   especialista: 'Especialista',
   mestre:       'Mestre',
   extremo:      'Extremo',
+  diabolico:    'Diabólico',
 };
 
 /* ═══════════════════════════════════════
@@ -1655,31 +1656,33 @@ function _pinSingle({ val }) {
   renderNumpad();
 }
 
-/* Computa Hidden Singles sem efeitos colaterais */
+/* Computa Hidden Singles sem efeitos colaterais.
+   Cada item inclui unitType ('row'|'col'|'box') e unitIdx para o destaque âmbar. */
 function _computeHiddenSingles() {
   const puz = STATE.puzzle, notes = STATE.notes;
   const found = new Map();
-  function checkGroup(cells) {
+  function checkGroup(cells, unitType, unitIdx) {
     for (let num = 1; num <= 9; num++) {
       const cands = cells.filter(({ r, c }) => puz[r][c] === 0 && notes[r][c].has(num));
       if (cands.length === 1) {
         const { r, c } = cands[0];
         if (notes[r][c].size > 1 && !found.has(`${r},${c}`))
-          found.set(`${r},${c}`, { r, c, val: num });
+          found.set(`${r},${c}`, { r, c, val: num, unitType, unitIdx });
       }
     }
   }
   for (let r = 0; r < 9; r++)
-    checkGroup(Array.from({ length: 9 }, (_, c) => ({ r, c })));
+    checkGroup(Array.from({ length: 9 }, (_, c) => ({ r, c })), 'row', r);
   for (let c = 0; c < 9; c++)
-    checkGroup(Array.from({ length: 9 }, (_, r) => ({ r, c })));
+    checkGroup(Array.from({ length: 9 }, (_, r) => ({ r, c })), 'col', c);
   for (let br = 0; br < 9; br += 3)
     for (let bc = 0; bc < 9; bc += 3) {
       const cells = [];
       for (let rr = br; rr < br + 3; rr++)
         for (let cc = bc; cc < bc + 3; cc++)
           cells.push({ r: rr, c: cc });
-      checkGroup(cells);
+      const boxIdx = (br / 3) * 3 + bc / 3;
+      checkGroup(cells, 'box', boxIdx);
     }
   return [...found.values()];
 }
@@ -2133,7 +2136,8 @@ function renderAnalysisHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'singles-match', 'pair-select', 'pair-affected',
+        'singles-match', 'hidden-unit',
+        'pair-select', 'pair-affected',
         'pointing-select', 'pointing-affected',
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target'
       );
@@ -2151,10 +2155,28 @@ function renderAnalysisHighlights() {
     if (sg) cellElements[sg.r][sg.c].classList.add('singles-match');
   }
 
-  /* Ocultas — apenas o hidden single no índice atual, dígito em verde */
+  /* Ocultas — apenas o hidden single no índice atual:
+     - Célula alvo: verde (singles-match + nota em negrito verde)
+     - Unidade responsável (linha / coluna / quadrante): âmbar (hidden-unit) */
   if (an.hiddenActive && an.hiddens.length > 0) {
     const hd = an.hiddens[an.hiddensIndex];
     if (hd) {
+      /* Âmbar na unidade que "força" o número */
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (r === hd.r && c === hd.c) continue; // célula alvo não recebe âmbar
+          let inUnit = false;
+          if (hd.unitType === 'row' && r === hd.unitIdx) inUnit = true;
+          if (hd.unitType === 'col' && c === hd.unitIdx) inUnit = true;
+          if (hd.unitType === 'box') {
+            const br = Math.floor(hd.unitIdx / 3) * 3;
+            const bc = (hd.unitIdx % 3) * 3;
+            if (r >= br && r < br + 3 && c >= bc && c < bc + 3) inUnit = true;
+          }
+          if (inUnit) cellElements[r][c].classList.add('hidden-unit');
+        }
+      }
+      /* Verde na célula alvo */
       cellElements[hd.r][hd.c].classList.add('singles-match');
       const span = cellElements[hd.r][hd.c].querySelector(`.note-digit[data-note="${hd.val}"]`);
       if (span) span.classList.add('note-hidden-single');
