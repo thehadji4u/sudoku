@@ -31,7 +31,7 @@ const STATE = {
   simulator: {
     active:      false,
     undoStart:   0,
-    placements:  new Map(),  // "r,c" → seq (1-indexed, odd=azul, even=vermelho)
+    placements:  new Map(),
     nextSeq:     0,
     savedPuzzle: null,
     savedNotes:  null,
@@ -39,14 +39,35 @@ const STATE = {
     savedScore:  0,
   },
 
+  analysis: {
+    /* Únicas (Naked Singles) */
+    singlesActive:  false,
+    singles:        [],        // [{r, c, val}]
+
+    /* Pares Nus (Naked Pairs/Triples) */
+    pairsPhase:     'idle',    // 'idle' | 'selecting' | 'ready'
+    pairCells:      [],        // [{r, c}]
+    pairTarget:     null,      // Set — anotações da 1ª célula
+    pairTargetCount: 0,        // N células necessárias
+    pairAffected:   [],        // [{r, c, nums: Set}]
+
+    /* Par Apontador (Pointing Pairs) */
+    pointingPhase:    'idle',  // 'idle' | 'selecting' | 'ready'
+    pointingCells:    [],      // [{r, c}]
+    pointingAffected: [],      // [{r, c}]
+  },
+
   settings: {
-    markErrors:        true,
-    failOnErrors:      false,
-    maxErrors:         3,
-    autoRemoveNotes:   true,
-    enhancedHighlight: true,
-    autoAnnotations:   false,
-    simulatorMode:     false,
+    markErrors:          true,
+    failOnErrors:        false,
+    maxErrors:           3,
+    autoRemoveNotes:     true,
+    enhancedHighlight:   true,
+    autoAnnotations:     false,
+    simulatorMode:       false,
+    enableNakedSingles:  true,
+    enableNakedPairs:    true,
+    enablePointingPairs: true,
   },
 };
 
@@ -108,7 +129,19 @@ function buildNumpad() {
 function attachEvents() {
   /* Dificuldade */
   document.querySelectorAll('.diff-btn').forEach(btn => {
-    btn.addEventListener('click', () => startGame(btn.dataset.diff));
+    btn.addEventListener('click', () => requestNewGame(btn.dataset.diff));
+  });
+
+  /* Aviso novo jogo */
+  document.getElementById('btn-warn-confirm').addEventListener('click', () => {
+    const diff = STATE._pendingDiff;
+    closeAllModals();
+    if (diff) startGame(diff);
+    STATE._pendingDiff = null;
+  });
+  document.getElementById('btn-warn-cancel').addEventListener('click', () => {
+    closeAllModals();
+    STATE._pendingDiff = null;
   });
 
   /* Voltar */
@@ -146,10 +179,20 @@ function attachEvents() {
     else activateSimulator();
   });
 
-  /* Tabuleiro (delegação) */
+  document.getElementById('btn-singles').addEventListener('click', () => {
+    if (!STATE.puzzle || STATE.paused) return;
+    toggleSingles();
+  });
+
+  document.getElementById('btn-action-confirm').addEventListener('click', handleActionConfirm);
+  document.getElementById('btn-action-cancel').addEventListener('click', handleActionCancel);
+
+  /* Tabuleiro — clique e long-press */
+  attachBoardLongPress();
   document.getElementById('board').addEventListener('click', e => {
     const cell = e.target.closest('[data-row]');
     if (!cell) return;
+    if (_cellLongPressed) { _cellLongPressed = false; return; }
     handleCellClick(+cell.dataset.row, +cell.dataset.col);
   });
 
@@ -202,7 +245,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableNakedPairs', 'enablePointingPairs'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -220,6 +263,9 @@ function setupSettingsEvents() {
       }
       if (key === 'simulatorMode') {
         updateControlsForSimMode();
+      }
+      if (key === 'enableNakedSingles') {
+        updateAnalysisToolsVisibility();
       }
     });
   });
@@ -267,6 +313,7 @@ function startGame(difficulty) {
       active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
       savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
     };
+    resetAnalysis();
 
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
@@ -290,6 +337,7 @@ function startGame(difficulty) {
     updateFillBtn();
     updateSimBtn();
     updateControlsForSimMode();
+    updateAnalysisToolsVisibility();
     if (STATE.settings.autoAnnotations) applyAutoAnnotations();
 
     showLoading(false);
@@ -300,6 +348,15 @@ function startGame(difficulty) {
 function restartGame() {
   closeAllModals();
   startGame(STATE.difficulty);
+}
+
+function requestNewGame(diff) {
+  if (STATE.puzzle && STATE.timerRunning) {
+    STATE._pendingDiff = diff;
+    openModal('modal-newgame-warn');
+  } else {
+    startGame(diff);
+  }
 }
 
 function endGame(won) {
@@ -411,10 +468,26 @@ function renderHighlights() {
   /* Aplica destaques do número fixado por long-press (sempre, mesmo sem seleção) */
   if (STATE.pinnedNum > 0) {
     const pn = STATE.pinnedNum;
+    const pinRows = new Set(), pinCols = new Set(), pinBoxes = new Set();
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
-        if (puzzle[r][c] === pn)
+        if (puzzle[r][c] === pn) {
           cellElements[r][c].classList.add('same-num');
+          pinRows.add(r); pinCols.add(c);
+          pinBoxes.add(Math.floor(r / 3) * 3 + Math.floor(c / 3));
+        }
+    /* Zona da seleção aprimorada para número fixado */
+    if (settings.enhancedHighlight && (pinRows.size || pinCols.size || pinBoxes.size)) {
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++) {
+          if (puzzle[r][c] === pn) continue;
+          const el = cellElements[r][c];
+          if (el.classList.contains('same-num') || el.classList.contains('selected')) continue;
+          const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+          if (pinRows.has(r) || pinCols.has(c) || pinBoxes.has(boxIdx))
+            el.classList.add('highlight-match');
+        }
+    }
     document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
       .forEach(s => s.classList.add('note-match'));
   }
@@ -492,6 +565,9 @@ function renderHighlights() {
 
   /* ── Conflitos no modo simulador ── */
   if (STATE.simulator.active) renderSimConflicts();
+
+  /* ── Destaques de análise ── */
+  renderAnalysisHighlights();
 }
 
 function renderNumpad() {
@@ -855,6 +931,8 @@ function resumeSession() {
   updateFillBtn();
   updateSimBtn();
   updateControlsForSimMode();
+  resetAnalysis();
+  updateAnalysisToolsVisibility();
   showGameScreen();
 }
 
@@ -1171,8 +1249,6 @@ function updateFillBtn() {
   const btn = document.getElementById('btn-fill');
   if (!btn) return;
   btn.classList.toggle('active-mode', STATE.fillNotes);
-  const tag = document.getElementById('fill-mode-tag');
-  if (tag) tag.textContent = STATE.fillNotes ? 'ON' : 'OFF';
 }
 
 function celebrateVictory() {
@@ -1189,6 +1265,402 @@ function celebrateVictory() {
       }, delay);
     }
   }
+}
+
+/* ═══════════════════════════════════════
+   FERRAMENTAS DE ANÁLISE
+═══════════════════════════════════════ */
+
+/* ─── Variáveis de long-press no tabuleiro ─── */
+let _cellLongPressTimer  = null;
+let _cellLongPressed     = false;
+
+function attachBoardLongPress() {
+  const board = document.getElementById('board');
+
+  const startPress = (r, c) => {
+    _cellLongPressed = false;
+    clearTimeout(_cellLongPressTimer);
+    _cellLongPressTimer = setTimeout(() => {
+      _cellLongPressed = true;
+      handleCellLongPress(r, c);
+    }, 450);
+  };
+  const cancelPress = () => clearTimeout(_cellLongPressTimer);
+
+  board.addEventListener('touchstart', e => {
+    const cell = e.target.closest('[data-row]');
+    if (cell) startPress(+cell.dataset.row, +cell.dataset.col);
+  }, { passive: true });
+  board.addEventListener('touchend',   cancelPress, { passive: true });
+  board.addEventListener('touchmove',  cancelPress, { passive: true });
+  board.addEventListener('mousedown', e => {
+    const cell = e.target.closest('[data-row]');
+    if (cell) startPress(+cell.dataset.row, +cell.dataset.col);
+  });
+  board.addEventListener('mouseup', cancelPress);
+}
+
+function handleCellLongPress(r, c) {
+  if (STATE.paused || !STATE.puzzle) return;
+  if (STATE.puzzle[r][c] !== 0) return;  /* só células com anotações */
+
+  /* Com número fixado no numpad → Par Apontador */
+  if (STATE.pinnedNum > 0 && STATE.settings.enablePointingPairs) {
+    handlePointingSelect(r, c);
+    return;
+  }
+  /* Sem numpad fixado → Pares Nus */
+  if (STATE.settings.enableNakedPairs) {
+    handleNakedSelect(r, c);
+  }
+}
+
+/* ─── Pares Nus (Naked Pairs / Triples) ─── */
+function handleNakedSelect(r, c) {
+  const an = STATE.analysis;
+  const notes = STATE.notes[r][c];
+
+  if (an.pairsPhase === 'idle') {
+    if (notes.size < 2) return;
+    an.pairsPhase    = 'selecting';
+    an.pairTarget    = new Set(notes);
+    an.pairTargetCount = notes.size;
+    an.pairCells     = [{ r, c }];
+    updateActionBar();
+    renderAnalysisHighlights();
+    return;
+  }
+
+  if (an.pairsPhase === 'selecting') {
+    /* Mesma célula — cancela */
+    if (an.pairCells.some(p => p.r === r && p.c === c)) {
+      cancelNakedPair(); return;
+    }
+    if (!setsEqual(STATE.notes[r][c], an.pairTarget)) {
+      cancelNakedPair(); return;
+    }
+    an.pairCells.push({ r, c });
+    if (an.pairCells.length >= an.pairTargetCount) {
+      analyzeNakedPair();
+    } else {
+      updateActionBar();
+      renderAnalysisHighlights();
+    }
+    return;
+  }
+
+  if (an.pairsPhase === 'ready') {
+    cancelNakedPair();
+  }
+}
+
+function setsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const x of a) if (!b.has(x)) return false;
+  return true;
+}
+
+function analyzeNakedPair() {
+  const an = STATE.analysis;
+  const cells = an.pairCells;
+  const nums  = an.pairTarget;
+
+  const rows  = new Set(cells.map(p => p.r));
+  const cols  = new Set(cells.map(p => p.c));
+  const boxes = new Set(cells.map(p => Math.floor(p.r / 3) * 3 + Math.floor(p.c / 3)));
+
+  const sharedRow = rows.size  === 1 ? [...rows][0]  : -1;
+  const sharedCol = cols.size  === 1 ? [...cols][0]  : -1;
+  const sharedBox = boxes.size === 1 ? [...boxes][0] : -1;
+
+  if (sharedRow < 0 && sharedCol < 0 && sharedBox < 0) { cancelNakedPair(); return; }
+
+  const selectedKeys = new Set(cells.map(p => `${p.r},${p.c}`));
+  const affected = [];
+
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (selectedKeys.has(`${r},${c}`)) continue;
+      if (STATE.puzzle[r][c] !== 0) continue;
+      const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      const inRegion = r === sharedRow || c === sharedCol || boxIdx === sharedBox;
+      if (!inRegion) continue;
+      const toRemove = new Set([...nums].filter(n => STATE.notes[r][c].has(n)));
+      if (toRemove.size) affected.push({ r, c, nums: toRemove });
+    }
+  }
+
+  if (!affected.length) { cancelNakedPair(); return; }
+
+  an.pairAffected = affected;
+  an.pairsPhase   = 'ready';
+  updateActionBar();
+  renderAnalysisHighlights();
+}
+
+function cancelNakedPair() {
+  const an = STATE.analysis;
+  an.pairsPhase = 'idle'; an.pairCells = [];
+  an.pairTarget = null;   an.pairTargetCount = 0; an.pairAffected = [];
+  updateActionBar(); renderAnalysisHighlights();
+}
+
+function executeNakedPairRemove() {
+  const an = STATE.analysis;
+  pushUndo();
+  for (const { r, c, nums } of an.pairAffected) {
+    for (const n of nums) STATE.notes[r][c].delete(n);
+    updateCellContent(r, c);
+  }
+  cancelNakedPair();
+  renderHighlights();
+}
+
+/* ─── Par Apontador (Pointing Pairs) ─── */
+function handlePointingSelect(r, c) {
+  const an = STATE.analysis;
+
+  if (an.pointingPhase === 'idle') {
+    an.pointingPhase = 'selecting';
+    an.pointingCells = [{ r, c }];
+    updateActionBar(); renderAnalysisHighlights(); return;
+  }
+
+  if (an.pointingPhase === 'selecting') {
+    if (an.pointingCells.some(p => p.r === r && p.c === c)) { cancelPointing(); return; }
+    an.pointingCells.push({ r, c });
+    if (an.pointingCells.length >= 2) analyzePointing();
+    else { updateActionBar(); renderAnalysisHighlights(); }
+    return;
+  }
+
+  if (an.pointingPhase === 'ready') cancelPointing();
+}
+
+function analyzePointing() {
+  const an = STATE.analysis;
+  const [p1, p2] = an.pointingCells;
+  const num = STATE.pinnedNum;
+
+  const box1 = Math.floor(p1.r / 3) * 3 + Math.floor(p1.c / 3);
+  const box2 = Math.floor(p2.r / 3) * 3 + Math.floor(p2.c / 3);
+  if (box1 !== box2) { cancelPointing(); return; }
+
+  /* Só essas 2 células podem ter o número no quadrante */
+  const br = Math.floor(p1.r / 3) * 3, bc = Math.floor(p1.c / 3) * 3;
+  const selKeys = new Set([`${p1.r},${p1.c}`, `${p2.r},${p2.c}`]);
+  for (let rr = br; rr < br + 3; rr++)
+    for (let cc = bc; cc < bc + 3; cc++)
+      if (!selKeys.has(`${rr},${cc}`) && STATE.notes[rr][cc].has(num)) {
+        cancelPointing(); return;
+      }
+
+  const sameRow = p1.r === p2.r, sameCol = p1.c === p2.c;
+  if (!sameRow && !sameCol) { cancelPointing(); return; }
+
+  const affected = [];
+  if (sameRow)
+    for (let c = 0; c < 9; c++) {
+      if (Math.floor(p1.r / 3) * 3 + Math.floor(c / 3) === box1) continue;
+      if (STATE.notes[p1.r][c].has(num)) affected.push({ r: p1.r, c });
+    }
+  if (sameCol)
+    for (let r = 0; r < 9; r++) {
+      if (Math.floor(r / 3) * 3 + Math.floor(p1.c / 3) === box1) continue;
+      if (STATE.notes[r][p1.c].has(num)) affected.push({ r, c: p1.c });
+    }
+
+  if (!affected.length) { cancelPointing(); return; }
+
+  an.pointingAffected = affected;
+  an.pointingPhase    = 'ready';
+  updateActionBar(); renderAnalysisHighlights();
+}
+
+function cancelPointing() {
+  const an = STATE.analysis;
+  an.pointingPhase = 'idle'; an.pointingCells = []; an.pointingAffected = [];
+  updateActionBar(); renderAnalysisHighlights();
+}
+
+function executePointing() {
+  const an = STATE.analysis;
+  const num = STATE.pinnedNum;
+  pushUndo();
+  for (const { r, c } of an.pointingAffected) {
+    STATE.notes[r][c].delete(num);
+    updateCellContent(r, c);
+  }
+  cancelPointing();
+  renderHighlights();
+}
+
+/* ─── Únicas (Naked Singles) ─── */
+function toggleSingles() {
+  STATE.analysis.singlesActive ? deactivateSingles() : activateSingles();
+}
+
+function activateSingles() {
+  const an = STATE.analysis;
+  an.singlesActive = true;
+  an.singles = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
+        an.singles.push({ r, c, val: [...STATE.notes[r][c]][0] });
+  updateSinglesBtn();
+  updateActionBar();
+  renderAnalysisHighlights();
+}
+
+function deactivateSingles() {
+  const an = STATE.analysis;
+  an.singlesActive = false; an.singles = [];
+  updateSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
+}
+
+function executeFillSingles() {
+  const an = STATE.analysis;
+  if (!an.singlesActive || !an.singles.length) return;
+  pushUndo();
+  for (const { r, c, val } of an.singles) {
+    if (STATE.puzzle[r][c] !== 0) continue;
+    STATE.puzzle[r][c] = val;
+    STATE.score += calculateCellPoints();
+    if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
+    updateCellContent(r, c);
+  }
+  deactivateSingles();
+  updateScoreDisplay(); renderNumpad(); updateProgressBar(); renderHighlights();
+  checkWin();
+}
+
+/* ─── Botão de ação (action bar) ─── */
+function handleActionConfirm() {
+  const an = STATE.analysis;
+  if (an.singlesActive && an.singles.length) { executeFillSingles(); return; }
+  if (an.pairsPhase    === 'ready')           { executeNakedPairRemove(); return; }
+  if (an.pointingPhase === 'ready')           { executePointing(); return; }
+}
+
+function handleActionCancel() {
+  const an = STATE.analysis;
+  if (an.singlesActive)                         { deactivateSingles(); return; }
+  if (an.pairsPhase    !== 'idle')              { cancelNakedPair(); return; }
+  if (an.pointingPhase !== 'idle')              { cancelPointing(); return; }
+}
+
+function updateActionBar() {
+  const bar     = document.getElementById('action-bar');
+  const label   = document.getElementById('action-bar-label');
+  const confirm = document.getElementById('btn-action-confirm');
+  if (!bar) return;
+
+  const an = STATE.analysis;
+
+  /* Únicas */
+  if (an.singlesActive) {
+    bar.classList.remove('hidden');
+    if (an.singles.length) {
+      label.textContent    = `${an.singles.length} única(s) encontrada(s)`;
+      confirm.textContent  = '① Preencher todas';
+      confirm.disabled     = false;
+    } else {
+      label.textContent    = 'Nenhuma única encontrada';
+      confirm.textContent  = '① Preencher';
+      confirm.disabled     = true;
+    }
+    return;
+  }
+
+  /* Par Apontador */
+  if (STATE.pinnedNum > 0 && STATE.settings.enablePointingPairs) {
+    if (an.pointingPhase === 'selecting') {
+      bar.classList.remove('hidden');
+      label.textContent   = `Segure ${2 - an.pointingCells.length} célula(s) no mesmo quadrante`;
+      confirm.textContent = '🎯 Atirar';
+      confirm.disabled    = true;
+      return;
+    }
+    if (an.pointingPhase === 'ready') {
+      bar.classList.remove('hidden');
+      label.textContent   = `${an.pointingAffected.length} candidato(s) a eliminar`;
+      confirm.textContent = '🎯 Atirar';
+      confirm.disabled    = false;
+      return;
+    }
+  }
+
+  /* Pares Nus */
+  if (STATE.settings.enableNakedPairs) {
+    if (an.pairsPhase === 'selecting') {
+      const need = an.pairTargetCount - an.pairCells.length;
+      bar.classList.remove('hidden');
+      label.textContent   = `Segure mais ${need} célula(s) com ${[...an.pairTarget].join(',')}`;
+      confirm.textContent = '✓ Remover';
+      confirm.disabled    = true;
+      return;
+    }
+    if (an.pairsPhase === 'ready') {
+      bar.classList.remove('hidden');
+      label.textContent   = `${an.pairAffected.length} candidato(s) a remover`;
+      confirm.textContent = '✓ Remover';
+      confirm.disabled    = false;
+      return;
+    }
+  }
+
+  bar.classList.add('hidden');
+}
+
+function updateSinglesBtn() {
+  const btn = document.getElementById('btn-singles');
+  if (btn) btn.classList.toggle('active-mode', STATE.analysis.singlesActive);
+}
+
+function updateAnalysisToolsVisibility() {
+  const bar = document.getElementById('analysis-tools');
+  if (!bar) return;
+  bar.classList.toggle('hidden', !STATE.settings.enableNakedSingles);
+}
+
+function resetAnalysis() {
+  STATE.analysis = {
+    singlesActive: false, singles: [],
+    pairsPhase: 'idle', pairCells: [], pairTarget: null, pairTargetCount: 0, pairAffected: [],
+    pointingPhase: 'idle', pointingCells: [], pointingAffected: [],
+  };
+  const bar = document.getElementById('action-bar');
+  if (bar) bar.classList.add('hidden');
+  updateSinglesBtn();
+}
+
+function renderAnalysisHighlights() {
+  if (!cellElements.length || !cellElements[0]) return;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      cellElements[r][c].classList.remove(
+        'singles-match', 'pair-select', 'pair-affected', 'pointing-select', 'pointing-affected'
+      );
+
+  const an = STATE.analysis;
+
+  if (an.singlesActive)
+    for (const { r, c } of an.singles)
+      cellElements[r][c].classList.add('singles-match');
+
+  for (const { r, c } of an.pairCells)
+    cellElements[r][c].classList.add('pair-select');
+  if (an.pairsPhase === 'ready')
+    for (const { r, c } of an.pairAffected)
+      cellElements[r][c].classList.add('pair-affected');
+
+  for (const { r, c } of an.pointingCells)
+    cellElements[r][c].classList.add('pointing-select');
+  if (an.pointingPhase === 'ready')
+    for (const { r, c } of an.pointingAffected)
+      cellElements[r][c].classList.add('pointing-affected');
 }
 
 function checkCompletions(r, c) {
@@ -1243,6 +1715,12 @@ function correctPop(r, c) {
 }
 
 function celebrateDigit(num) {
+  /* Auto-despinnar se este número estava fixado */
+  if (STATE.pinnedNum === num) {
+    STATE.pinnedNum = 0;
+    renderNumpad();
+    renderHighlights();
+  }
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       if (STATE.puzzle[r][c] === num) {
@@ -1281,11 +1759,15 @@ function syncSettingsUI() {
   toggle('cfg-autoRemoveNotes',   s.autoRemoveNotes);
   toggle('cfg-enhancedHighlight', s.enhancedHighlight);
   toggle('cfg-autoAnnotations',   s.autoAnnotations);
-  toggle('cfg-simulatorMode',     s.simulatorMode);
+  toggle('cfg-simulatorMode',        s.simulatorMode);
+  toggle('cfg-enableNakedSingles',   s.enableNakedSingles);
+  toggle('cfg-enableNakedPairs',     s.enableNakedPairs);
+  toggle('cfg-enablePointingPairs',  s.enablePointingPairs);
 
   document.getElementById('max-errors-val').textContent = s.maxErrors;
   document.getElementById('max-errors-row').classList.toggle('hidden', !s.failOnErrors);
   updateControlsForSimMode();
+  updateAnalysisToolsVisibility();
 }
 
 /* ═══════════════════════════════════════

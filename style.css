@@ -1014,6 +1014,116 @@ html, body {
   z-index: 2;
 }
 
+/* ═══════════════════════════════════
+   FERRAMENTAS DE ANÁLISE
+═══════════════════════════════════ */
+#analysis-tools {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 12px 0;
+}
+
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 16px;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 20px;
+  background: #F8FAFC;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.tool-btn .tool-icon { font-size: 16px; line-height: 1; }
+.tool-btn.active-mode {
+  background: #EFF6FF;
+  border-color: #3B82F6;
+  color: #1D4ED8;
+}
+
+/* Action bar */
+#action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  margin: 4px 12px 0;
+  background: #F0F9FF;
+  border: 1.5px solid #BAE6FD;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #0369A1;
+}
+#action-bar-label { flex: 1; font-weight: 600; }
+.action-bar-btns { display: flex; gap: 6px; }
+.action-btn {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.action-btn.primary {
+  background: #3B82F6;
+  color: #fff;
+}
+.action-btn.primary:disabled {
+  background: #CBD5E1;
+  color: #94A3B8;
+  cursor: default;
+}
+.action-btn.secondary {
+  background: #E2E8F0;
+  color: #475569;
+}
+
+/* Highlights de análise */
+.cell.singles-match  { background: #FEF9C3 !important; outline: 2px solid #EAB308; outline-offset: -2px; }
+.cell.pair-select    { background: #DBEAFE !important; outline: 2px solid #3B82F6; outline-offset: -2px; }
+.cell.pair-affected  { background: #FEE2E2 !important; }
+.cell.pointing-select   { background: #D1FAE5 !important; outline: 2px solid #10B981; outline-offset: -2px; }
+.cell.pointing-affected { background: #FDE8D8 !important; }
+
+/* Modal aviso novo jogo */
+.modal-warn-body {
+  text-align: center;
+  color: #64748B;
+  font-size: 14px;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+.modal-btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.btn-secondary {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: 1.5px solid #CBD5E1;
+  background: #fff;
+  color: #374151;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Título de seção nas configurações */
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94A3B8;
+  padding: 12px 0 4px;
+}
+
 /* ── Responsivo desktop ── */
 @media (min-width: 500px) {
   :root {

@@ -67,7 +67,7 @@
   </div>
 
   <div class="diff-copyright">
-    <span class="app-version">v1.7.0</span>
+    <span class="app-version">v2.0.0</span>
     <span class="copyright-sep">·</span>
     <span>© 2026 HadjiWare</span>
   </div>
@@ -125,6 +125,23 @@
     </div>
   </div>
 
+  <!-- Ferramentas de análise (acima do numpad) -->
+  <div id="analysis-tools" class="hidden">
+    <button class="tool-btn" id="btn-singles" title="Identificar células com único candidato">
+      <span class="tool-icon">①</span>
+      <span>Únicas</span>
+    </button>
+  </div>
+
+  <!-- Barra de ação (análise) — aparece quando há ação disponível -->
+  <div id="action-bar" class="hidden">
+    <span id="action-bar-label">—</span>
+    <div class="action-bar-btns">
+      <button class="action-btn primary" id="btn-action-confirm" disabled>Confirmar</button>
+      <button class="action-btn secondary" id="btn-action-cancel">✕</button>
+    </div>
+  </div>
+
   <!-- Numpad (gerado por JS) -->
   <div id="numpad"></div>
 
@@ -153,10 +170,7 @@
       <span>Anotações</span>
     </button>
     <button class="ctrl-btn" id="btn-fill">
-      <span class="ctrl-icon-wrap">
-        <span class="ctrl-icon">💡</span>
-        <span class="ctrl-mode-tag" id="fill-mode-tag">OFF</span>
-      </span>
+      <span class="ctrl-icon">💡</span>
       <span>Preencher</span>
     </button>
   </div>
@@ -166,6 +180,17 @@
      OVERLAY GLOBAL
 ═══════════════════════════════ -->
 <div class="modal-overlay hidden" id="modal-overlay">
+
+  <!-- Modal Aviso Novo Jogo -->
+  <div class="modal-sheet hidden" id="modal-newgame-warn">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">⚠️ Jogo em andamento</h2>
+    <p class="modal-warn-body">Iniciar um novo jogo vai descartar o progresso atual. Tem certeza?</p>
+    <div class="modal-btn-row">
+      <button class="btn-secondary" id="btn-warn-cancel">Cancelar</button>
+      <button class="btn-primary" id="btn-warn-confirm">Novo Jogo</button>
+    </div>
+  </div>
 
   <!-- Modal Configurações -->
   <div class="modal-sheet" id="modal-settings">
@@ -244,6 +269,41 @@
       <div class="toggle-wrap">
         <input type="checkbox" class="toggle-input" id="cfg-simulatorMode">
         <label class="toggle-track" for="cfg-simulatorMode"></label>
+      </div>
+    </div>
+
+    <div class="settings-section-title">Ferramentas de Análise</div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Únicas ①</div>
+        <div class="setting-desc">Botão que identifica células com apenas um candidato nas anotações</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-enableNakedSingles">
+        <label class="toggle-track" for="cfg-enableNakedSingles"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Pares Nus (long-press célula)</div>
+        <div class="setting-desc">Segurar duas ou mais células com anotações idênticas para remover candidatos da região</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-enableNakedPairs">
+        <label class="toggle-track" for="cfg-enableNakedPairs"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Par Apontador (long-press + numpad)</div>
+        <div class="setting-desc">Com número fixado no numpad, segurar duas células do mesmo quadrante para "atirar" candidatos na linha/coluna</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-enablePointingPairs">
+        <label class="toggle-track" for="cfg-enablePointingPairs"></label>
       </div>
     </div>
   </div>
