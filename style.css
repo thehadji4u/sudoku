@@ -457,6 +457,21 @@ html, body {
   color: #EF4444 !important;
   font-weight: 800;
 }
+/* Dígito pivô X-Wing — violeta */
+.note-digit.note-xwing {
+  color: #7C3AED !important;
+  font-weight: 800;
+}
+/* Dígitos do pivot Y-Wing — âmbar */
+.note-digit.note-ywing-pivot {
+  color: #B45309 !important;
+  font-weight: 800;
+}
+/* Dígitos dos pincers Y-Wing — azul */
+.note-digit.note-ywing-pincer {
+  color: #1D4ED8 !important;
+  font-weight: 800;
+}
 
 /* ── Modo Simulador ── */
 .cell.sim-placed {

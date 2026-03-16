@@ -1947,8 +1947,11 @@ function renderAnalysisHighlights() {
         'pointing-select', 'pointing-affected',
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target'
       );
-  /* Limpa marcações de dígitos a eliminar do ciclo anterior */
+  /* Limpa marcações de dígitos do ciclo anterior */
   document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
+  document.querySelectorAll('.note-digit.note-xwing').forEach(s => s.classList.remove('note-xwing'));
+  document.querySelectorAll('.note-digit.note-ywing-pivot').forEach(s => s.classList.remove('note-ywing-pivot'));
+  document.querySelectorAll('.note-digit.note-ywing-pincer').forEach(s => s.classList.remove('note-ywing-pincer'));
 
   const an = STATE.analysis;
 
@@ -1977,7 +1980,12 @@ function renderAnalysisHighlights() {
   /* X-Wing */
   if (an.xwingActive) {
     an.xwings.forEach(xw => {
-      xw.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('xwing-cell'));
+      xw.cells.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('xwing-cell');
+        /* Destaca o dígito pivô com cor violeta */
+        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${xw.num}"]`);
+        if (span) span.classList.add('note-xwing');
+      });
       xw.targets.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('xwing-target');
         /* Marca o dígito eliminado em vermelho */
@@ -1990,8 +1998,23 @@ function renderAnalysisHighlights() {
   /* Y-Wing */
   if (an.ywingActive) {
     an.ywings.forEach(yw => {
-      cellElements[yw.pivot.r][yw.pivot.c].classList.add('ywing-pivot');
-      yw.pincers.forEach(({ r, c }) => cellElements[r][c].classList.add('ywing-pincer'));
+      const { r: pr, c: pc } = yw.pivot;
+      cellElements[pr][pc].classList.add('ywing-pivot');
+      /* Destaca todos os candidatos do pivot com âmbar */
+      STATE.notes[pr][pc].forEach(n => {
+        const span = cellElements[pr][pc].querySelector(`.note-digit[data-note="${n}"]`);
+        if (span) span.classList.add('note-ywing-pivot');
+      });
+
+      yw.pincers.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('ywing-pincer');
+        /* Destaca todos os candidatos dos pincers com azul */
+        STATE.notes[r][c].forEach(n => {
+          const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (span) span.classList.add('note-ywing-pincer');
+        });
+      });
+
       yw.targets.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('ywing-target');
         /* Marca o dígito eliminado em vermelho */
