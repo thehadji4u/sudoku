@@ -41,31 +41,28 @@ const STATE = {
 
   analysis: {
     /* Únicas (Naked Singles) */
-    singlesActive:  false,
-    singles:        [],        // [{r, c, val}]
+    singlesActive:      false,
+    singles:            [],        // [{r, c, val}]
 
-    /* Pares Nus (Naked Pairs/Triples) */
-    pairsPhase:     'idle',    // 'idle' | 'selecting' | 'ready'
-    pairCells:      [],        // [{r, c}]
-    pairTarget:     null,      // Set — anotações da 1ª célula
-    pairTargetCount: 0,        // N células necessárias
-    pairAffected:   [],        // [{r, c, nums: Set}]
+    /* Pares Nus (Naked Pairs) — auto-detect cycling */
+    nakedPairsActive:   false,
+    nakedPairs:         [],        // [{pairNums, pairCells:[{r,c}], affected:[{r,c,nums:Set}]}]
+    nakedPairsIndex:    0,
 
-    /* Par Apontador (Pointing Pairs) */
-    pointingPhase:     'idle',
-    pointingCells:     [],
-    pointingAffected:  [],
-    pointingCondition: true,
+    /* Par Apontador (Pointing Pairs) — auto-detect cycling */
+    pointingActive:     false,
+    pointings:          [],        // [{num, cells:[{r,c}], targets:[{r,c}]}]
+    pointingIndex:      0,
 
     /* X-Wing */
-    xwingActive:   false,
-    xwings:        [],   // [{num, cells:[{r,c}×4], targets:[{r,c}]}]
-    xwingIndex:    0,    // padrão atual exibido
+    xwingActive:        false,
+    xwings:             [],
+    xwingIndex:         0,
 
     /* Y-Wing */
-    ywingActive:   false,
-    ywings:        [],   // [{pivot:{r,c}, pincers:[{r,c}×2], targets:[{r,c}], elimVal}]
-    ywingIndex:    0,    // padrão atual exibido
+    ywingActive:        false,
+    ywings:             [],
+    ywingIndex:         0,
   },
 
   settings: {
@@ -197,6 +194,16 @@ function attachEvents() {
   document.getElementById('btn-singles').addEventListener('click', () => {
     if (!STATE.puzzle || STATE.paused) return;
     toggleSingles();
+  });
+
+  document.getElementById('btn-nakedpairs').addEventListener('click', () => {
+    if (!STATE.puzzle || STATE.paused) return;
+    toggleNakedPairs();
+  });
+
+  document.getElementById('btn-pointing').addEventListener('click', () => {
+    if (!STATE.puzzle || STATE.paused) return;
+    togglePointing();
   });
 
   document.getElementById('btn-xwing').addEventListener('click', () => {
@@ -1339,57 +1346,8 @@ function attachBoardLongPress() {
 }
 
 function handleCellLongPress(r, c) {
-  if (STATE.paused || !STATE.puzzle) return;
-  if (STATE.puzzle[r][c] !== 0) return;  /* só células com anotações */
-
-  /* Com número fixado no numpad → Par Apontador */
-  if (STATE.pinnedNum > 0 && STATE.settings.enablePointingPairs) {
-    handlePointingSelect(r, c);
-    return;
-  }
-  /* Sem numpad fixado → Pares Nus */
-  if (STATE.settings.enableNakedPairs) {
-    handleNakedSelect(r, c);
-  }
-}
-
-/* ─── Pares Nus (Naked Pairs / Triples) ─── */
-function handleNakedSelect(r, c) {
-  const an = STATE.analysis;
-  const notes = STATE.notes[r][c];
-
-  if (an.pairsPhase === 'idle') {
-    if (notes.size < 2) return;
-    an.pairsPhase    = 'selecting';
-    an.pairTarget    = new Set(notes);
-    an.pairTargetCount = notes.size;
-    an.pairCells     = [{ r, c }];
-    updateActionBar();
-    renderAnalysisHighlights();
-    return;
-  }
-
-  if (an.pairsPhase === 'selecting') {
-    /* Mesma célula — cancela */
-    if (an.pairCells.some(p => p.r === r && p.c === c)) {
-      cancelNakedPair(); return;
-    }
-    if (!setsEqual(STATE.notes[r][c], an.pairTarget)) {
-      cancelNakedPair(); return;
-    }
-    an.pairCells.push({ r, c });
-    if (an.pairCells.length >= an.pairTargetCount) {
-      analyzeNakedPair();
-    } else {
-      updateActionBar();
-      renderAnalysisHighlights();
-    }
-    return;
-  }
-
-  if (an.pairsPhase === 'ready') {
-    cancelNakedPair();
-  }
+  /* Long-press on cells is no longer used for manual selection.
+     Naked Pairs and Pointing Pairs now use auto-detect buttons. */
 }
 
 function setsEqual(a, b) {
@@ -1398,150 +1356,179 @@ function setsEqual(a, b) {
   return true;
 }
 
-function analyzeNakedPair() {
-  const an = STATE.analysis;
-  const cells = an.pairCells;
-  const nums  = an.pairTarget;
+/* ─── Naked Pairs (auto-detect cycling) ─── */
 
-  const rows  = new Set(cells.map(p => p.r));
-  const cols  = new Set(cells.map(p => p.c));
-  const boxes = new Set(cells.map(p => Math.floor(p.r / 3) * 3 + Math.floor(p.c / 3)));
+function detectNakedPairs() {
+  const found = [];
+  const puz = STATE.puzzle, notes = STATE.notes;
+  const seen = new Set();
 
-  const sharedRow = rows.size  === 1 ? [...rows][0]  : -1;
-  const sharedCol = cols.size  === 1 ? [...cols][0]  : -1;
-  const sharedBox = boxes.size === 1 ? [...boxes][0] : -1;
-
-  if (sharedRow < 0 && sharedCol < 0 && sharedBox < 0) { cancelNakedPair(); return; }
-
-  const selectedKeys = new Set(cells.map(p => `${p.r},${p.c}`));
-  const affected = [];
-
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      if (selectedKeys.has(`${r},${c}`)) continue;
-      if (STATE.puzzle[r][c] !== 0) continue;
-      const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-      const inRegion = r === sharedRow || c === sharedCol || boxIdx === sharedBox;
-      if (!inRegion) continue;
-      const toRemove = new Set([...nums].filter(n => STATE.notes[r][c].has(n)));
-      if (toRemove.size) affected.push({ r, c, nums: toRemove });
+  function checkGroup(cells) {
+    const empties = cells.filter(({ r, c }) => puz[r][c] === 0 && notes[r][c].size === 2);
+    for (let i = 0; i < empties.length; i++) {
+      for (let j = i + 1; j < empties.length; j++) {
+        const { r: r1, c: c1 } = empties[i];
+        const { r: r2, c: c2 } = empties[j];
+        if (!setsEqual(notes[r1][c1], notes[r2][c2])) continue;
+        const key = `${r1},${c1},${r2},${c2}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const pairNums = [...notes[r1][c1]];
+        const pairCells = [{ r: r1, c: c1 }, { r: r2, c: c2 }];
+        const affected = [];
+        for (const { r, c } of cells) {
+          if ((r === r1 && c === c1) || (r === r2 && c === c2)) continue;
+          if (puz[r][c] !== 0) continue;
+          const toRemove = pairNums.filter(n => notes[r][c].has(n));
+          if (toRemove.length > 0) affected.push({ r, c, nums: new Set(toRemove) });
+        }
+        if (affected.length > 0) found.push({ pairNums, pairCells, affected });
+      }
     }
   }
 
-  if (!affected.length) { cancelNakedPair(); return; }
+  for (let r = 0; r < 9; r++)
+    checkGroup(Array.from({ length: 9 }, (_, c) => ({ r, c })));
+  for (let c = 0; c < 9; c++)
+    checkGroup(Array.from({ length: 9 }, (_, r) => ({ r, c })));
+  for (let br = 0; br < 9; br += 3)
+    for (let bc = 0; bc < 9; bc += 3) {
+      const cells = [];
+      for (let rr = br; rr < br + 3; rr++)
+        for (let cc = bc; cc < bc + 3; cc++)
+          cells.push({ r: rr, c: cc });
+      checkGroup(cells);
+    }
 
-  an.pairAffected = affected;
-  an.pairsPhase   = 'ready';
-  updateActionBar();
-  renderAnalysisHighlights();
+  return found;
 }
 
-function cancelNakedPair() {
+function toggleNakedPairs() {
   const an = STATE.analysis;
-  an.pairsPhase = 'idle'; an.pairCells = [];
-  an.pairTarget = null;   an.pairTargetCount = 0; an.pairAffected = [];
-  updateActionBar(); renderAnalysisHighlights();
-}
-
-function executeNakedPairRemove() {
-  const an = STATE.analysis;
-  pushUndo();
-  for (const { r, c, nums } of an.pairAffected) {
-    for (const n of nums) STATE.notes[r][c].delete(n);
-    updateCellContent(r, c);
+  if (!an.nakedPairsActive) {
+    an.nakedPairs      = detectNakedPairs();
+    an.nakedPairsIndex = 0;
+    an.nakedPairsActive = true;
+  } else {
+    an.nakedPairsIndex++;
+    if (an.nakedPairsIndex >= an.nakedPairs.length) {
+      deactivateNakedPairs(); return;
+    }
   }
-  cancelNakedPair();
+  STATE.selectedRow = -1; STATE.selectedCol = -1;
+  updateNakedPairsBtn(); updateActionBar(); renderHighlights();
+}
+
+function deactivateNakedPairs() {
+  const an = STATE.analysis;
+  an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0;
+  updateNakedPairsBtn(); updateActionBar(); renderHighlights();
+}
+
+function executeNakedPairs() {
+  const an = STATE.analysis;
+  const np = an.nakedPairs[an.nakedPairsIndex];
+  if (!np) { deactivateNakedPairs(); return; }
+  pushUndo();
+  np.affected.forEach(({ r, c, nums }) => {
+    nums.forEach(n => STATE.notes[r][c].delete(n));
+    updateCellContent(r, c);
+  });
+  deactivateNakedPairs();
   renderHighlights();
 }
 
-/* ─── Par Apontador (Pointing Pairs) ─── */
-function handlePointingSelect(r, c) {
-  const an = STATE.analysis;
-
-  if (an.pointingPhase === 'idle') {
-    an.pointingPhase = 'selecting';
-    an.pointingCells = [{ r, c }];
-    updateActionBar(); renderAnalysisHighlights(); return;
-  }
-
-  if (an.pointingPhase === 'selecting') {
-    if (an.pointingCells.some(p => p.r === r && p.c === c)) { cancelPointing(); return; }
-    an.pointingCells.push({ r, c });
-    if (an.pointingCells.length >= 2) analyzePointing();
-    else { updateActionBar(); renderAnalysisHighlights(); }
-    return;
-  }
-
-  if (an.pointingPhase === 'ready') cancelPointing();
+function updateNakedPairsBtn() {
+  const btn = document.getElementById('btn-nakedpairs');
+  if (btn) btn.classList.toggle('active-mode', STATE.analysis.nakedPairsActive);
 }
 
-function analyzePointing() {
-  const an = STATE.analysis;
-  const [p1, p2] = an.pointingCells;
-  const num = STATE.pinnedNum;
+/* ─── Pointing Pairs (auto-detect cycling) ─── */
 
-  /* Células devem estar no mesmo quadrante */
-  const box1 = Math.floor(p1.r / 3) * 3 + Math.floor(p1.c / 3);
-  const box2 = Math.floor(p2.r / 3) * 3 + Math.floor(p2.c / 3);
-  if (box1 !== box2) { cancelPointing(); return; }
+function detectPointingPairs() {
+  const found = [];
+  const puz = STATE.puzzle, notes = STATE.notes;
 
-  /* Células devem estar na mesma linha ou coluna */
-  const sameRow = p1.r === p2.r, sameCol = p1.c === p2.c;
-  if (!sameRow && !sameCol) { cancelPointing(); return; }
+  for (let num = 1; num <= 9; num++) {
+    for (let br = 0; br < 9; br += 3) {
+      for (let bc = 0; bc < 9; bc += 3) {
+        const cells = [];
+        for (let rr = br; rr < br + 3; rr++)
+          for (let cc = bc; cc < bc + 3; cc++)
+            if (puz[rr][cc] === 0 && notes[rr][cc].has(num))
+              cells.push({ r: rr, c: cc });
+        if (cells.length < 2) continue;
 
-  /* Verifica se TODAS as ocorrências do número no quadrante estão na mesma linha/coluna
-     das células selecionadas (permite Duplas E Triplas Apontadoras) */
-  const br = Math.floor(p1.r / 3) * 3, bc = Math.floor(p1.c / 3) * 3;
-  const selKeys = new Set([`${p1.r},${p1.c}`, `${p2.r},${p2.c}`]);
-  let boxConditionMet = true;
-  for (let rr = br; rr < br + 3; rr++)
-    for (let cc = bc; cc < bc + 3; cc++) {
-      if (selKeys.has(`${rr},${cc}`)) continue;  // célula selecionada — ok
-      if (!STATE.notes[rr][cc].has(num)) continue; // não tem o candidato — ok
-      /* Há outra célula com o candidato — só é válido se estiver na mesma linha/coluna */
-      if (sameRow && rr !== p1.r) boxConditionMet = false;
-      if (sameCol && cc !== p1.c) boxConditionMet = false;
+        const rows = new Set(cells.map(c => c.r));
+        const cols = new Set(cells.map(c => c.c));
+
+        if (rows.size === 1) {
+          const row = cells[0].r;
+          const targets = [];
+          for (let c = 0; c < 9; c++) {
+            if (Math.floor(c / 3) * 3 === bc) continue;
+            if (puz[row][c] === 0 && notes[row][c].has(num))
+              targets.push({ r: row, c });
+          }
+          if (targets.length > 0)
+            found.push({ num, cells, targets });
+        }
+
+        if (cols.size === 1) {
+          const col = cells[0].c;
+          const targets = [];
+          for (let r = 0; r < 9; r++) {
+            if (Math.floor(r / 3) * 3 === br) continue;
+            if (puz[r][col] === 0 && notes[r][col].has(num))
+              targets.push({ r, c: col });
+          }
+          if (targets.length > 0)
+            found.push({ num, cells, targets });
+        }
+      }
     }
-
-  /* Encontra alvos fora do quadrante na mesma linha/coluna */
-  const affected = [];
-  if (boxConditionMet) {
-    if (sameRow)
-      for (let c = 0; c < 9; c++) {
-        if (Math.floor(p1.r / 3) * 3 + Math.floor(c / 3) === box1) continue;
-        if (STATE.notes[p1.r][c].has(num)) affected.push({ r: p1.r, c });
-      }
-    if (sameCol)
-      for (let r = 0; r < 9; r++) {
-        if (Math.floor(r / 3) * 3 + Math.floor(p1.c / 3) === box1) continue;
-        if (STATE.notes[r][p1.c].has(num)) affected.push({ r, c: p1.c });
-      }
   }
-
-  /* Sempre avança para 'ready' — só habilita Atirar se condição e alvos forem válidos */
-  an.pointingAffected  = affected;
-  an.pointingCondition = boxConditionMet;  /* novo campo para feedback */
-  an.pointingPhase     = 'ready';
-  updateActionBar(); renderAnalysisHighlights();
+  return found;
 }
 
-function cancelPointing() {
+function togglePointing() {
   const an = STATE.analysis;
-  an.pointingPhase = 'idle'; an.pointingCells = []; an.pointingAffected = [];
-  an.pointingCondition = true;
-  updateActionBar(); renderAnalysisHighlights();
+  if (!an.pointingActive) {
+    an.pointings      = detectPointingPairs();
+    an.pointingIndex  = 0;
+    an.pointingActive = true;
+  } else {
+    an.pointingIndex++;
+    if (an.pointingIndex >= an.pointings.length) {
+      deactivatePointing(); return;
+    }
+  }
+  STATE.selectedRow = -1; STATE.selectedCol = -1;
+  updatePointingBtn(); updateActionBar(); renderHighlights();
+}
+
+function deactivatePointing() {
+  const an = STATE.analysis;
+  an.pointingActive = false; an.pointings = []; an.pointingIndex = 0;
+  updatePointingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executePointing() {
   const an = STATE.analysis;
-  const num = STATE.pinnedNum;
+  const pt = an.pointings[an.pointingIndex];
+  if (!pt) { deactivatePointing(); return; }
   pushUndo();
-  for (const { r, c } of an.pointingAffected) {
-    STATE.notes[r][c].delete(num);
+  pt.targets.forEach(({ r, c }) => {
+    STATE.notes[r][c].delete(pt.num);
     updateCellContent(r, c);
-  }
-  cancelPointing();
+  });
+  deactivatePointing();
   renderHighlights();
+}
+
+function updatePointingBtn() {
+  const btn = document.getElementById('btn-pointing');
+  if (btn) btn.classList.toggle('active-mode', STATE.analysis.pointingActive);
 }
 
 /* ─── Únicas (Naked Singles) ─── */
@@ -1589,20 +1576,20 @@ function executeFillSingles() {
 /* ─── Botão de ação (action bar) ─── */
 function handleActionConfirm() {
   const an = STATE.analysis;
-  if (an.singlesActive && an.singles.length)  { executeFillSingles(); return; }
-  if (an.pairsPhase    === 'ready')            { executeNakedPairRemove(); return; }
-  if (an.pointingPhase === 'ready')            { executePointing(); return; }
-  if (an.xwingActive   && an.xwings.length)   { executeXWing(); return; }
-  if (an.ywingActive   && an.ywings.length)   { executeYWing(); return; }
+  if (an.singlesActive        && an.singles.length)        { executeFillSingles();  return; }
+  if (an.nakedPairsActive     && an.nakedPairs.length)     { executeNakedPairs();   return; }
+  if (an.pointingActive       && an.pointings.length)      { executePointing();     return; }
+  if (an.xwingActive          && an.xwings.length)         { executeXWing();        return; }
+  if (an.ywingActive          && an.ywings.length)         { executeYWing();        return; }
 }
 
 function handleActionCancel() {
   const an = STATE.analysis;
-  if (an.singlesActive)          { deactivateSingles(); return; }
-  if (an.pairsPhase    !== 'idle') { cancelNakedPair(); return; }
-  if (an.pointingPhase !== 'idle') { cancelPointing(); return; }
-  if (an.xwingActive)            { deactivateXWing(); return; }
-  if (an.ywingActive)            { deactivateYWing(); return; }
+  if (an.singlesActive)      { deactivateSingles();   return; }
+  if (an.nakedPairsActive)   { deactivateNakedPairs();return; }
+  if (an.pointingActive)     { deactivatePointing();  return; }
+  if (an.xwingActive)        { deactivateXWing();     return; }
+  if (an.ywingActive)        { deactivateYWing();     return; }
 }
 
 function updateActionBar() {
@@ -1617,62 +1604,47 @@ function updateActionBar() {
   if (an.singlesActive) {
     bar.classList.remove('hidden');
     if (an.singles.length) {
-      label.textContent    = `${an.singles.length} única(s) encontrada(s)`;
-      confirm.textContent  = '① Preencher todas';
-      confirm.disabled     = false;
+      label.textContent   = `${an.singles.length} única(s) encontrada(s)`;
+      confirm.textContent = '① Preencher todas';
+      confirm.disabled    = false;
     } else {
-      label.textContent    = 'Nenhuma única encontrada';
-      confirm.textContent  = '① Preencher';
-      confirm.disabled     = true;
+      label.textContent   = 'Nenhuma única encontrada';
+      confirm.textContent = '① Preencher';
+      confirm.disabled    = true;
+    }
+    return;
+  }
+
+  /* Pares Nus */
+  if (an.nakedPairsActive) {
+    bar.classList.remove('hidden');
+    if (an.nakedPairs.length) {
+      const np = an.nakedPairs[an.nakedPairsIndex];
+      label.textContent   = `Par Nu ${an.nakedPairsIndex + 1}/${an.nakedPairs.length} · [${np.pairNums.join(',')}] · ${np.affected.length} eliminação(ões)`;
+      confirm.textContent = '✓ Eliminar';
+      confirm.disabled    = false;
+    } else {
+      label.textContent   = 'Nenhum Par Nu encontrado';
+      confirm.textContent = '✓ Eliminar';
+      confirm.disabled    = true;
     }
     return;
   }
 
   /* Par Apontador */
-  if (STATE.pinnedNum > 0 && STATE.settings.enablePointingPairs) {
-    if (an.pointingPhase === 'selecting') {
-      bar.classList.remove('hidden');
-      label.textContent   = `Segure ${2 - an.pointingCells.length} célula(s) no mesmo quadrante`;
-      confirm.textContent = '🎯 Atirar';
-      confirm.disabled    = true;
-      return;
-    }
-    if (an.pointingPhase === 'ready') {
-      bar.classList.remove('hidden');
-      if (!an.pointingCondition) {
-        label.textContent  = 'Há outras ocorrências no quadrante — condição inválida';
-        confirm.textContent = '🎯 Atirar';
-        confirm.disabled   = true;
-      } else if (!an.pointingAffected.length) {
-        label.textContent  = 'Nenhum candidato a eliminar fora do quadrante';
-        confirm.textContent = '🎯 Atirar';
-        confirm.disabled   = true;
-      } else {
-        label.textContent   = `${an.pointingAffected.length} candidato(s) a eliminar`;
-        confirm.textContent = '🎯 Atirar';
-        confirm.disabled    = false;
-      }
-      return;
-    }
-  }
-
-  /* Pares Nus */
-  if (STATE.settings.enableNakedPairs) {
-    if (an.pairsPhase === 'selecting') {
-      const need = an.pairTargetCount - an.pairCells.length;
-      bar.classList.remove('hidden');
-      label.textContent   = `Segure mais ${need} célula(s) com ${[...an.pairTarget].join(',')}`;
-      confirm.textContent = '✓ Remover';
-      confirm.disabled    = true;
-      return;
-    }
-    if (an.pairsPhase === 'ready') {
-      bar.classList.remove('hidden');
-      label.textContent   = `${an.pairAffected.length} candidato(s) a remover`;
-      confirm.textContent = '✓ Remover';
+  if (an.pointingActive) {
+    bar.classList.remove('hidden');
+    if (an.pointings.length) {
+      const pt = an.pointings[an.pointingIndex];
+      label.textContent   = `Apontador ${an.pointingIndex + 1}/${an.pointings.length} · nº${pt.num} · ${pt.targets.length} eliminação(ões)`;
+      confirm.textContent = '↗ Atirar';
       confirm.disabled    = false;
-      return;
+    } else {
+      label.textContent   = 'Nenhum Par Apontador encontrado';
+      confirm.textContent = '↗ Atirar';
+      confirm.disabled    = true;
     }
+    return;
   }
 
   /* X-Wing */
@@ -1717,35 +1689,38 @@ function updateSinglesBtn() {
 
 function updateAnalysisToolsVisibility() {
   const s = STATE.settings;
-  const singlesBtn = document.getElementById('btn-singles');
-  const xwingBtn   = document.getElementById('btn-xwing');
-  const ywingBtn   = document.getElementById('btn-ywing');
-  if (singlesBtn) singlesBtn.classList.toggle('hidden', !s.enableNakedSingles);
-  if (xwingBtn)   xwingBtn.classList.toggle('hidden',   !s.enableXWing);
-  if (ywingBtn)   ywingBtn.classList.toggle('hidden',   !s.enableYWing);
+  const ids = [
+    ['btn-singles',    s.enableNakedSingles],
+    ['btn-nakedpairs', s.enableNakedPairs],
+    ['btn-pointing',   s.enablePointingPairs],
+    ['btn-xwing',      s.enableXWing],
+    ['btn-ywing',      s.enableYWing],
+  ];
+  ids.forEach(([id, visible]) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.toggle('hidden', !visible);
+  });
 
-  const anyVisible = s.enableNakedSingles || s.enableXWing || s.enableYWing;
-
-  /* Mostra/oculta os botões de ferramentas */
-  const bar = document.getElementById('analysis-tools');
-  if (bar) bar.classList.toggle('hidden', !anyVisible);
-
-  /* Mostra/oculta a seção inteira (inclui slot reservado para action-bar) */
+  const anyVisible = ids.some(([, v]) => v);
+  const bar     = document.getElementById('analysis-tools');
   const section = document.getElementById('analysis-section');
+  if (bar)     bar.classList.toggle('hidden', !anyVisible);
   if (section) section.classList.toggle('hidden', !anyVisible);
 }
 
 function resetAnalysis() {
   STATE.analysis = {
     singlesActive: false, singles: [],
-    pairsPhase: 'idle', pairCells: [], pairTarget: null, pairTargetCount: 0, pairAffected: [],
-    pointingPhase: 'idle', pointingCells: [], pointingAffected: [], pointingCondition: true,
+    nakedPairsActive: false, nakedPairs: [], nakedPairsIndex: 0,
+    pointingActive: false, pointings: [], pointingIndex: 0,
     xwingActive: false, xwings: [], xwingIndex: 0,
     ywingActive: false, ywings: [], ywingIndex: 0,
   };
   const bar = document.getElementById('action-bar');
   if (bar) bar.classList.add('hidden');
   updateSinglesBtn();
+  updateNakedPairsBtn();
+  updatePointingBtn();
 }
 
 /* ─── X-Wing ─── */
@@ -1971,7 +1946,6 @@ function renderAnalysisHighlights() {
         'pointing-select', 'pointing-affected',
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target'
       );
-  /* Limpa marcações de dígitos do ciclo anterior */
   document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
   document.querySelectorAll('.note-digit.note-xwing').forEach(s => s.classList.remove('note-xwing'));
   document.querySelectorAll('.note-digit.note-ywing-pivot').forEach(s => s.classList.remove('note-ywing-pivot'));
@@ -1979,29 +1953,44 @@ function renderAnalysisHighlights() {
 
   const an = STATE.analysis;
 
+  /* Únicas */
   if (an.singlesActive)
     for (const { r, c } of an.singles)
       cellElements[r][c].classList.add('singles-match');
 
-  for (const { r, c } of an.pairCells)
-    cellElements[r][c].classList.add('pair-select');
-  if (an.pairsPhase === 'ready')
-    for (const { r, c, nums } of an.pairAffected) {
-      cellElements[r][c].classList.add('pair-affected');
-      /* Marca em vermelho os dígitos específicos que serão eliminados */
-      for (const n of nums) {
-        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
-        if (span) span.classList.add('note-eliminate');
-      }
+  /* Pares Nus — apenas padrão atual */
+  if (an.nakedPairsActive && an.nakedPairs.length > 0) {
+    const np = an.nakedPairs[an.nakedPairsIndex];
+    if (np) {
+      np.pairCells.forEach(({ r, c }) => cellElements[r][c].classList.add('pair-select'));
+      np.affected.forEach(({ r, c, nums }) => {
+        cellElements[r][c].classList.add('pair-affected');
+        nums.forEach(n => {
+          const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (span) span.classList.add('note-eliminate');
+        });
+      });
     }
+  }
 
-  for (const { r, c } of an.pointingCells)
-    cellElements[r][c].classList.add('pointing-select');
-  if (an.pointingPhase === 'ready')
-    for (const { r, c } of an.pointingAffected)
-      cellElements[r][c].classList.add('pointing-affected');
+  /* Par Apontador — apenas padrão atual */
+  if (an.pointingActive && an.pointings.length > 0) {
+    const pt = an.pointings[an.pointingIndex];
+    if (pt) {
+      pt.cells.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('pointing-select');
+        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${pt.num}"]`);
+        if (span) span.classList.add('note-xwing'); /* verde para origem */
+      });
+      pt.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('pointing-affected');
+        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${pt.num}"]`);
+        if (span) span.classList.add('note-eliminate');
+      });
+    }
+  }
 
-  /* X-Wing — apenas o padrão no índice atual */
+  /* X-Wing — apenas padrão atual */
   if (an.xwingActive && an.xwings.length > 0) {
     const xw = an.xwings[an.xwingIndex];
     if (xw) {
@@ -2018,7 +2007,7 @@ function renderAnalysisHighlights() {
     }
   }
 
-  /* Y-Wing — apenas o padrão no índice atual */
+  /* Y-Wing — apenas padrão atual */
   if (an.ywingActive && an.ywings.length > 0) {
     const yw = an.ywings[an.ywingIndex];
     if (yw) {
