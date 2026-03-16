@@ -1237,12 +1237,17 @@ html, body {
   padding: 10px 20px 28px;
   max-height: 52vh;
   overflow-y: auto;
-  transform: translateY(110%);
-  transition: transform .35s cubic-bezier(.34,1.2,.64,1);
+  transform: translateY(100vh);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .35s cubic-bezier(.34,1.2,.64,1), visibility 0s .35s;
   -webkit-overflow-scrolling: touch;
 }
 #genio-panel.genio-visible {
   transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform .35s cubic-bezier(.34,1.2,.64,1), visibility 0s 0s;
 }
 .genio-handle {
   width: 36px; height: 4px;
