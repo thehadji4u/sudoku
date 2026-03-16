@@ -453,6 +453,10 @@ html, body {
   background: #93C5FD;
   border-radius: 2px;
 }
+.note-digit.note-eliminate {
+  color: #EF4444 !important;
+  font-weight: 800;
+}
 
 /* ── Modo Simulador ── */
 .cell.sim-placed {
@@ -1045,14 +1049,27 @@ html, body {
   color: #1D4ED8;
 }
 
-/* Action bar */
+/* Seção de análise — reserva slot fixo para o action-bar */
+#analysis-section {
+  position: relative;
+  padding-top: 40px;   /* slot sempre reservado para o action-bar — sem layout shift */
+}
+#analysis-section.hidden {
+  display: none;
+}
+
+/* Action bar — ocupa o slot reservado, absolutamente posicionado */
 #action-bar {
+  position: absolute;
+  top: 4px;
+  left: 12px;
+  right: 12px;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 6px 12px;
-  margin: 4px 12px 0;
   background: #F0F9FF;
   border: 1.5px solid #BAE6FD;
   border-radius: 12px;

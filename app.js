@@ -147,6 +147,8 @@ function attachEvents() {
   document.getElementById('btn-warn-confirm').addEventListener('click', () => {
     const diff = STATE._pendingDiff;
     closeAllModals();
+    clearSession();   /* descarta sessão salva no localStorage também */
+    document.getElementById('session-resume').classList.add('hidden');
     if (diff) startGame(diff);
     STATE._pendingDiff = null;
   });
@@ -372,7 +374,9 @@ function restartGame() {
 }
 
 function requestNewGame(diff) {
-  if (STATE.puzzle && STATE.timerRunning) {
+  /* Avisa se há partida em andamento no STATE ou sessão salva no localStorage */
+  const hasActive = (STATE.puzzle && STATE.timerRunning) || loadSession() !== null;
+  if (hasActive) {
     STATE._pendingDiff = diff;
     openModal('modal-newgame-warn');
   } else {
@@ -649,6 +653,12 @@ function doPlaceNumber(r, c, num) {
   pushUndo();
   STATE.puzzle[r][c] = num;
   const key = `${r},${c}`;
+
+  /* Deseleciona o tabuleiro ao colocar um número (apagar com 0 mantém seleção) */
+  if (num !== 0) {
+    STATE.selectedRow = -1;
+    STATE.selectedCol = -1;
+  }
 
   /* ── Modo Simulador ── */
   if (STATE.simulator.active) {
@@ -1247,6 +1257,9 @@ function attachNumpadLongPress() {
 
 function handleNumpadPin(num) {
   STATE.pinnedNum = (STATE.pinnedNum === num) ? 0 : num;
+  /* Ao fixar um número no dial, limpa a seleção de célula no tabuleiro */
+  STATE.selectedRow = -1;
+  STATE.selectedCol = -1;
   renderNumpad();
   renderHighlights();
 }
@@ -1473,14 +1486,19 @@ function analyzePointing() {
   const sameRow = p1.r === p2.r, sameCol = p1.c === p2.c;
   if (!sameRow && !sameCol) { cancelPointing(); return; }
 
-  /* Verifica se só essas 2 células têm o número no quadrante (condição do Par Apontador) */
+  /* Verifica se TODAS as ocorrências do número no quadrante estão na mesma linha/coluna
+     das células selecionadas (permite Duplas E Triplas Apontadoras) */
   const br = Math.floor(p1.r / 3) * 3, bc = Math.floor(p1.c / 3) * 3;
   const selKeys = new Set([`${p1.r},${p1.c}`, `${p2.r},${p2.c}`]);
   let boxConditionMet = true;
   for (let rr = br; rr < br + 3; rr++)
-    for (let cc = bc; cc < bc + 3; cc++)
-      if (!selKeys.has(`${rr},${cc}`) && STATE.notes[rr][cc].has(num))
-        boxConditionMet = false;
+    for (let cc = bc; cc < bc + 3; cc++) {
+      if (selKeys.has(`${rr},${cc}`)) continue;  // célula selecionada — ok
+      if (!STATE.notes[rr][cc].has(num)) continue; // não tem o candidato — ok
+      /* Há outra célula com o candidato — só é válido se estiver na mesma linha/coluna */
+      if (sameRow && rr !== p1.r) boxConditionMet = false;
+      if (sameCol && cc !== p1.c) boxConditionMet = false;
+    }
 
   /* Encontra alvos fora do quadrante na mesma linha/coluna */
   const affected = [];
@@ -1701,10 +1719,15 @@ function updateAnalysisToolsVisibility() {
   if (xwingBtn)   xwingBtn.classList.toggle('hidden',   !s.enableXWing);
   if (ywingBtn)   ywingBtn.classList.toggle('hidden',   !s.enableYWing);
 
-  /* Mostra a barra só se ao menos um botão estiver visível */
+  const anyVisible = s.enableNakedSingles || s.enableXWing || s.enableYWing;
+
+  /* Mostra/oculta os botões de ferramentas */
   const bar = document.getElementById('analysis-tools');
-  if (bar) bar.classList.toggle('hidden',
-    !s.enableNakedSingles && !s.enableXWing && !s.enableYWing);
+  if (bar) bar.classList.toggle('hidden', !anyVisible);
+
+  /* Mostra/oculta a seção inteira (inclui slot reservado para action-bar) */
+  const section = document.getElementById('analysis-section');
+  if (section) section.classList.toggle('hidden', !anyVisible);
 }
 
 function resetAnalysis() {
@@ -1924,6 +1947,8 @@ function renderAnalysisHighlights() {
         'pointing-select', 'pointing-affected',
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target'
       );
+  /* Limpa marcações de dígitos a eliminar do ciclo anterior */
+  document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
 
   const an = STATE.analysis;
 
@@ -1934,8 +1959,14 @@ function renderAnalysisHighlights() {
   for (const { r, c } of an.pairCells)
     cellElements[r][c].classList.add('pair-select');
   if (an.pairsPhase === 'ready')
-    for (const { r, c } of an.pairAffected)
+    for (const { r, c, nums } of an.pairAffected) {
       cellElements[r][c].classList.add('pair-affected');
+      /* Marca em vermelho os dígitos específicos que serão eliminados */
+      for (const n of nums) {
+        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+        if (span) span.classList.add('note-eliminate');
+      }
+    }
 
   for (const { r, c } of an.pointingCells)
     cellElements[r][c].classList.add('pointing-select');
@@ -1947,7 +1978,12 @@ function renderAnalysisHighlights() {
   if (an.xwingActive) {
     an.xwings.forEach(xw => {
       xw.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('xwing-cell'));
-      xw.targets.forEach(({ r, c }) => cellElements[r][c].classList.add('xwing-target'));
+      xw.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('xwing-target');
+        /* Marca o dígito eliminado em vermelho */
+        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${xw.num}"]`);
+        if (span) span.classList.add('note-eliminate');
+      });
     });
   }
 
@@ -1956,7 +1992,12 @@ function renderAnalysisHighlights() {
     an.ywings.forEach(yw => {
       cellElements[yw.pivot.r][yw.pivot.c].classList.add('ywing-pivot');
       yw.pincers.forEach(({ r, c }) => cellElements[r][c].classList.add('ywing-pincer'));
-      yw.targets.forEach(({ r, c }) => cellElements[r][c].classList.add('ywing-target'));
+      yw.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('ywing-target');
+        /* Marca o dígito eliminado em vermelho */
+        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${yw.elimVal}"]`);
+        if (span) span.classList.add('note-eliminate');
+      });
     });
   }
 }
