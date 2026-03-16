@@ -1,5 +1,5 @@
 /* Service Worker — network-first para HTML, cache-first para assets */
-const CACHE = 'sudoku-v31';
+const CACHE = 'sudoku-v32';
 const ASSETS = [
   './index.html',
   './style.css',
@@ -24,23 +24,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  const isHTML = e.request.headers.get('accept')?.includes('text/html');
-
-  if (isHTML) {
-    /* Network-first para HTML: sempre busca versão nova, usa cache só se offline */
-    e.respondWith(
-      fetch(e.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(e.request))
-    );
-  } else {
-    /* Cache-first para CSS/JS/imagens */
-    e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request))
-    );
-  }
+  /* Network-first para tudo: sempre busca versão nova, cai no cache só se offline.
+     Garante que atualizações de app.js/style.css apareçam imediatamente após reload. */
+  e.respondWith(
+    fetch(e.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
+  );
 });
