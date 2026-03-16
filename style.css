@@ -1090,6 +1090,15 @@ html, body {
 .cell.pointing-select   { background: #D1FAE5 !important; outline: 2px solid #10B981; outline-offset: -2px; }
 .cell.pointing-affected { background: #FDE8D8 !important; }
 
+/* X-Wing */
+.cell.xwing-cell   { background: #EDE9FE !important; outline: 2px solid #7C3AED; outline-offset: -2px; }
+.cell.xwing-target { background: #FDE8D8 !important; outline: 1px solid #F97316; outline-offset: -1px; }
+
+/* Y-Wing */
+.cell.ywing-pivot  { background: #FEF3C7 !important; outline: 2px solid #D97706; outline-offset: -2px; }
+.cell.ywing-pincer { background: #DBEAFE !important; outline: 2px solid #3B82F6; outline-offset: -2px; }
+.cell.ywing-target { background: #FDE8D8 !important; outline: 1px solid #F97316; outline-offset: -1px; }
+
 /* Modal aviso novo jogo */
 .modal-warn-body {
   text-align: center;

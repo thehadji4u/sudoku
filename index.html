@@ -131,6 +131,14 @@
       <span class="tool-icon">①</span>
       <span>Únicas</span>
     </button>
+    <button class="tool-btn" id="btn-xwing" title="Detectar X-Wing">
+      <span class="tool-icon">♟</span>
+      <span>X-Wing</span>
+    </button>
+    <button class="tool-btn" id="btn-ywing" title="Detectar Y-Wing">
+      <span class="tool-icon">⁓</span>
+      <span>Y-Wing</span>
+    </button>
   </div>
 
   <!-- Barra de ação (análise) — aparece quando há ação disponível -->
@@ -304,6 +312,28 @@
       <div class="toggle-wrap">
         <input type="checkbox" class="toggle-input" id="cfg-enablePointingPairs">
         <label class="toggle-track" for="cfg-enablePointingPairs"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">X-Wing ♟</div>
+        <div class="setting-desc">Detecta padrão X-Wing e elimina candidatos automáticamente</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-enableXWing">
+        <label class="toggle-track" for="cfg-enableXWing"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Y-Wing ⁓</div>
+        <div class="setting-desc">Detecta padrão Y-Wing (XY-Wing) e elimina candidatos automáticamente</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-enableYWing">
+        <label class="toggle-track" for="cfg-enableYWing"></label>
       </div>
     </div>
   </div>

@@ -52,9 +52,18 @@ const STATE = {
     pairAffected:   [],        // [{r, c, nums: Set}]
 
     /* Par Apontador (Pointing Pairs) */
-    pointingPhase:    'idle',  // 'idle' | 'selecting' | 'ready'
-    pointingCells:    [],      // [{r, c}]
-    pointingAffected: [],      // [{r, c}]
+    pointingPhase:     'idle',
+    pointingCells:     [],
+    pointingAffected:  [],
+    pointingCondition: true,
+
+    /* X-Wing */
+    xwingActive:   false,
+    xwings:        [],   // [{num, cells:[{r,c}×4], targets:[{r,c}]}]
+
+    /* Y-Wing */
+    ywingActive:   false,
+    ywings:        [],   // [{pivot:{r,c}, pincers:[{r,c}×2], targets:[{r,c}], elimVal}]
   },
 
   settings: {
@@ -68,6 +77,8 @@ const STATE = {
     enableNakedSingles:  true,
     enableNakedPairs:    true,
     enablePointingPairs: true,
+    enableXWing:         true,
+    enableYWing:         true,
   },
 };
 
@@ -184,6 +195,16 @@ function attachEvents() {
     toggleSingles();
   });
 
+  document.getElementById('btn-xwing').addEventListener('click', () => {
+    if (!STATE.puzzle || STATE.paused) return;
+    toggleXWing();
+  });
+
+  document.getElementById('btn-ywing').addEventListener('click', () => {
+    if (!STATE.puzzle || STATE.paused) return;
+    toggleYWing();
+  });
+
   document.getElementById('btn-action-confirm').addEventListener('click', handleActionConfirm);
   document.getElementById('btn-action-cancel').addEventListener('click', handleActionCancel);
 
@@ -245,7 +266,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableNakedPairs', 'enablePointingPairs'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -264,7 +285,7 @@ function setupSettingsEvents() {
       if (key === 'simulatorMode') {
         updateControlsForSimMode();
       }
-      if (key === 'enableNakedSingles') {
+      if (['enableNakedSingles', 'enableXWing', 'enableYWing'].includes(key)) {
         updateAnalysisToolsVisibility();
       }
     });
@@ -1443,44 +1464,50 @@ function analyzePointing() {
   const [p1, p2] = an.pointingCells;
   const num = STATE.pinnedNum;
 
+  /* Células devem estar no mesmo quadrante */
   const box1 = Math.floor(p1.r / 3) * 3 + Math.floor(p1.c / 3);
   const box2 = Math.floor(p2.r / 3) * 3 + Math.floor(p2.c / 3);
   if (box1 !== box2) { cancelPointing(); return; }
 
-  /* Só essas 2 células podem ter o número no quadrante */
-  const br = Math.floor(p1.r / 3) * 3, bc = Math.floor(p1.c / 3) * 3;
-  const selKeys = new Set([`${p1.r},${p1.c}`, `${p2.r},${p2.c}`]);
-  for (let rr = br; rr < br + 3; rr++)
-    for (let cc = bc; cc < bc + 3; cc++)
-      if (!selKeys.has(`${rr},${cc}`) && STATE.notes[rr][cc].has(num)) {
-        cancelPointing(); return;
-      }
-
+  /* Células devem estar na mesma linha ou coluna */
   const sameRow = p1.r === p2.r, sameCol = p1.c === p2.c;
   if (!sameRow && !sameCol) { cancelPointing(); return; }
 
+  /* Verifica se só essas 2 células têm o número no quadrante (condição do Par Apontador) */
+  const br = Math.floor(p1.r / 3) * 3, bc = Math.floor(p1.c / 3) * 3;
+  const selKeys = new Set([`${p1.r},${p1.c}`, `${p2.r},${p2.c}`]);
+  let boxConditionMet = true;
+  for (let rr = br; rr < br + 3; rr++)
+    for (let cc = bc; cc < bc + 3; cc++)
+      if (!selKeys.has(`${rr},${cc}`) && STATE.notes[rr][cc].has(num))
+        boxConditionMet = false;
+
+  /* Encontra alvos fora do quadrante na mesma linha/coluna */
   const affected = [];
-  if (sameRow)
-    for (let c = 0; c < 9; c++) {
-      if (Math.floor(p1.r / 3) * 3 + Math.floor(c / 3) === box1) continue;
-      if (STATE.notes[p1.r][c].has(num)) affected.push({ r: p1.r, c });
-    }
-  if (sameCol)
-    for (let r = 0; r < 9; r++) {
-      if (Math.floor(r / 3) * 3 + Math.floor(p1.c / 3) === box1) continue;
-      if (STATE.notes[r][p1.c].has(num)) affected.push({ r, c: p1.c });
-    }
+  if (boxConditionMet) {
+    if (sameRow)
+      for (let c = 0; c < 9; c++) {
+        if (Math.floor(p1.r / 3) * 3 + Math.floor(c / 3) === box1) continue;
+        if (STATE.notes[p1.r][c].has(num)) affected.push({ r: p1.r, c });
+      }
+    if (sameCol)
+      for (let r = 0; r < 9; r++) {
+        if (Math.floor(r / 3) * 3 + Math.floor(p1.c / 3) === box1) continue;
+        if (STATE.notes[r][p1.c].has(num)) affected.push({ r, c: p1.c });
+      }
+  }
 
-  if (!affected.length) { cancelPointing(); return; }
-
-  an.pointingAffected = affected;
-  an.pointingPhase    = 'ready';
+  /* Sempre avança para 'ready' — só habilita Atirar se condição e alvos forem válidos */
+  an.pointingAffected  = affected;
+  an.pointingCondition = boxConditionMet;  /* novo campo para feedback */
+  an.pointingPhase     = 'ready';
   updateActionBar(); renderAnalysisHighlights();
 }
 
 function cancelPointing() {
   const an = STATE.analysis;
   an.pointingPhase = 'idle'; an.pointingCells = []; an.pointingAffected = [];
+  an.pointingCondition = true;
   updateActionBar(); renderAnalysisHighlights();
 }
 
@@ -1539,16 +1566,20 @@ function executeFillSingles() {
 /* ─── Botão de ação (action bar) ─── */
 function handleActionConfirm() {
   const an = STATE.analysis;
-  if (an.singlesActive && an.singles.length) { executeFillSingles(); return; }
-  if (an.pairsPhase    === 'ready')           { executeNakedPairRemove(); return; }
-  if (an.pointingPhase === 'ready')           { executePointing(); return; }
+  if (an.singlesActive && an.singles.length)  { executeFillSingles(); return; }
+  if (an.pairsPhase    === 'ready')            { executeNakedPairRemove(); return; }
+  if (an.pointingPhase === 'ready')            { executePointing(); return; }
+  if (an.xwingActive   && an.xwings.length)   { executeXWing(); return; }
+  if (an.ywingActive   && an.ywings.length)   { executeYWing(); return; }
 }
 
 function handleActionCancel() {
   const an = STATE.analysis;
-  if (an.singlesActive)                         { deactivateSingles(); return; }
-  if (an.pairsPhase    !== 'idle')              { cancelNakedPair(); return; }
-  if (an.pointingPhase !== 'idle')              { cancelPointing(); return; }
+  if (an.singlesActive)          { deactivateSingles(); return; }
+  if (an.pairsPhase    !== 'idle') { cancelNakedPair(); return; }
+  if (an.pointingPhase !== 'idle') { cancelPointing(); return; }
+  if (an.xwingActive)            { deactivateXWing(); return; }
+  if (an.ywingActive)            { deactivateYWing(); return; }
 }
 
 function updateActionBar() {
@@ -1585,9 +1616,19 @@ function updateActionBar() {
     }
     if (an.pointingPhase === 'ready') {
       bar.classList.remove('hidden');
-      label.textContent   = `${an.pointingAffected.length} candidato(s) a eliminar`;
-      confirm.textContent = '🎯 Atirar';
-      confirm.disabled    = false;
+      if (!an.pointingCondition) {
+        label.textContent  = 'Há outras ocorrências no quadrante — condição inválida';
+        confirm.textContent = '🎯 Atirar';
+        confirm.disabled   = true;
+      } else if (!an.pointingAffected.length) {
+        label.textContent  = 'Nenhum candidato a eliminar fora do quadrante';
+        confirm.textContent = '🎯 Atirar';
+        confirm.disabled   = true;
+      } else {
+        label.textContent   = `${an.pointingAffected.length} candidato(s) a eliminar`;
+        confirm.textContent = '🎯 Atirar';
+        confirm.disabled    = false;
+      }
       return;
     }
   }
@@ -1611,6 +1652,38 @@ function updateActionBar() {
     }
   }
 
+  /* X-Wing */
+  if (an.xwingActive) {
+    bar.classList.remove('hidden');
+    const totalTargets = an.xwings.reduce((s, xw) => s + xw.targets.length, 0);
+    if (an.xwings.length) {
+      label.textContent   = `X-Wing: ${an.xwings.length} padrão(ões) · ${totalTargets} eliminação(ões)`;
+      confirm.textContent = '♟ Eliminar';
+      confirm.disabled    = false;
+    } else {
+      label.textContent   = 'Nenhum X-Wing encontrado';
+      confirm.textContent = '♟ Eliminar';
+      confirm.disabled    = true;
+    }
+    return;
+  }
+
+  /* Y-Wing */
+  if (an.ywingActive) {
+    bar.classList.remove('hidden');
+    const totalTargets = an.ywings.reduce((s, yw) => s + yw.targets.length, 0);
+    if (an.ywings.length) {
+      label.textContent   = `Y-Wing: ${an.ywings.length} padrão(ões) · ${totalTargets} eliminação(ões)`;
+      confirm.textContent = '♟ Eliminar';
+      confirm.disabled    = false;
+    } else {
+      label.textContent   = 'Nenhum Y-Wing encontrado';
+      confirm.textContent = '♟ Eliminar';
+      confirm.disabled    = true;
+    }
+    return;
+  }
+
   bar.classList.add('hidden');
 }
 
@@ -1620,20 +1693,226 @@ function updateSinglesBtn() {
 }
 
 function updateAnalysisToolsVisibility() {
+  const s = STATE.settings;
+  const singlesBtn = document.getElementById('btn-singles');
+  const xwingBtn   = document.getElementById('btn-xwing');
+  const ywingBtn   = document.getElementById('btn-ywing');
+  if (singlesBtn) singlesBtn.classList.toggle('hidden', !s.enableNakedSingles);
+  if (xwingBtn)   xwingBtn.classList.toggle('hidden',   !s.enableXWing);
+  if (ywingBtn)   ywingBtn.classList.toggle('hidden',   !s.enableYWing);
+
+  /* Mostra a barra só se ao menos um botão estiver visível */
   const bar = document.getElementById('analysis-tools');
-  if (!bar) return;
-  bar.classList.toggle('hidden', !STATE.settings.enableNakedSingles);
+  if (bar) bar.classList.toggle('hidden',
+    !s.enableNakedSingles && !s.enableXWing && !s.enableYWing);
 }
 
 function resetAnalysis() {
   STATE.analysis = {
     singlesActive: false, singles: [],
     pairsPhase: 'idle', pairCells: [], pairTarget: null, pairTargetCount: 0, pairAffected: [],
-    pointingPhase: 'idle', pointingCells: [], pointingAffected: [],
+    pointingPhase: 'idle', pointingCells: [], pointingAffected: [], pointingCondition: true,
+    xwingActive: false, xwings: [],
+    ywingActive: false, ywings: [],
   };
   const bar = document.getElementById('action-bar');
   if (bar) bar.classList.add('hidden');
   updateSinglesBtn();
+}
+
+/* ─── X-Wing ─── */
+function toggleXWing() {
+  STATE.analysis.xwingActive ? deactivateXWing() : activateXWing();
+}
+
+function activateXWing() {
+  const an = STATE.analysis;
+  an.xwingActive = true;
+  an.xwings = detectXWings();
+  updateXWingBtn();
+  updateActionBar();
+  renderAnalysisHighlights();
+}
+
+function deactivateXWing() {
+  const an = STATE.analysis;
+  an.xwingActive = false; an.xwings = [];
+  updateXWingBtn(); updateActionBar(); renderAnalysisHighlights();
+}
+
+function executeXWing() {
+  const an = STATE.analysis;
+  pushUndo();
+  const targets = new Set();
+  an.xwings.forEach(xw => xw.targets.forEach(t => targets.add(`${t.r},${t.c},${xw.num}`)));
+  targets.forEach(key => {
+    const [r, c, num] = key.split(',').map(Number);
+    STATE.notes[r][c].delete(num);
+    updateCellContent(r, c);
+  });
+  deactivateXWing();
+  renderHighlights();
+}
+
+function detectXWings() {
+  const found = [];
+  const puz = STATE.puzzle, notes = STATE.notes;
+
+  for (let num = 1; num <= 9; num++) {
+    /* Row-based X-Wing */
+    const rowMap = {};   // row → [col1, col2]
+    for (let r = 0; r < 9; r++) {
+      const cols = [];
+      for (let c = 0; c < 9; c++)
+        if (puz[r][c] === 0 && notes[r][c].has(num)) cols.push(c);
+      if (cols.length === 2) rowMap[r] = cols;
+    }
+    const rowKeys = Object.keys(rowMap).map(Number);
+    for (let i = 0; i < rowKeys.length - 1; i++) {
+      for (let j = i + 1; j < rowKeys.length; j++) {
+        const r1 = rowKeys[i], r2 = rowKeys[j];
+        if (rowMap[r1][0] === rowMap[r2][0] && rowMap[r1][1] === rowMap[r2][1]) {
+          const [c1, c2] = rowMap[r1];
+          const targets = [];
+          for (let r = 0; r < 9; r++) {
+            if (r === r1 || r === r2) continue;
+            if (puz[r][c1] === 0 && notes[r][c1].has(num)) targets.push({ r, c: c1 });
+            if (puz[r][c2] === 0 && notes[r][c2].has(num)) targets.push({ r, c: c2 });
+          }
+          if (targets.length)
+            found.push({ num, cells: [{r:r1,c:c1},{r:r1,c:c2},{r:r2,c:c1},{r:r2,c:c2}], targets });
+        }
+      }
+    }
+
+    /* Column-based X-Wing */
+    const colMap = {};   // col → [row1, row2]
+    for (let c = 0; c < 9; c++) {
+      const rows = [];
+      for (let r = 0; r < 9; r++)
+        if (puz[r][c] === 0 && notes[r][c].has(num)) rows.push(r);
+      if (rows.length === 2) colMap[c] = rows;
+    }
+    const colKeys = Object.keys(colMap).map(Number);
+    for (let i = 0; i < colKeys.length - 1; i++) {
+      for (let j = i + 1; j < colKeys.length; j++) {
+        const c1 = colKeys[i], c2 = colKeys[j];
+        if (colMap[c1][0] === colMap[c2][0] && colMap[c1][1] === colMap[c2][1]) {
+          const [r1, r2] = colMap[c1];
+          const targets = [];
+          for (let c = 0; c < 9; c++) {
+            if (c === c1 || c === c2) continue;
+            if (puz[r1][c] === 0 && notes[r1][c].has(num)) targets.push({ r: r1, c });
+            if (puz[r2][c] === 0 && notes[r2][c].has(num)) targets.push({ r: r2, c });
+          }
+          if (targets.length)
+            found.push({ num, cells: [{r:r1,c:c1},{r:r1,c:c2},{r:r2,c:c1},{r:r2,c:c2}], targets });
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function updateXWingBtn() {
+  const btn = document.getElementById('btn-xwing');
+  if (btn) btn.classList.toggle('active-mode', STATE.analysis.xwingActive);
+}
+
+/* ─── Y-Wing ─── */
+function toggleYWing() {
+  STATE.analysis.ywingActive ? deactivateYWing() : activateYWing();
+}
+
+function activateYWing() {
+  const an = STATE.analysis;
+  an.ywingActive = true;
+  an.ywings = detectYWings();
+  updateYWingBtn();
+  updateActionBar();
+  renderAnalysisHighlights();
+}
+
+function deactivateYWing() {
+  const an = STATE.analysis;
+  an.ywingActive = false; an.ywings = [];
+  updateYWingBtn(); updateActionBar(); renderAnalysisHighlights();
+}
+
+function executeYWing() {
+  const an = STATE.analysis;
+  pushUndo();
+  an.ywings.forEach(yw => {
+    yw.targets.forEach(({ r, c }) => {
+      STATE.notes[r][c].delete(yw.elimVal);
+      updateCellContent(r, c);
+    });
+  });
+  deactivateYWing();
+  renderHighlights();
+}
+
+function cellSees(r1, c1, r2, c2) {
+  if (r1 === r2 || c1 === c2) return true;
+  return Math.floor(r1/3)*3+Math.floor(c1/3) === Math.floor(r2/3)*3+Math.floor(c2/3);
+}
+
+function detectYWings() {
+  const found = [];
+  const puz = STATE.puzzle, notes = STATE.notes;
+  const seen = new Set();
+
+  for (let pr = 0; pr < 9; pr++) {
+    for (let pc = 0; pc < 9; pc++) {
+      if (puz[pr][pc] !== 0 || notes[pr][pc].size !== 2) continue;
+      const [A, B] = [...notes[pr][pc]];
+
+      /* Pincers que vêem o pivot */
+      const pincers1 = [], pincers2 = [];
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (puz[r][c] !== 0 || notes[r][c].size !== 2) continue;
+          if (r === pr && c === pc) continue;
+          if (!cellSees(pr, pc, r, c)) continue;
+          const ns = notes[r][c];
+          if (ns.has(A) && !ns.has(B)) pincers1.push({ r, c, other: [...ns].find(x => x !== A) });
+          if (ns.has(B) && !ns.has(A)) pincers2.push({ r, c, other: [...ns].find(x => x !== B) });
+        }
+      }
+
+      for (const p1 of pincers1) {
+        for (const p2 of pincers2) {
+          if (p1.other !== p2.other) continue;   /* C must match */
+          const C = p1.other;
+          if (C === A || C === B) continue;
+
+          /* Find cells that see BOTH pincers and have C in notes */
+          const targets = [];
+          for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+              if (puz[r][c] !== 0 || !notes[r][c].has(C)) continue;
+              if (r === p1.r && c === p1.c) continue;
+              if (r === p2.r && c === p2.c) continue;
+              if (cellSees(r, c, p1.r, p1.c) && cellSees(r, c, p2.r, p2.c))
+                targets.push({ r, c });
+            }
+          }
+
+          if (!targets.length) continue;
+          const key = `${pr},${pc}-${p1.r},${p1.c}-${p2.r},${p2.c}-${C}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          found.push({ pivot: {r:pr,c:pc}, pincers: [{r:p1.r,c:p1.c},{r:p2.r,c:p2.c}], targets, elimVal: C });
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function updateYWingBtn() {
+  const btn = document.getElementById('btn-ywing');
+  if (btn) btn.classList.toggle('active-mode', STATE.analysis.ywingActive);
 }
 
 function renderAnalysisHighlights() {
@@ -1641,7 +1920,9 @@ function renderAnalysisHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'singles-match', 'pair-select', 'pair-affected', 'pointing-select', 'pointing-affected'
+        'singles-match', 'pair-select', 'pair-affected',
+        'pointing-select', 'pointing-affected',
+        'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target'
       );
 
   const an = STATE.analysis;
@@ -1661,6 +1942,23 @@ function renderAnalysisHighlights() {
   if (an.pointingPhase === 'ready')
     for (const { r, c } of an.pointingAffected)
       cellElements[r][c].classList.add('pointing-affected');
+
+  /* X-Wing */
+  if (an.xwingActive) {
+    an.xwings.forEach(xw => {
+      xw.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('xwing-cell'));
+      xw.targets.forEach(({ r, c }) => cellElements[r][c].classList.add('xwing-target'));
+    });
+  }
+
+  /* Y-Wing */
+  if (an.ywingActive) {
+    an.ywings.forEach(yw => {
+      cellElements[yw.pivot.r][yw.pivot.c].classList.add('ywing-pivot');
+      yw.pincers.forEach(({ r, c }) => cellElements[r][c].classList.add('ywing-pincer'));
+      yw.targets.forEach(({ r, c }) => cellElements[r][c].classList.add('ywing-target'));
+    });
+  }
 }
 
 function checkCompletions(r, c) {
@@ -1763,6 +2061,8 @@ function syncSettingsUI() {
   toggle('cfg-enableNakedSingles',   s.enableNakedSingles);
   toggle('cfg-enableNakedPairs',     s.enableNakedPairs);
   toggle('cfg-enablePointingPairs',  s.enablePointingPairs);
+  toggle('cfg-enableXWing',          s.enableXWing);
+  toggle('cfg-enableYWing',          s.enableYWing);
 
   document.getElementById('max-errors-val').textContent = s.maxErrors;
   document.getElementById('max-errors-row').classList.toggle('hidden', !s.failOnErrors);
