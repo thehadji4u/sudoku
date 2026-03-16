@@ -1539,13 +1539,42 @@ function toggleSingles() {
 function activateSingles() {
   const an = STATE.analysis;
   an.singlesActive = true;
-  an.singles = [];
-  STATE.selectedRow = -1;
-  STATE.selectedCol = -1;
+  const puz = STATE.puzzle, notes = STATE.notes;
+  const found = new Map(); // "r,c" → {r, c, val} — garante deduplicação
+
+  /* Naked Singles — célula com exatamente 1 candidato */
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
-      if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
-        an.singles.push({ r, c, val: [...STATE.notes[r][c]][0] });
+      if (puz[r][c] === 0 && notes[r][c].size === 1)
+        found.set(`${r},${c}`, { r, c, val: [...notes[r][c]][0] });
+
+  /* Hidden Singles — número que só tem 1 posição possível numa casa */
+  function checkGroup(cells) {
+    for (let num = 1; num <= 9; num++) {
+      const cands = cells.filter(({ r, c }) => puz[r][c] === 0 && notes[r][c].has(num));
+      if (cands.length === 1) {
+        const { r, c } = cands[0];
+        if (!found.has(`${r},${c}`)) found.set(`${r},${c}`, { r, c, val: num });
+      }
+    }
+  }
+
+  for (let r = 0; r < 9; r++)
+    checkGroup(Array.from({ length: 9 }, (_, c) => ({ r, c })));
+  for (let c = 0; c < 9; c++)
+    checkGroup(Array.from({ length: 9 }, (_, r) => ({ r, c })));
+  for (let br = 0; br < 9; br += 3)
+    for (let bc = 0; bc < 9; bc += 3) {
+      const cells = [];
+      for (let rr = br; rr < br + 3; rr++)
+        for (let cc = bc; cc < bc + 3; cc++)
+          cells.push({ r: rr, c: cc });
+      checkGroup(cells);
+    }
+
+  an.singles = [...found.values()];
+  STATE.selectedRow = -1;
+  STATE.selectedCol = -1;
   updateSinglesBtn();
   updateActionBar();
   renderAnalysisHighlights();
