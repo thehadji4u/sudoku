@@ -318,39 +318,26 @@ function attachToolBtn(btnId, tapFn, longPressFn) {
       _toolLongPressTimer = null;
       if (!STATE.puzzle || STATE.paused) return;
       longPressFn();
-    }, 500);
+    }, 600);
   };
 
-  /* TOUCH: preventDefault suprime o evento 'click' no mobile.
-     Por isso o tap é tratado no touchend quando o timer ainda estava ativo. */
-  btn.addEventListener('touchstart', e => {
-    e.preventDefault();
-    startPress();
-  }, { passive: false });
-
-  btn.addEventListener('touchend', () => {
-    if (_toolLongPressTimer) {
-      /* Timer ainda rodando = press curto = tap */
-      clearTimeout(_toolLongPressTimer);
-      _toolLongPressTimer = null;
-      if (!STATE.puzzle || STATE.paused) return;
-      tapFn();
-    }
-    /* Se timer já disparou = long-press já foi executado — não faz nada */
-  });
-
-  btn.addEventListener('touchcancel', () => {
+  const cancelTimer = () => {
     if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
-  });
+  };
 
-  /* MOUSE/DESKTOP: usa click normalmente; mousedown só inicia o timer de long-press */
-  btn.addEventListener('mousedown', startPress);
-  btn.addEventListener('mouseup', () => {
-    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
-  });
-  btn.addEventListener('mouseleave', () => {
-    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
-  });
+  /* TOUCH: sem preventDefault — o browser gera o evento 'click' normalmente.
+     touchstart/touchend só gerenciam o timer de long-press.
+     O tap real é tratado apenas no 'click', que dispara UMA VEZ por interação. */
+  btn.addEventListener('touchstart', startPress, { passive: true });
+  btn.addEventListener('touchend',   cancelTimer);
+  btn.addEventListener('touchcancel', cancelTimer);
+
+  /* MOUSE/DESKTOP: mousedown inicia o timer; mouseup/leave cancelam. */
+  btn.addEventListener('mousedown',  startPress);
+  btn.addEventListener('mouseup',    cancelTimer);
+  btn.addEventListener('mouseleave', cancelTimer);
+
+  /* Único ponto de execução do tap — dispara para touch e mouse. */
   btn.addEventListener('click', () => {
     if (_toolLongPressTriggered) { _toolLongPressTriggered = false; return; }
     if (!STATE.puzzle || STATE.paused) return;
@@ -358,28 +345,32 @@ function attachToolBtn(btnId, tapFn, longPressFn) {
   });
 }
 
-/* Long-press actions — executa imediatamente sem precisar confirmar */
+/* Long-press actions — executa o item atual SE já estiver ativo; caso contrário age como tap. */
 function longPressSingles() {
   const an = STATE.analysis;
-  if (!an.singlesActive && !an.hiddenActive) toggleSingles(); // ativa primeiro
   if (an.singlesActive && an.singles.length) { executeFillSingles(); return; }
-  if (an.hiddenActive  && an.hiddens.length) { executeFillHiddenSingles(); }
+  if (an.hiddenActive  && an.hiddens.length) { executeFillHiddenSingles(); return; }
+  toggleSingles(); // ainda não estava ativo: mostra primeiro
 }
 function longPressNakedPairs() {
-  if (!STATE.analysis.nakedPairsActive) toggleNakedPairs();
-  if (STATE.analysis.nakedPairsActive && STATE.analysis.nakedPairs.length) executeNakedPairs();
+  const an = STATE.analysis;
+  if (an.nakedPairsActive && an.nakedPairs.length) { executeNakedPairs(); return; }
+  toggleNakedPairs();
 }
 function longPressPointing() {
-  if (!STATE.analysis.pointingActive) togglePointing();
-  if (STATE.analysis.pointingActive && STATE.analysis.pointings.length) executePointing();
+  const an = STATE.analysis;
+  if (an.pointingActive && an.pointings.length) { executePointing(); return; }
+  togglePointing();
 }
 function longPressXWing() {
-  if (!STATE.analysis.xwingActive) toggleXWing();
-  if (STATE.analysis.xwingActive && STATE.analysis.xwings.length) executeXWing();
+  const an = STATE.analysis;
+  if (an.xwingActive && an.xwings.length) { executeXWing(); return; }
+  toggleXWing();
 }
 function longPressYWing() {
-  if (!STATE.analysis.ywingActive) toggleYWing();
-  if (STATE.analysis.ywingActive && STATE.analysis.ywings.length) executeYWing();
+  const an = STATE.analysis;
+  if (an.ywingActive && an.ywings.length) { executeYWing(); return; }
+  toggleYWing();
 }
 
 /* ═══════════════════════════════════════
