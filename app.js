@@ -44,6 +44,10 @@ const STATE = {
     singlesActive:      false,
     singles:            [],        // [{r, c, val}]
 
+    /* Ocultas (Hidden Singles) */
+    hiddenActive:       false,
+    hiddens:            [],        // [{r, c, val}]
+
     /* Pares Nus (Naked Pairs) — auto-detect cycling */
     nakedPairsActive:   false,
     nakedPairs:         [],        // [{pairNums, pairCells:[{r,c}], affected:[{r,c,nums:Set}]}]
@@ -74,6 +78,7 @@ const STATE = {
     autoAnnotations:     false,
     simulatorMode:       false,
     enableNakedSingles:  true,
+    enableHiddenSingles: true,
     enableNakedPairs:    true,
     enablePointingPairs: true,
     enableXWing:         true,
@@ -196,6 +201,11 @@ function attachEvents() {
     toggleSingles();
   });
 
+  document.getElementById('btn-hiddensingles').addEventListener('click', () => {
+    if (!STATE.puzzle || STATE.paused) return;
+    toggleHiddenSingles();
+  });
+
   document.getElementById('btn-nakedpairs').addEventListener('click', () => {
     if (!STATE.puzzle || STATE.paused) return;
     toggleNakedPairs();
@@ -277,7 +287,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -296,7 +306,7 @@ function setupSettingsEvents() {
       if (key === 'simulatorMode') {
         updateControlsForSimMode();
       }
-      if (['enableNakedSingles', 'enableXWing', 'enableYWing'].includes(key)) {
+      if (['enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing'].includes(key)) {
         updateAnalysisToolsVisibility();
       }
     });
@@ -1539,45 +1549,13 @@ function toggleSingles() {
 function activateSingles() {
   const an = STATE.analysis;
   an.singlesActive = true;
-  const puz = STATE.puzzle, notes = STATE.notes;
-  const found = new Map(); // "r,c" → {r, c, val} — garante deduplicação
-
-  /* Naked Singles — célula com exatamente 1 candidato */
+  an.singles = [];
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
-      if (puz[r][c] === 0 && notes[r][c].size === 1)
-        found.set(`${r},${c}`, { r, c, val: [...notes[r][c]][0] });
-
-  /* Hidden Singles — número que só tem 1 posição possível numa casa */
-  function checkGroup(cells) {
-    for (let num = 1; num <= 9; num++) {
-      const cands = cells.filter(({ r, c }) => puz[r][c] === 0 && notes[r][c].has(num));
-      if (cands.length === 1) {
-        const { r, c } = cands[0];
-        if (!found.has(`${r},${c}`)) found.set(`${r},${c}`, { r, c, val: num });
-      }
-    }
-  }
-
-  for (let r = 0; r < 9; r++)
-    checkGroup(Array.from({ length: 9 }, (_, c) => ({ r, c })));
-  for (let c = 0; c < 9; c++)
-    checkGroup(Array.from({ length: 9 }, (_, r) => ({ r, c })));
-  for (let br = 0; br < 9; br += 3)
-    for (let bc = 0; bc < 9; bc += 3) {
-      const cells = [];
-      for (let rr = br; rr < br + 3; rr++)
-        for (let cc = bc; cc < bc + 3; cc++)
-          cells.push({ r: rr, c: cc });
-      checkGroup(cells);
-    }
-
-  an.singles = [...found.values()];
-  STATE.selectedRow = -1;
-  STATE.selectedCol = -1;
-  updateSinglesBtn();
-  updateActionBar();
-  renderAnalysisHighlights();
+      if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
+        an.singles.push({ r, c, val: [...STATE.notes[r][c]][0] });
+  STATE.selectedRow = -1; STATE.selectedCol = -1;
+  updateSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
 }
 
 function deactivateSingles() {
@@ -1602,20 +1580,90 @@ function executeFillSingles() {
   checkWin();
 }
 
+/* ─── Ocultas (Hidden Singles) ─── */
+function toggleHiddenSingles() {
+  STATE.analysis.hiddenActive ? deactivateHiddenSingles() : activateHiddenSingles();
+}
+
+function activateHiddenSingles() {
+  const an = STATE.analysis;
+  an.hiddenActive = true;
+  const puz = STATE.puzzle, notes = STATE.notes;
+  const found = new Map(); // "r,c" → {r,c,val} — deduplicado por célula
+
+  function checkGroup(cells) {
+    for (let num = 1; num <= 9; num++) {
+      const cands = cells.filter(({ r, c }) => puz[r][c] === 0 && notes[r][c].has(num));
+      if (cands.length === 1) {
+        const { r, c } = cands[0];
+        /* Só é Hidden Single se a célula tiver mais de 1 candidato (senão já é Naked) */
+        if (notes[r][c].size > 1 && !found.has(`${r},${c}`))
+          found.set(`${r},${c}`, { r, c, val: num });
+      }
+    }
+  }
+
+  for (let r = 0; r < 9; r++)
+    checkGroup(Array.from({ length: 9 }, (_, c) => ({ r, c })));
+  for (let c = 0; c < 9; c++)
+    checkGroup(Array.from({ length: 9 }, (_, r) => ({ r, c })));
+  for (let br = 0; br < 9; br += 3)
+    for (let bc = 0; bc < 9; bc += 3) {
+      const cells = [];
+      for (let rr = br; rr < br + 3; rr++)
+        for (let cc = bc; cc < bc + 3; cc++)
+          cells.push({ r: rr, c: cc });
+      checkGroup(cells);
+    }
+
+  an.hiddens = [...found.values()];
+  STATE.selectedRow = -1; STATE.selectedCol = -1;
+  updateHiddenSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
+}
+
+function deactivateHiddenSingles() {
+  const an = STATE.analysis;
+  an.hiddenActive = false; an.hiddens = [];
+  updateHiddenSinglesBtn(); updateActionBar(); renderAnalysisHighlights();
+}
+
+function executeFillHiddenSingles() {
+  const an = STATE.analysis;
+  if (!an.hiddenActive || !an.hiddens.length) return;
+  pushUndo();
+  for (const { r, c, val } of an.hiddens) {
+    if (STATE.puzzle[r][c] !== 0) continue;
+    STATE.puzzle[r][c] = val;
+    STATE.score += calculateCellPoints();
+    if (STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, val);
+    updateCellContent(r, c);
+  }
+  deactivateHiddenSingles();
+  updateScoreDisplay(); renderNumpad(); updateProgressBar(); renderHighlights();
+  checkWin();
+}
+
+function updateHiddenSinglesBtn() {
+  const btn = document.getElementById('btn-hiddensingles');
+  if (btn) btn.classList.toggle('active-mode', STATE.analysis.hiddenActive);
+}
+
 /* ─── Botão de ação (action bar) ─── */
 function handleActionConfirm() {
   const an = STATE.analysis;
-  if (an.singlesActive        && an.singles.length)        { executeFillSingles();  return; }
-  if (an.nakedPairsActive     && an.nakedPairs.length)     { executeNakedPairs();   return; }
-  if (an.pointingActive       && an.pointings.length)      { executePointing();     return; }
-  if (an.xwingActive          && an.xwings.length)         { executeXWing();        return; }
-  if (an.ywingActive          && an.ywings.length)         { executeYWing();        return; }
+  if (an.singlesActive        && an.singles.length)        { executeFillSingles();       return; }
+  if (an.hiddenActive         && an.hiddens.length)        { executeFillHiddenSingles(); return; }
+  if (an.nakedPairsActive     && an.nakedPairs.length)     { executeNakedPairs();        return; }
+  if (an.pointingActive       && an.pointings.length)      { executePointing();          return; }
+  if (an.xwingActive          && an.xwings.length)         { executeXWing();             return; }
+  if (an.ywingActive          && an.ywings.length)         { executeYWing();             return; }
 }
 
 function handleActionCancel() {
   const an = STATE.analysis;
-  if (an.singlesActive)      { deactivateSingles();   return; }
-  if (an.nakedPairsActive)   { deactivateNakedPairs();return; }
+  if (an.singlesActive)      { deactivateSingles();        return; }
+  if (an.hiddenActive)       { deactivateHiddenSingles();  return; }
+  if (an.nakedPairsActive)   { deactivateNakedPairs();     return; }
   if (an.pointingActive)     { deactivatePointing();  return; }
   if (an.xwingActive)        { deactivateXWing();     return; }
   if (an.ywingActive)        { deactivateYWing();     return; }
@@ -1638,6 +1686,21 @@ function updateActionBar() {
       confirm.disabled    = false;
     } else {
       label.textContent   = 'Nenhuma única encontrada';
+      confirm.textContent = '① Preencher';
+      confirm.disabled    = true;
+    }
+    return;
+  }
+
+  /* Ocultas (Hidden Singles) */
+  if (an.hiddenActive) {
+    bar.classList.remove('hidden');
+    if (an.hiddens.length) {
+      label.textContent   = `${an.hiddens.length} oculta(s) encontrada(s)`;
+      confirm.textContent = '① Preencher todas';
+      confirm.disabled    = false;
+    } else {
+      label.textContent   = 'Nenhuma oculta encontrada';
       confirm.textContent = '① Preencher';
       confirm.disabled    = true;
     }
@@ -1719,11 +1782,12 @@ function updateSinglesBtn() {
 function updateAnalysisToolsVisibility() {
   const s = STATE.settings;
   const ids = [
-    ['btn-singles',    s.enableNakedSingles],
-    ['btn-nakedpairs', s.enableNakedPairs],
-    ['btn-pointing',   s.enablePointingPairs],
-    ['btn-xwing',      s.enableXWing],
-    ['btn-ywing',      s.enableYWing],
+    ['btn-singles',       s.enableNakedSingles],
+    ['btn-hiddensingles', s.enableHiddenSingles],
+    ['btn-nakedpairs',    s.enableNakedPairs],
+    ['btn-pointing',      s.enablePointingPairs],
+    ['btn-xwing',         s.enableXWing],
+    ['btn-ywing',         s.enableYWing],
   ];
   ids.forEach(([id, visible]) => {
     const btn = document.getElementById(id);
@@ -1740,6 +1804,7 @@ function updateAnalysisToolsVisibility() {
 function resetAnalysis() {
   STATE.analysis = {
     singlesActive: false, singles: [],
+    hiddenActive: false, hiddens: [],
     nakedPairsActive: false, nakedPairs: [], nakedPairsIndex: 0,
     pointingActive: false, pointings: [], pointingIndex: 0,
     xwingActive: false, xwings: [], xwingIndex: 0,
@@ -1748,6 +1813,7 @@ function resetAnalysis() {
   const bar = document.getElementById('action-bar');
   if (bar) bar.classList.add('hidden');
   updateSinglesBtn();
+  updateHiddenSinglesBtn();
   updateNakedPairsBtn();
   updatePointingBtn();
 }
@@ -1987,6 +2053,11 @@ function renderAnalysisHighlights() {
     for (const { r, c } of an.singles)
       cellElements[r][c].classList.add('singles-match');
 
+  /* Ocultas */
+  if (an.hiddenActive)
+    for (const { r, c } of an.hiddens)
+      cellElements[r][c].classList.add('singles-match');
+
   /* Pares Nus — apenas padrão atual */
   if (an.nakedPairsActive && an.nakedPairs.length > 0) {
     const np = an.nakedPairs[an.nakedPairsIndex];
@@ -2160,6 +2231,7 @@ function syncSettingsUI() {
   toggle('cfg-autoAnnotations',   s.autoAnnotations);
   toggle('cfg-simulatorMode',        s.simulatorMode);
   toggle('cfg-enableNakedSingles',   s.enableNakedSingles);
+  toggle('cfg-enableHiddenSingles',  s.enableHiddenSingles);
   toggle('cfg-enableNakedPairs',     s.enableNakedPairs);
   toggle('cfg-enablePointingPairs',  s.enablePointingPairs);
   toggle('cfg-enableXWing',          s.enableXWing);

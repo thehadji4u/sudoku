@@ -67,7 +67,7 @@
   </div>
 
   <div class="diff-copyright">
-    <span class="app-version">v1.34</span>
+    <span class="app-version">v1.35</span>
     <span class="copyright-sep">·</span>
     <span>© 2026 HadjiWare</span>
   </div>
@@ -143,6 +143,10 @@
       <button class="tool-btn" id="btn-singles" title="Únicas">
         <span class="tool-icon">①</span>
         <span>Únicas</span>
+      </button>
+      <button class="tool-btn" id="btn-hiddensingles" title="Ocultas">
+        <span class="tool-icon">①?</span>
+        <span>Ocultas</span>
       </button>
       <button class="tool-btn" id="btn-nakedpairs" title="Pares Nus">
         <span class="tool-icon">②</span>
@@ -308,8 +312,19 @@
 
     <div class="setting-row">
       <div class="setting-info">
-        <div class="setting-label">Pares Nus (long-press célula)</div>
-        <div class="setting-desc">Segurar duas ou mais células com anotações idênticas para remover candidatos da região</div>
+        <div class="setting-label">Ocultas ①?</div>
+        <div class="setting-desc">Identifica números que só cabem em uma célula dentro de uma linha, coluna ou quadrante (Hidden Singles)</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="cfg-enableHiddenSingles">
+        <label class="toggle-track" for="cfg-enableHiddenSingles"></label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Pares Nus ②</div>
+        <div class="setting-desc">Detecta dois candidatos em par exclusivo — elimina esses números das outras células da casa</div>
       </div>
       <div class="toggle-wrap">
         <input type="checkbox" class="toggle-input" id="cfg-enableNakedPairs">
@@ -319,8 +334,8 @@
 
     <div class="setting-row">
       <div class="setting-info">
-        <div class="setting-label">Par Apontador (long-press + numpad)</div>
-        <div class="setting-desc">Com número fixado no numpad, segurar duas células do mesmo quadrante para "atirar" candidatos na linha/coluna</div>
+        <div class="setting-label">Par Apontador ↗</div>
+        <div class="setting-desc">Quando um candidato só existe em uma linha/coluna dentro de um quadrante, elimina-o fora do quadrante</div>
       </div>
       <div class="toggle-wrap">
         <input type="checkbox" class="toggle-input" id="cfg-enablePointingPairs">
