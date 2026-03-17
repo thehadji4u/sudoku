@@ -2,13 +2,12 @@
 const SudokuGenerator = (() => {
 
   const DIFFICULTY = {
-    facil:        { remove: 36, multiplier: 1   },
-    medio:        { remove: 42, multiplier: 1.5 },
-    dificil:      { remove: 47, multiplier: 2   },
-    especialista: { remove: 51, multiplier: 3   },
-    mestre:       { remove: 55, multiplier: 4   },
-    extremo:      { remove: 58, multiplier: 6   },
-    diabolico:    { remove: 64, multiplier: 10  },
+    facil:        { removeMin: 36, removeMax: 45, multiplier: 1   },
+    medio:        { removeMin: 46, removeMax: 49, multiplier: 1.5 },
+    dificil:      { removeMin: 50, removeMax: 53, multiplier: 2   },
+    especialista: { removeMin: 54, removeMax: 57, multiplier: 3   },
+    mestre:       { removeMin: 58, removeMax: 61, multiplier: 4   },
+    extremo:      { removeMin: 62, removeMax: 64, multiplier: 6   },
   };
 
   /* ── helpers ── */
@@ -115,17 +114,18 @@ const SudokuGenerator = (() => {
 
   function generate(difficulty) {
     const cfg = DIFFICULTY[difficulty] || DIFFICULTY.facil;
-    const attempts = cfg.remove >= 64 ? 3 : 1;
+    const remove = cfg.removeMin + Math.floor(Math.random() * (cfg.removeMax - cfg.removeMin + 1));
+    const attempts = remove >= 58 ? 3 : 1;
     let bestPuzzle = null, bestSolution = null, bestRemoved = -1;
     for (let att = 0; att < attempts; att++) {
       const solution = createEmpty();
       solveRandom(solution);
-      const puzzle = removeCells(solution.map(r => [...r]), cfg.remove);
+      const puzzle = removeCells(solution.map(r => [...r]), remove);
       const removed = puzzle.flat().filter(x => x === 0).length;
       if (removed > bestRemoved) {
         bestRemoved = removed; bestPuzzle = puzzle; bestSolution = solution;
       }
-      if (bestRemoved >= cfg.remove) break;
+      if (bestRemoved >= remove) break;
     }
     return {
       puzzle:   bestPuzzle.map(r => [...r]),

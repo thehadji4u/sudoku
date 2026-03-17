@@ -40,30 +40,32 @@
       <button class="diff-btn d-facil" data-diff="facil">
         <span class="diff-name">Fácil</span>
         <span class="diff-stars">★☆☆☆☆☆</span>
+        <span class="diff-lock" id="lock-facil">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-medio" data-diff="medio">
         <span class="diff-name">Médio</span>
         <span class="diff-stars">★★☆☆☆☆</span>
+        <span class="diff-lock" id="lock-medio">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-dificil" data-diff="dificil">
         <span class="diff-name">Difícil</span>
         <span class="diff-stars">★★★☆☆☆</span>
+        <span class="diff-lock" id="lock-dificil">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-especialista" data-diff="especialista">
         <span class="diff-name">Especialista</span>
         <span class="diff-stars">★★★★☆☆</span>
+        <span class="diff-lock" id="lock-especialista">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-mestre" data-diff="mestre">
         <span class="diff-name">Mestre</span>
         <span class="diff-stars">★★★★★☆</span>
+        <span class="diff-lock" id="lock-mestre">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-extremo" data-diff="extremo">
         <span class="diff-name">Extremo</span>
         <span class="diff-stars">★★★★★★</span>
-      </button>
-      <button class="diff-btn d-diabolico" data-diff="diabolico">
-        <span class="diff-name">Diabólico</span>
-        <span class="diff-stars">★★★★★★☠</span>
+        <span class="diff-lock" id="lock-extremo">🔒 <span class="lock-count"></span></span>
       </button>
     </div>
 
@@ -78,7 +80,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.49</span>
+      <span class="app-version">v2.00</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -93,6 +95,7 @@
       <div class="ghdr-top">
         <button class="ghdr-icon" id="btn-back" title="Voltar">‹</button>
         <span id="score-val" class="game-score">0</span>
+        <button class="ghdr-icon hidden" id="btn-mentor-info" title="Mentor">🎓</button>
         <button class="ghdr-icon" id="btn-settings-game" title="Configurações"><svg class="gear-svg" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -158,29 +161,53 @@
 
       <!-- Ferramentas de análise (acima do numpad) -->
       <div id="analysis-tools" class="hidden">
-        <button class="tool-btn" id="btn-singles" title="Únicas">
-          <span class="tool-icon">①</span>
-          <span>Únicas</span>
+        <!-- Fácil 🟢 -->
+        <button class="tool-btn" id="btn-singles" data-tier="facil" title="Únicas">
+          <span class="tool-icon">①</span><span>Únicas</span>
         </button>
-        <button class="tool-btn" id="btn-nakedpairs" title="Pares Nus">
-          <span class="tool-icon">②</span>
-          <span>Pares Nus</span>
+        <!-- Médio 🟡 -->
+        <button class="tool-btn" id="btn-nakedpairs" data-tier="medio" title="Pares Nus">
+          <span class="tool-icon">②</span><span>Pares Nus</span>
         </button>
-        <button class="tool-btn" id="btn-pointing" title="Par Apontador">
-          <span class="tool-icon">↗</span>
-          <span>Apont.</span>
+        <button class="tool-btn" id="btn-hiddenpairs" data-tier="medio" title="Pares Ocultos">
+          <span class="tool-icon">②</span><span>Ocultos</span>
         </button>
-        <button class="tool-btn" id="btn-xwing" title="X-Wing">
-          <span class="tool-icon">♟</span>
-          <span>X-Wing</span>
+        <button class="tool-btn" id="btn-pointing" data-tier="medio" title="Par Apontador">
+          <span class="tool-icon">↗</span><span>Apont.</span>
         </button>
-        <button class="tool-btn" id="btn-ywing" title="Y-Wing">
-          <span class="tool-icon">⁓</span>
-          <span>Y-Wing</span>
+        <!-- Difícil 🔵 -->
+        <button class="tool-btn" id="btn-xwing" data-tier="dificil" title="X-Wing">
+          <span class="tool-icon">✕</span><span>X-Wing</span>
         </button>
-        <button class="tool-btn" id="btn-wwing" title="W-Wing">
-          <span class="tool-icon">𝕎</span>
-          <span>W-Wing</span>
+        <button class="tool-btn" id="btn-nakedtriples" data-tier="dificil" title="Triplos Nus">
+          <span class="tool-icon">③</span><span>Triplos</span>
+        </button>
+        <button class="tool-btn" id="btn-hiddentriples" data-tier="dificil" title="Triplos Ocultos">
+          <span class="tool-icon">③</span><span>T.Ocult.</span>
+        </button>
+        <!-- Especialista 🟣 -->
+        <button class="tool-btn" id="btn-swordfish" data-tier="especialista" title="Swordfish">
+          <span class="tool-icon">🐟</span><span>Sword.</span>
+        </button>
+        <button class="tool-btn" id="btn-ywing" data-tier="especialista" title="Y-Wing / XY-Wing">
+          <span class="tool-icon">⁓</span><span>Y-Wing</span>
+        </button>
+        <!-- Mestre 🔴 -->
+        <button class="tool-btn" id="btn-wwing" data-tier="mestre" title="W-Wing">
+          <span class="tool-icon">𝕎</span><span>W-Wing</span>
+        </button>
+        <button class="tool-btn" id="btn-xychain" data-tier="mestre" title="XY-Chain">
+          <span class="tool-icon">⛓</span><span>XY-Chain</span>
+        </button>
+        <button class="tool-btn" id="btn-coloring" data-tier="mestre" title="Coloring">
+          <span class="tool-icon">🎨</span><span>Color.</span>
+        </button>
+        <!-- Extremo ⚫ -->
+        <button class="tool-btn" id="btn-forcingchains" data-tier="extremo" title="Forcing Chains">
+          <span class="tool-icon">⚡</span><span>Forcing</span>
+        </button>
+        <button class="tool-btn" id="btn-aic" data-tier="extremo" title="AIC">
+          <span class="tool-icon">∞</span><span>AIC</span>
         </button>
       </div>
     </div>
@@ -238,6 +265,7 @@
     <!-- Modal Configurações -->
     <div class="modal-sheet" id="modal-settings">
       <div class="modal-handle"></div>
+      <button class="settings-close-btn" id="btn-settings-close">✕</button>
       <h2 class="modal-title">Configurações</h2>
 
       <div class="setting-row">
@@ -312,6 +340,39 @@
         <div class="toggle-wrap">
           <input type="checkbox" class="toggle-input" id="cfg-simulatorMode">
           <label class="toggle-track" for="cfg-simulatorMode"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Idioma / Language</div>
+          <div class="setting-desc">Português · English</div>
+        </div>
+        <div class="toggle-wrap lang-toggle">
+          <button class="lang-btn active" id="lang-pt">PT</button>
+          <button class="lang-btn" id="lang-en">EN</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Modo Mentor 🎓</div>
+          <div class="setting-desc">Adiciona botão de explicação detalhada ao ativar uma análise</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-mentorMode">
+          <label class="toggle-track" for="cfg-mentorMode"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Filtrar ferramentas por dificuldade</div>
+          <div class="setting-desc">Exibe apenas as ferramentas adequadas ao nível atual</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-filterByDifficulty">
+          <label class="toggle-track" for="cfg-filterByDifficulty"></label>
         </div>
       </div>
 
@@ -396,6 +457,102 @@
           <label class="toggle-track" for="cfg-enableWWing"></label>
         </div>
       </div>
+
+      <div class="settings-section-title tier-dificil">Difícil 🔵</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Pares Ocultos ②</div>
+          <div class="setting-desc">Dois números confinados a 2 células em uma unidade — elimina outros candidatos</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableHiddenPairs">
+          <label class="toggle-track" for="cfg-enableHiddenPairs"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Triplos Nus ③</div>
+          <div class="setting-desc">3 células com ≤3 candidatos únicos — elimina esses números das demais células</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableNakedTriples">
+          <label class="toggle-track" for="cfg-enableNakedTriples"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Triplos Ocultos ③</div>
+          <div class="setting-desc">3 números confinados a 3 células — elimina outros candidatos dessas células</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableHiddenTriples">
+          <label class="toggle-track" for="cfg-enableHiddenTriples"></label>
+        </div>
+      </div>
+
+      <div class="settings-section-title tier-especialista">Especialista 🟣</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Swordfish 🐟</div>
+          <div class="setting-desc">X-Wing estendido a 3 linhas/colunas</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableSwordfish">
+          <label class="toggle-track" for="cfg-enableSwordfish"></label>
+        </div>
+      </div>
+
+      <div class="settings-section-title tier-mestre">Mestre 🔴</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">XY-Chain ⛓</div>
+          <div class="setting-desc">Cadeia de células bivalor com candidato eliminável nos endpoints</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableXYChain">
+          <label class="toggle-track" for="cfg-enableXYChain"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Coloring 🎨</div>
+          <div class="setting-desc">Coloração simples — cadeias de conjugados para eliminar candidatos</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableColoring">
+          <label class="toggle-track" for="cfg-enableColoring"></label>
+        </div>
+      </div>
+
+      <div class="settings-section-title tier-extremo">Extremo ⚫</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Forcing Chains ⚡</div>
+          <div class="setting-desc">Tenta candidatos e propaga — valores coincidentes são certos</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableForcingChains">
+          <label class="toggle-track" for="cfg-enableForcingChains"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">AIC ∞</div>
+          <div class="setting-desc">Alternating Inference Chain — cadeias de inferências alternadas</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableAIC">
+          <label class="toggle-track" for="cfg-enableAIC"></label>
+        </div>
+      </div>
     </div>
 
     <!-- Modal Ranking -->
@@ -478,6 +635,22 @@
     <div class="genio-btns">
       <button class="btn-secondary" id="btn-genio-cancel">✕ Fechar</button>
       <button class="btn-primary" id="btn-genio-confirm">✨ Realizar</button>
+    </div>
+  </div>
+
+  <!-- Painel Mentor (fora do overlay — tabuleiro permanece visível) -->
+  <div id="mentor-panel">
+    <div class="genio-handle"></div>
+    <div class="genio-panel-header">
+      <span class="genio-lamp">🎓</span>
+      <div class="genio-panel-title">
+        <span class="genio-title-text">Mentor</span>
+        <span class="genio-strategy-badge" id="mentor-strategy-badge">—</span>
+      </div>
+    </div>
+    <div class="mentor-content" id="mentor-content"></div>
+    <div class="genio-btns">
+      <button class="btn-secondary" id="btn-mentor-close">✕ Fechar</button>
     </div>
   </div>
 

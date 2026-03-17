@@ -58,8 +58,11 @@ html, body {
 #screen-difficulty {
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 16px 20px;
+  gap: 10px;
+  padding: 12px 20px;
+  height: 100dvh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .diff-logo {
@@ -505,6 +508,7 @@ html, body {
 .cell.sim-blue {
   color: #1D4ED8 !important;
   font-weight: 700;
+  text-shadow: 0 0 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.3);
 }
 .cell.sim-yellow {
   color: #FDE047 !important;  /* amarelo vivo com contorno escuro para legibilidade em qq fundo */
@@ -1342,6 +1346,121 @@ html, body {
   background: #DBEAFE;
   border-radius: 2px;
 }
+
+/* ── Tool button tier colors ── */
+.tool-btn[data-tier="facil"]        { border-left: 3px solid #16A34A; }
+.tool-btn[data-tier="medio"]        { border-left: 3px solid #CA8A04; }
+.tool-btn[data-tier="dificil"]      { border-left: 3px solid #2563EB; }
+.tool-btn[data-tier="especialista"] { border-left: 3px solid #7C3AED; }
+.tool-btn[data-tier="mestre"]       { border-left: 3px solid #DC2626; }
+.tool-btn[data-tier="extremo"]      { border-left: 3px solid #18181B; }
+
+/* ── Settings section title tier colors ── */
+.settings-section-title.tier-dificil      { color: #2563EB; }
+.settings-section-title.tier-especialista { color: #7C3AED; }
+.settings-section-title.tier-mestre       { color: #DC2626; }
+.settings-section-title.tier-extremo      { color: #18181B; }
+
+/* ── Settings close button ── */
+.settings-close-btn {
+  position: absolute;
+  top: 12px; right: 14px;
+  background: none; border: none;
+  font-size: 20px; font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.settings-close-btn:active { background: var(--accent-light); }
+#modal-settings { position: relative; }
+
+/* ── Language toggle buttons ── */
+.lang-toggle { display: flex; gap: 4px; }
+.lang-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: var(--surface2);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.lang-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Mentor panel ── */
+#mentor-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 299;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -6px 32px rgba(0,0,0,.18);
+  padding: 10px 20px 28px;
+  max-height: 60vh;
+  overflow-y: auto;
+  transform: translateY(100vh);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .35s cubic-bezier(.34,1.2,.64,1), visibility 0s .35s;
+  -webkit-overflow-scrolling: touch;
+}
+#mentor-panel.mentor-visible {
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform .35s cubic-bezier(.34,1.2,.64,1), visibility 0s 0s;
+}
+.mentor-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.mentor-content h4 { font-size: 13px; color: var(--accent); margin: 10px 0 4px; }
+.mentor-content .mentor-step {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.mentor-content .mentor-step:last-child { border-bottom: none; }
+.mentor-step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+
+/* ── Diff-btn lock indicator ── */
+.diff-lock {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: none;
+}
+.diff-btn.locked .diff-lock { display: block; }
+.diff-btn.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Mentor button in header ── */
+#btn-mentor-info {
+  font-size: 18px;
+  animation: mentor-pulse 2s ease-in-out infinite;
+}
+@keyframes mentor-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* ── Triple highlights ── */
+.cell.triple-select  { background: #E0F2FE !important; outline: 2px solid #0284C7; outline-offset: -2px; }
+.cell.triple-affected { background: #FEF9C3 !important; outline: 1px solid #EAB308; outline-offset: -1px; }
 
 @media (min-width: 700px) {
   :root { --cell-size: 56px; }
