@@ -178,23 +178,34 @@ function isDiffUnlocked(diff) {
 }
 function updateDiffButtons() {
   const completions = getCompletions();
+  // Find the first locked difficulty and show info for it
+  let nextLockText = '';
   DIFF_ORDER.forEach(diff => {
     const btn = document.querySelector(`.diff-btn[data-diff="${diff}"]`);
     if (!btn) return;
     const unlocked = isDiffUnlocked(diff);
     btn.classList.toggle('locked', !unlocked);
-    const lockSpan = btn.querySelector('.diff-lock');
-    if (lockSpan) {
-      if (!unlocked) {
-        const idx = DIFF_ORDER.indexOf(diff);
-        const prevDiff = DIFF_ORDER[idx - 1];
-        const req = DIFF_UNLOCK_REQUIRED[diff];
-        const have = completions[prevDiff] || 0;
-        const remaining = req - have;
-        lockSpan.querySelector('.lock-count').textContent = `Faltam ${remaining} partida(s) de ${DIFF_NAMES[prevDiff]}`;
-      }
-    }
   });
+  // Find first locked
+  for (const diff of DIFF_ORDER) {
+    if (!isDiffUnlocked(diff)) {
+      const idx = DIFF_ORDER.indexOf(diff);
+      const prevDiff = DIFF_ORDER[idx - 1];
+      const req = DIFF_UNLOCK_REQUIRED[diff];
+      const have = completions[prevDiff] || 0;
+      const remaining = req - have;
+      const diffLabel = DIFF_NAMES[diff] || diff;
+      const prevLabel = DIFF_NAMES[prevDiff] || prevDiff;
+      nextLockText = `🔒 Faltam ${remaining} partida(s) de ${prevLabel} para desbloquear ${diffLabel}`;
+      break;
+    }
+  }
+  const infoEl = document.getElementById('next-unlock-info');
+  const textEl = document.getElementById('next-unlock-text');
+  if (infoEl && textEl) {
+    infoEl.classList.toggle('hidden', !nextLockText);
+    textEl.textContent = nextLockText;
+  }
 }
 function _attachLogoUnlock() {
   const logo = document.querySelector('.diff-logo');
@@ -218,6 +229,7 @@ function _attachLogoUnlock() {
 ═══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
+  applyLanguage(STATE.settings.language || 'pt');
   buildNumpad();
   attachEvents();
   syncSettingsUI();
@@ -648,6 +660,7 @@ function restartGame() {
 }
 
 function requestNewGame(diff) {
+  if (!isDiffUnlocked(diff)) return; // silently ignore locked levels
   /* Avisa se há partida em andamento no STATE ou sessão salva no localStorage */
   const hasActive = (STATE.puzzle && STATE.timerRunning) || loadSession() !== null;
   if (hasActive) {
@@ -2462,6 +2475,14 @@ function updateAnalysisToolsVisibility() {
   const section = document.getElementById('analysis-section');
   if (bar)     bar.classList.toggle('hidden', !anyVisible);
   if (section) section.classList.toggle('hidden', !anyVisible);
+
+  // Hide tool rows that have no visible buttons
+  ['tool-row-1','tool-row-2','tool-row-3'].forEach(rowId => {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    const anyBtn = [...row.querySelectorAll('.tool-btn')].some(b => !b.classList.contains('hidden'));
+    row.classList.toggle('hidden', !anyBtn);
+  });
 }
 
 function resetAnalysis() {
@@ -3246,65 +3267,103 @@ function longPressXYChain() {
 function detectColoring() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
-  for (let num=1;num<=9;num++) {
+
+  for (let num = 1; num <= 9; num++) {
+    // Build conjugate pairs (units where num appears in exactly 2 empty cells)
     const pairs = [];
-    for (let r=0;r<9;r++) {
-      const cs=[]; for (let c=0;c<9;c++) if (puz[r][c]===0&&notes[r][c].has(num)) cs.push({r,c});
-      if (cs.length===2) pairs.push(cs);
+    const pairSet = new Set();
+    const addPair = (a, b) => {
+      const key = [a.r,a.c,b.r,b.c].join(',');
+      const key2 = [b.r,b.c,a.r,a.c].join(',');
+      if (pairSet.has(key) || pairSet.has(key2)) return;
+      pairSet.add(key); pairs.push([a, b]);
+    };
+    for (let r = 0; r < 9; r++) {
+      const cs = [];
+      for (let c = 0; c < 9; c++) if (puz[r][c] === 0 && notes[r][c].has(num)) cs.push({r,c});
+      if (cs.length === 2) addPair(cs[0], cs[1]);
     }
-    for (let c=0;c<9;c++) {
-      const rs=[]; for (let r=0;r<9;r++) if (puz[r][c]===0&&notes[r][c].has(num)) rs.push({r,c});
-      if (rs.length===2) pairs.push(rs);
+    for (let c = 0; c < 9; c++) {
+      const rs = [];
+      for (let r = 0; r < 9; r++) if (puz[r][c] === 0 && notes[r][c].has(num)) rs.push({r,c});
+      if (rs.length === 2) addPair(rs[0], rs[1]);
     }
-    for (let br=0;br<9;br+=3) for (let bc=0;bc<9;bc+=3) {
-      const cs=[];
-      for (let rr=br;rr<br+3;rr++) for (let cc=bc;cc<bc+3;cc++)
-        if (puz[rr][cc]===0&&notes[rr][cc].has(num)) cs.push({r:rr,c:cc});
-      if (cs.length===2) pairs.push(cs);
+    for (let br = 0; br < 9; br += 3) for (let bc = 0; bc < 9; bc += 3) {
+      const cs = [];
+      for (let rr = br; rr < br+3; rr++) for (let cc = bc; cc < bc+3; cc++)
+        if (puz[rr][cc] === 0 && notes[rr][cc].has(num)) cs.push({r:rr,c:cc});
+      if (cs.length === 2) addPair(cs[0], cs[1]);
     }
-    const adj = {};
-    for (const [a,b] of pairs) {
-      const ka=`${a.r},${a.c}`, kb=`${b.r},${b.c}`;
-      (adj[ka]||(adj[ka]=[])).push(b);
-      (adj[kb]||(adj[kb]=[])).push(a);
+    if (pairs.length < 2) continue;
+
+    // Build adjacency graph from conjugate pairs
+    const adj = {}; // "r,c" -> [{r,c}]
+    for (const [a, b] of pairs) {
+      const ka = `${a.r},${a.c}`, kb = `${b.r},${b.c}`;
+      (adj[ka] = adj[ka] || []).push(b);
+      (adj[kb] = adj[kb] || []).push(a);
     }
-    const colored = {};
-    for (let r=0;r<9;r++) for (let c=0;c<9;c++) {
-      if (puz[r][c]!==0||!notes[r][c].has(num)) continue;
-      const key=`${r},${c}`;
-      if (colored[key]!==undefined) continue;
-      const queue = [{r,c,color:0}];
-      colored[key]=0;
+
+    // Find connected components and color each separately
+    const visitedGlobal = new Set();
+
+    for (const startKey of Object.keys(adj)) {
+      if (visitedGlobal.has(startKey)) continue;
+
+      // BFS this component
+      const compColor = {}; // "r,c" -> 0 or 1
+      const queue = [{ key: startKey, color: 0 }];
+      compColor[startKey] = 0;
+      visitedGlobal.add(startKey);
+
       while (queue.length) {
-        const {r:cr,c:cc,color} = queue.shift();
-        const k=`${cr},${cc}`;
-        for (const nb of (adj[k]||[])) {
-          const nk=`${nb.r},${nb.c}`;
-          if (colored[nk]!==undefined) continue;
-          colored[nk]=1-color;
-          queue.push({...nb,color:1-color});
+        const { key, color } = queue.shift();
+        for (const nb of (adj[key] || [])) {
+          const nk = `${nb.r},${nb.c}`;
+          if (compColor[nk] !== undefined) continue;
+          compColor[nk] = 1 - color;
+          visitedGlobal.add(nk);
+          queue.push({ key: nk, color: 1 - color });
         }
       }
-    }
-    for (const color of [0,1]) {
-      const colorCells = Object.entries(colored).filter(([,v])=>v===color).map(([k])=>({r:+k.split(',')[0],c:+k.split(',')[1]}));
-      for (let i=0;i<colorCells.length-1;i++) for (let j=i+1;j<colorCells.length;j++) {
-        if (cellSees(colorCells[i].r,colorCells[i].c,colorCells[j].r,colorCells[j].c)) {
-          const targets = colorCells.filter(t => puz[t.r][t.c]===0 && notes[t.r][t.c].has(num));
-          if (targets.length) found.push({num, type:'conflict', conflictColor:color, colored, targets});
-          break;
+
+      const comp0 = Object.entries(compColor).filter(([,v]) => v === 0).map(([k]) => ({ r: +k.split(',')[0], c: +k.split(',')[1] }));
+      const comp1 = Object.entries(compColor).filter(([,v]) => v === 1).map(([k]) => ({ r: +k.split(',')[0], c: +k.split(',')[1] }));
+      if (comp0.length === 0 || comp1.length === 0) continue;
+
+      // Rule 1: Two same-color cells see each other → that color is invalid
+      let rule1Applied = false;
+      for (const [colorCells] of [[comp0, comp1], [comp1, comp0]]) {
+        let contradiction = false;
+        outer: for (let i = 0; i < colorCells.length - 1; i++) {
+          for (let j = i + 1; j < colorCells.length; j++) {
+            if (cellSees(colorCells[i].r, colorCells[i].c, colorCells[j].r, colorCells[j].c)) {
+              contradiction = true; break outer;
+            }
+          }
+        }
+        if (contradiction) {
+          const targets = colorCells.filter(cell => notes[cell.r][cell.c].has(num));
+          if (targets.length > 0) {
+            found.push({ num, type: 'contradiction', targets, comp0, comp1, compColor });
+            rule1Applied = true; break;
+          }
         }
       }
-    }
-    const allColored = Object.entries(colored).map(([k,v])=>({r:+k.split(',')[0],c:+k.split(',')[1],color:v}));
-    const color0cells = allColored.filter(x=>x.color===0);
-    const color1cells = allColored.filter(x=>x.color===1);
-    for (let r=0;r<9;r++) for (let c=0;c<9;c++) {
-      if (puz[r][c]!==0||!notes[r][c].has(num)) continue;
-      if (colored[`${r},${c}`]!==undefined) continue;
-      const sees0 = color0cells.some(x=>cellSees(r,c,x.r,x.c));
-      const sees1 = color1cells.some(x=>cellSees(r,c,x.r,x.c));
-      if (sees0&&sees1) found.push({num, type:'witness', colored, targets:[{r,c}], color0cells, color1cells});
+      if (rule1Applied) continue;
+
+      // Rule 2: External cell sees cells of BOTH colors (from this component only) → eliminate
+      const external = [];
+      for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+        if (puz[r][c] !== 0 || !notes[r][c].has(num)) continue;
+        if (compColor[`${r},${c}`] !== undefined) continue; // in chain
+        const sees0 = comp0.some(cell => cellSees(r, c, cell.r, cell.c));
+        const sees1 = comp1.some(cell => cellSees(r, c, cell.r, cell.c));
+        if (sees0 && sees1) external.push({ r, c });
+      }
+      if (external.length > 0) {
+        found.push({ num, type: 'external', targets: external, comp0, comp1, compColor });
+      }
     }
   }
   return found;
@@ -3715,43 +3774,59 @@ function hideMentorPanel() {
 ═══════════════════════════════════════ */
 const I18N = {
   pt: {
-    score: 'Pontos', time: 'Tempo', errors: 'Erros',
-    difficulty: 'Dificuldade', best: 'Sempre 🏆',
-    notes: 'Anotações', undo: 'Desfazer', erase: 'Apagar',
-    fill: 'Preencher', simulator: 'Simulador',
-    settings: 'Ajustes', ranking: 'Ranking',
-    facil: 'Fácil', medio: 'Médio', dificil: 'Difícil',
-    especialista: 'Especialista', mestre: 'Mestre', extremo: 'Extremo',
+    facil:'Fácil', medio:'Médio', dificil:'Difícil', especialista:'Especialista', mestre:'Mestre', extremo:'Extremo',
+    chooseLevel:'Escolha a dificuldade',
+    settings:'Ajustes', ranking:'🏆 Ranking',
+    notes:'Anotações', undo:'Desfazer', erase:'Apagar', fill:'Preencher', simulator:'Simulador',
+    best:'Sempre 🏆', difficulty:'Dificuldade', errors:'Erros', time:'Tempo',
+    resume:'Retomar', discard:'Descartar',
+    confirm:'Confirmar', cancel:'✕',
   },
   en: {
-    score: 'Score', time: 'Time', errors: 'Errors',
-    difficulty: 'Difficulty', best: 'Best 🏆',
-    notes: 'Notes', undo: 'Undo', erase: 'Erase',
-    fill: 'Fill', simulator: 'Simulator',
-    settings: 'Settings', ranking: 'Ranking',
-    facil: 'Easy', medio: 'Medium', dificil: 'Hard',
-    especialista: 'Expert', mestre: 'Master', extremo: 'Extreme',
+    facil:'Easy', medio:'Medium', dificil:'Hard', especialista:'Expert', mestre:'Master', extremo:'Extreme',
+    chooseLevel:'Choose difficulty',
+    settings:'Settings', ranking:'🏆 Ranking',
+    notes:'Notes', undo:'Undo', erase:'Erase', fill:'Fill', simulator:'Simulator',
+    best:'Best 🏆', difficulty:'Difficulty', errors:'Errors', time:'Time',
+    resume:'Resume', discard:'Discard',
+    confirm:'Confirm', cancel:'✕',
   }
 };
 
 function applyLanguage(lang) {
-  STATE.settings.language = lang;
+  STATE.settings.language = lang || 'pt';
   saveSettings();
+  const t = I18N[lang] || I18N.pt;
+  // Diff buttons
   document.querySelectorAll('.diff-btn').forEach(btn => {
     const diff = btn.dataset.diff;
     const nameEl = btn.querySelector('.diff-name');
-    if (nameEl && I18N[lang][diff]) nameEl.textContent = I18N[lang][diff];
+    if (nameEl && t[diff]) nameEl.textContent = t[diff];
   });
+  // DIFF_NAMES
+  ['facil','medio','dificil','especialista','mestre','extremo'].forEach(d => {
+    if (t[d]) DIFF_NAMES[d] = t[d];
+  });
+  // Subtitle
+  const sub = document.querySelector('.diff-logo p');
+  if (sub) sub.textContent = t.chooseLevel;
+  // Footer buttons
+  const rankBtn = document.getElementById('btn-ranking-home');
+  if (rankBtn) rankBtn.textContent = t.ranking;
+  const settBtn = document.querySelector('#btn-settings-home');
+  if (settBtn) { const svg = settBtn.querySelector('svg'); settBtn.textContent = ' ' + t.settings; if(svg) settBtn.prepend(svg); }
+  // Game controls
+  const ctrl = (id, key) => { const el = document.getElementById(id); if (el) { const sp = el.querySelector('span:last-child'); if(sp) sp.textContent = t[key]; } };
+  ctrl('btn-notes', 'notes'); ctrl('btn-undo', 'undo'); ctrl('btn-erase', 'erase');
+  ctrl('btn-fill', 'fill'); ctrl('btn-sim', 'simulator');
+  // Lang buttons
   ['pt','en'].forEach(l => {
     const b = document.getElementById('lang-'+l);
-    if (b) b.classList.toggle('active', l===lang);
+    if (b) b.classList.toggle('active', l === lang);
   });
-  DIFF_NAMES.facil = I18N[lang].facil;
-  DIFF_NAMES.medio = I18N[lang].medio;
-  DIFF_NAMES.dificil = I18N[lang].dificil;
-  DIFF_NAMES.especialista = I18N[lang].especialista;
-  DIFF_NAMES.mestre = I18N[lang].mestre;
-  DIFF_NAMES.extremo = I18N[lang].extremo;
+  // Update unlock info
+  updateDiffButtons();
+  // Update badge if in game
   if (STATE.puzzle) {
     const badge = document.getElementById('difficulty-badge');
     if (badge) badge.textContent = DIFF_NAMES[STATE.difficulty] || STATE.difficulty;
@@ -3769,6 +3844,7 @@ function renderAnalysisHighlights() {
         'pointing-select', 'pointing-affected',
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target',
         'wwing-cell', 'wwing-bridge', 'wwing-target',
+        'xychain-cell', 'coloring-c0', 'coloring-c1', 'chain-step',
         'genio-fill', 'genio-key', 'genio-pivot', 'genio-elim', 'genio-unit'
       );
   document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
@@ -3777,6 +3853,8 @@ function renderAnalysisHighlights() {
   document.querySelectorAll('.note-digit.note-ywing-pivot').forEach(s => s.classList.remove('note-ywing-pivot'));
   document.querySelectorAll('.note-digit.note-ywing-pincer').forEach(s => s.classList.remove('note-ywing-pincer'));
   document.querySelectorAll('.note-digit.note-wwing').forEach(s => s.classList.remove('note-wwing'));
+  document.querySelectorAll('.note-digit.note-triple-key').forEach(s => s.classList.remove('note-triple-key'));
+  document.querySelectorAll('.note-digit.note-chain').forEach(s => s.classList.remove('note-chain'));
 
   const an = STATE.analysis;
 
@@ -3929,16 +4007,22 @@ function renderAnalysisHighlights() {
     });
   }
 
-  /* Hidden Pairs */
+  /* Hidden Pairs — same visual as Naked Pairs */
   if (an.hiddenpairsActive && an.hiddenpairs.length > 0) {
     const pairs = an.hiddenpairsBatch ? an.hiddenpairs : [an.hiddenpairs[an.hiddenpairsIndex]].filter(Boolean);
     pairs.forEach(hp => {
-      hp.pairCells.forEach(({r, c}) => cellElements[r][c].classList.add('pair-select'));
-      hp.affected.forEach(({r, c, nums}) => {
+      hp.pairCells.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('pair-select');
+        hp.pairNums.forEach(n => {
+          const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-xwing'); // green — these are the key nums
+        });
+      });
+      hp.affected.forEach(({ r, c, nums }) => {
         cellElements[r][c].classList.add('pair-affected');
         nums.forEach(n => {
-          const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
-          if (span) span.classList.add('note-eliminate');
+          const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-eliminate');
         });
       });
     });
@@ -3946,14 +4030,20 @@ function renderAnalysisHighlights() {
 
   /* Naked Triples */
   if (an.nakedtriplesActive && an.nakedtriples.length > 0) {
-    const triples = an.nakedtriplesBatch ? an.nakedtriples : [an.nakedtriples[an.nakedtriplesIndex]].filter(Boolean);
-    triples.forEach(nt => {
-      nt.tripleCells.forEach(({r, c}) => cellElements[r][c].classList.add('triple-select'));
-      nt.affected.forEach(({r, c, nums}) => {
+    const trips = an.nakedtriplesBatch ? an.nakedtriples : [an.nakedtriples[an.nakedtriplesIndex]].filter(Boolean);
+    trips.forEach(nt => {
+      nt.tripleCells.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('triple-select');
+        nt.tripleNums.forEach(n => {
+          const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-xwing');
+        });
+      });
+      nt.affected.forEach(({ r, c, nums }) => {
         cellElements[r][c].classList.add('triple-affected');
         nums.forEach(n => {
-          const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
-          if (span) span.classList.add('note-eliminate');
+          const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-eliminate');
         });
       });
     });
@@ -3961,14 +4051,20 @@ function renderAnalysisHighlights() {
 
   /* Hidden Triples */
   if (an.hiddentriplesActive && an.hiddentriples.length > 0) {
-    const triples = an.hiddentriplesBatch ? an.hiddentriples : [an.hiddentriples[an.hiddentriplesIndex]].filter(Boolean);
-    triples.forEach(ht => {
-      ht.tripleCells.forEach(({r, c}) => cellElements[r][c].classList.add('triple-select'));
-      ht.affected.forEach(({r, c, nums}) => {
-        cellElements[r][c].classList.add('triple-affected');
+    const trips = an.hiddentriplesBatch ? an.hiddentriples : [an.hiddentriples[an.hiddentriplesIndex]].filter(Boolean);
+    trips.forEach(ht => {
+      ht.tripleCells.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('triple-select');
+        ht.tripleNums.forEach(n => {
+          const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-xwing');
+        });
+      });
+      ht.affected.forEach(({ r, c, nums }) => {
+        cellElements[r][c].classList.add('pair-affected');
         nums.forEach(n => {
-          const span = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
-          if (span) span.classList.add('note-eliminate');
+          const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-eliminate');
         });
       });
     });
@@ -3991,15 +4087,24 @@ function renderAnalysisHighlights() {
     });
   }
 
-  /* XY-Chain */
+  /* XY-Chain — animate chain steps */
   if (an.xychainActive && an.xychains.length > 0) {
     const chains = an.xychainBatch ? an.xychains : [an.xychains[an.xychainIndex]].filter(Boolean);
     chains.forEach(xy => {
-      xy.chain.forEach(({r, c}) => cellElements[r][c].classList.add('ywing-pincer'));
-      xy.targets.forEach(({r, c}) => {
+      xy.chain.forEach(({ r, c }, idx) => {
+        const el = cellElements[r][c];
+        el.classList.add('xychain-cell');
+        el.style.setProperty('--chain-delay', `${idx * 200}ms`);
+        const chainNotes = STATE.notes[r][c];
+        chainNotes.forEach(n => {
+          const sp = el.querySelector(`.note-digit[data-note="${n}"]`);
+          if (sp) sp.classList.add('note-chain');
+        });
+      });
+      xy.targets.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('xwing-target');
-        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${xy.elimVal}"]`);
-        if (span) span.classList.add('note-eliminate');
+        const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${xy.elimVal}"]`);
+        if (sp) sp.classList.add('note-eliminate');
       });
     });
   }
@@ -4008,11 +4113,21 @@ function renderAnalysisHighlights() {
   if (an.coloringActive && an.colorings.length > 0) {
     const colorings = an.coloringBatch ? an.colorings : [an.colorings[an.coloringIndex]].filter(Boolean);
     colorings.forEach(co => {
-      const allColored = Object.entries(co.colored).map(([k,v]) => ({r:+k.split(',')[0],c:+k.split(',')[1],color:v}));
-      allColored.forEach(({r,c,color}) => {
-        cellElements[r][c].classList.add(color === 0 ? 'pointing-select' : 'pair-select');
+      (co.comp0 || []).forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('coloring-c0');
+        const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${co.num}"]`);
+        if (sp) sp.classList.add('note-xwing');
       });
-      co.targets.forEach(({r,c}) => cellElements[r][c].classList.add('xwing-target'));
+      (co.comp1 || []).forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('coloring-c1');
+        const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${co.num}"]`);
+        if (sp) sp.classList.add('note-hidden-single');
+      });
+      co.targets.forEach(({ r, c }) => {
+        cellElements[r][c].classList.add('xwing-target');
+        const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${co.num}"]`);
+        if (sp) sp.classList.add('note-eliminate');
+      });
     });
   }
 
@@ -4028,12 +4143,18 @@ function renderAnalysisHighlights() {
   /* AIC */
   if (an.aicActive && an.aics.length > 0) {
     const aics = an.aicBatch ? an.aics : [an.aics[an.aicIndex]].filter(Boolean);
-    aics.forEach(ai => {
-      ai.chain.forEach(({r,c}) => cellElements[r][c].classList.add('xwing-cell'));
-      ai.targets.forEach(({r,c}) => {
+    aics.forEach(aic => {
+      aic.chain.forEach(({ r, c, num }, idx) => {
+        const el = cellElements[r][c];
+        el.classList.add('xychain-cell');
+        el.style.setProperty('--chain-delay', `${idx * 150}ms`);
+        const sp = el.querySelector(`.note-digit[data-note="${num || aic.elimVal}"]`);
+        if (sp) sp.classList.add('note-chain');
+      });
+      aic.targets.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('xwing-target');
-        const span = cellElements[r][c].querySelector(`.note-digit[data-note="${ai.elimVal}"]`);
-        if (span) span.classList.add('note-eliminate');
+        const sp = cellElements[r][c].querySelector(`.note-digit[data-note="${aic.elimVal}"]`);
+        if (sp) sp.classList.add('note-eliminate');
       });
     });
   }

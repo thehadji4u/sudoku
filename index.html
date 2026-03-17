@@ -40,33 +40,31 @@
       <button class="diff-btn d-facil" data-diff="facil">
         <span class="diff-name">Fácil</span>
         <span class="diff-stars">★☆☆☆☆☆</span>
-        <span class="diff-lock" id="lock-facil">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-medio" data-diff="medio">
         <span class="diff-name">Médio</span>
         <span class="diff-stars">★★☆☆☆☆</span>
-        <span class="diff-lock" id="lock-medio">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-dificil" data-diff="dificil">
         <span class="diff-name">Difícil</span>
         <span class="diff-stars">★★★☆☆☆</span>
-        <span class="diff-lock" id="lock-dificil">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-especialista" data-diff="especialista">
         <span class="diff-name">Especialista</span>
         <span class="diff-stars">★★★★☆☆</span>
-        <span class="diff-lock" id="lock-especialista">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-mestre" data-diff="mestre">
         <span class="diff-name">Mestre</span>
         <span class="diff-stars">★★★★★☆</span>
-        <span class="diff-lock" id="lock-mestre">🔒 <span class="lock-count"></span></span>
       </button>
       <button class="diff-btn d-extremo" data-diff="extremo">
         <span class="diff-name">Extremo</span>
         <span class="diff-stars">★★★★★★</span>
-        <span class="diff-lock" id="lock-extremo">🔒 <span class="lock-count"></span></span>
       </button>
+    </div>
+
+    <div id="next-unlock-info" class="hidden">
+      <span id="next-unlock-text"></span>
     </div>
 
     <div class="diff-footer">
@@ -80,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v2.00</span>
+      <span class="app-version">v2.01</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -95,7 +93,6 @@
       <div class="ghdr-top">
         <button class="ghdr-icon" id="btn-back" title="Voltar">‹</button>
         <span id="score-val" class="game-score">0</span>
-        <button class="ghdr-icon hidden" id="btn-mentor-info" title="Mentor">🎓</button>
         <button class="ghdr-icon" id="btn-settings-game" title="Configurações"><svg class="gear-svg" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -123,6 +120,7 @@
           <span class="ghdr-lbl">Tempo</span>
           <span class="ghdr-val" id="timer-val">0:00</span>
         </div>
+        <button class="ghdr-pause hidden" id="btn-mentor-info" title="Mentor">🎓</button>
         <button class="ghdr-pause" id="btn-pause" title="Pausar">⏸</button>
       </div>
     </header>
@@ -161,54 +159,54 @@
 
       <!-- Ferramentas de análise (acima do numpad) -->
       <div id="analysis-tools" class="hidden">
-        <!-- Fácil 🟢 -->
-        <button class="tool-btn" id="btn-singles" data-tier="facil" title="Únicas">
-          <span class="tool-icon">①</span><span>Únicas</span>
-        </button>
-        <!-- Médio 🟡 -->
-        <button class="tool-btn" id="btn-nakedpairs" data-tier="medio" title="Pares Nus">
-          <span class="tool-icon">②</span><span>Pares Nus</span>
-        </button>
-        <button class="tool-btn" id="btn-hiddenpairs" data-tier="medio" title="Pares Ocultos">
-          <span class="tool-icon">②</span><span>Ocultos</span>
-        </button>
-        <button class="tool-btn" id="btn-pointing" data-tier="medio" title="Par Apontador">
-          <span class="tool-icon">↗</span><span>Apont.</span>
-        </button>
-        <!-- Difícil 🔵 -->
-        <button class="tool-btn" id="btn-xwing" data-tier="dificil" title="X-Wing">
-          <span class="tool-icon">✕</span><span>X-Wing</span>
-        </button>
-        <button class="tool-btn" id="btn-nakedtriples" data-tier="dificil" title="Triplos Nus">
-          <span class="tool-icon">③</span><span>Triplos</span>
-        </button>
-        <button class="tool-btn" id="btn-hiddentriples" data-tier="dificil" title="Triplos Ocultos">
-          <span class="tool-icon">③</span><span>T.Ocult.</span>
-        </button>
-        <!-- Especialista 🟣 -->
-        <button class="tool-btn" id="btn-swordfish" data-tier="especialista" title="Swordfish">
-          <span class="tool-icon">🐟</span><span>Sword.</span>
-        </button>
-        <button class="tool-btn" id="btn-ywing" data-tier="especialista" title="Y-Wing / XY-Wing">
-          <span class="tool-icon">⁓</span><span>Y-Wing</span>
-        </button>
-        <!-- Mestre 🔴 -->
-        <button class="tool-btn" id="btn-wwing" data-tier="mestre" title="W-Wing">
-          <span class="tool-icon">𝕎</span><span>W-Wing</span>
-        </button>
-        <button class="tool-btn" id="btn-xychain" data-tier="mestre" title="XY-Chain">
-          <span class="tool-icon">⛓</span><span>XY-Chain</span>
-        </button>
-        <button class="tool-btn" id="btn-coloring" data-tier="mestre" title="Coloring">
-          <span class="tool-icon">🎨</span><span>Color.</span>
-        </button>
-        <!-- Extremo ⚫ -->
-        <button class="tool-btn" id="btn-forcingchains" data-tier="extremo" title="Forcing Chains">
-          <span class="tool-icon">⚡</span><span>Forcing</span>
-        </button>
-        <button class="tool-btn" id="btn-aic" data-tier="extremo" title="AIC">
-          <span class="tool-icon">∞</span><span>AIC</span>
-        </button>
+        <div class="tool-row" id="tool-row-1">
+          <button class="tool-btn" id="btn-singles" data-tier="facil" title="Únicas">
+            <span class="tool-icon">①</span><span>Únicas</span>
+          </button>
+          <button class="tool-btn" id="btn-nakedpairs" data-tier="medio" title="Pares Nus">
+            <span class="tool-icon">②</span><span>Pares</span>
+          </button>
+          <button class="tool-btn" id="btn-hiddenpairs" data-tier="medio" title="Pares Ocultos">
+            <span class="tool-icon">②̈</span><span>Ocultos</span>
+          </button>
+          <button class="tool-btn" id="btn-pointing" data-tier="medio" title="Par Apontador">
+            <span class="tool-icon">↗</span><span>Apont.</span>
+          </button>
+        </div>
+        <div class="tool-row" id="tool-row-2">
+          <button class="tool-btn" id="btn-xwing" data-tier="dificil" title="X-Wing">
+            <span class="tool-icon">✕</span><span>X-Wing</span>
+          </button>
+          <button class="tool-btn" id="btn-nakedtriples" data-tier="dificil" title="Triplos Nus">
+            <span class="tool-icon">③</span><span>Triplos</span>
+          </button>
+          <button class="tool-btn" id="btn-hiddentriples" data-tier="dificil" title="Triplos Ocultos">
+            <span class="tool-icon">③̈</span><span>T.Ocult.</span>
+          </button>
+          <button class="tool-btn" id="btn-swordfish" data-tier="especialista" title="Swordfish">
+            <span class="tool-icon">🐟</span><span>Sword.</span>
+          </button>
+          <button class="tool-btn" id="btn-ywing" data-tier="especialista" title="Y-Wing / XY-Wing">
+            <span class="tool-icon">⁓</span><span>Y-Wing</span>
+          </button>
+        </div>
+        <div class="tool-row" id="tool-row-3">
+          <button class="tool-btn" id="btn-wwing" data-tier="mestre" title="W-Wing">
+            <span class="tool-icon">𝕎</span><span>W-Wing</span>
+          </button>
+          <button class="tool-btn" id="btn-xychain" data-tier="mestre" title="XY-Chain">
+            <span class="tool-icon">⛓</span><span>XY-Chain</span>
+          </button>
+          <button class="tool-btn" id="btn-coloring" data-tier="mestre" title="Coloring">
+            <span class="tool-icon">🎨</span><span>Color.</span>
+          </button>
+          <button class="tool-btn" id="btn-forcingchains" data-tier="extremo" title="Forcing Chains">
+            <span class="tool-icon">⚡</span><span>Forcing</span>
+          </button>
+          <button class="tool-btn" id="btn-aic" data-tier="extremo" title="AIC">
+            <span class="tool-icon">∞</span><span>AIC</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -267,6 +265,11 @@
       <div class="modal-handle"></div>
       <button class="settings-close-btn" id="btn-settings-close">✕</button>
       <h2 class="modal-title">Configurações</h2>
+
+      <div class="lang-selector-row">
+        <button class="lang-flag-btn active" id="lang-pt" title="Português">🇧🇷 PT</button>
+        <button class="lang-flag-btn" id="lang-en" title="English">🇺🇸 EN</button>
+      </div>
 
       <div class="setting-row">
         <div class="setting-info">
@@ -343,16 +346,6 @@
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Idioma / Language</div>
-          <div class="setting-desc">Português · English</div>
-        </div>
-        <div class="toggle-wrap lang-toggle">
-          <button class="lang-btn active" id="lang-pt">PT</button>
-          <button class="lang-btn" id="lang-en">EN</button>
-        </div>
-      </div>
 
       <div class="setting-row">
         <div class="setting-info">
@@ -376,7 +369,7 @@
         </div>
       </div>
 
-      <div class="settings-section-title">Ferramentas de Análise</div>
+      <div class="settings-section-title">Ferramentas de Análise 🟢 Fácil</div>
 
       <div class="setting-row">
         <div class="setting-info">
@@ -400,6 +393,8 @@
           <label class="toggle-track" for="cfg-enableHiddenSingles"></label>
         </div>
       </div>
+
+      <div class="settings-section-title tier-medio">Médio 🟡</div>
 
       <div class="setting-row">
         <div class="setting-info">
@@ -425,6 +420,8 @@
         </div>
       </div>
 
+      <div class="settings-section-title tier-dificil">Difícil 🔵</div>
+
       <div class="setting-row">
         <div class="setting-info">
           <div class="setting-label">X-Wing ♟</div>
@@ -435,6 +432,8 @@
           <label class="toggle-track" for="cfg-enableXWing"></label>
         </div>
       </div>
+
+      <div class="settings-section-title tier-especialista">Especialista 🟣</div>
 
       <div class="setting-row">
         <div class="setting-info">
@@ -447,6 +446,8 @@
         </div>
       </div>
 
+      <div class="settings-section-title tier-mestre">Mestre 🔴</div>
+
       <div class="setting-row">
         <div class="setting-info">
           <div class="setting-label">W-Wing 𝕎</div>
@@ -458,7 +459,7 @@
         </div>
       </div>
 
-      <div class="settings-section-title tier-dificil">Difícil 🔵</div>
+      <div class="settings-section-title tier-dificil">Difícil+ 🔵</div>
 
       <div class="setting-row">
         <div class="setting-info">
