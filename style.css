@@ -1463,6 +1463,9 @@ html, body {
   display: none;
 }
 .diff-btn.locked .diff-lock { display: block; }
+.diff-btn.locked .diff-name::before {
+  content: '🔒 ';
+}
 .diff-btn.locked {
   opacity: 0.6;
   cursor: not-allowed;
