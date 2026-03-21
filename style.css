@@ -1138,17 +1138,17 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: 5px 2px;
+  padding: 4px 2px;
   border: 1.5px solid #CBD5E1;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #F8FAFC;
-  font-size: 12px;
+  font-size: 10px;
   color: #475569;
   cursor: pointer;
   transition: background .15s, border-color .15s;
   overflow: hidden;
 }
-.tool-btn .tool-icon { font-size: 14px; line-height: 1; }
+.tool-btn .tool-icon { font-size: 13px; line-height: 1; }
 .tool-btn span:last-child {
   font-size: 9px;
   white-space: nowrap;
@@ -1168,10 +1168,12 @@ html, body {
 
 /* Slot de altura fixa — action-bar mantém o espaço mesmo invisible (sem layout shift) */
 #action-bar-slot {
-  height: 92px;
+  min-height: 60px;
+  height: auto;
   display: flex;
   align-items: center;
   padding: 0 12px;
+  margin-bottom: 2px;
 }
 
 /* Action bar — fluxo normal dentro do slot */
@@ -1179,12 +1181,12 @@ html, body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 12px;
+  gap: 2px;
+  padding: 4px 10px;
   background: #F0F9FF;
   border: 1.5px solid #BAE6FD;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11px;
   color: #0369A1;
 }
 /* Oculto: visibility mantém espaço no slot, não colapsa o layout */
@@ -1600,10 +1602,18 @@ html, body {
 }
 
 /* ── Nível de Ajuda 1 ── */
-.help-lvl1 .note-eliminate {
+.help-lvl1 .note-eliminate,
+.help-lvl1 .note-hidden-single,
+.help-lvl1 .note-xwing,
+.help-lvl1 .note-ywing-pivot,
+.help-lvl1 .note-ywing-pincer,
+.help-lvl1 .note-wwing,
+.help-lvl1 .note-triple-key,
+.help-lvl1 .note-chain {
   color: inherit !important;
-  font-weight: normal !important;
+  font-weight: inherit !important;
   text-shadow: none !important;
+  background: transparent !important;
 }
 
 /* ── Feedback Visual de Energia ── */
