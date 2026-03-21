@@ -1598,3 +1598,42 @@ html, body {
 @media (min-width: 700px) {
   :root { --cell-size: 56px; }
 }
+
+/* ── Feedback Visual de Energia ── */
+/* Shake quando perde energia por erro */
+@keyframes energy-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+.energy-shake {
+  animation: energy-shake 0.5s ease;
+}
+
+/* Botão bloqueado por energia insuficiente */
+@keyframes energy-blocked-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.tool-btn.energy-blocked {
+  animation: energy-blocked-pulse 0.35s ease 2;
+  pointer-events: none;
+}
+
+/* Indicador de custo no hover do botão de análise */
+.tool-btn[data-cost]::after {
+  content: '-' attr(data-cost) '⚡';
+  display: block;
+  font-size: 8px;
+  color: #94A3B8;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Tom cinza quando sem energia suficiente */
+.tool-btn.energy-insufficient {
+  opacity: 0.45;
+  filter: grayscale(60%);
+}

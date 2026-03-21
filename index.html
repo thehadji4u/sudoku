@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.47</span>
+      <span class="app-version">v1.48</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -166,21 +166,21 @@
       <!-- Ferramentas de análise (acima do numpad) -->
       <div id="analysis-tools" class="hidden">
         <div class="tool-row" id="tool-row-1">
-          <button class="tool-btn" id="btn-singles" data-tier="facil" title="Únicas">
+          <button class="tool-btn" id="btn-singles" data-tier="facil" title="Únicas" data-cost="20">
             <span class="tool-icon">①</span><span>Únicas</span>
           </button>
-          <button class="tool-btn" id="btn-nakedpairs" data-tier="medio" title="Pares Nus">
+          <button class="tool-btn" id="btn-nakedpairs" data-tier="medio" title="Pares Nus" data-cost="40">
             <span class="tool-icon">②</span><span>Pares</span>
           </button>
           <button class="tool-btn" id="btn-hiddenpairs" data-tier="medio" title="Pares Ocultos">
             <span class="tool-icon">②̈</span><span>Ocultos</span>
           </button>
-          <button class="tool-btn" id="btn-pointing" data-tier="medio" title="Par Apontador">
+          <button class="tool-btn" id="btn-pointing" data-tier="medio" title="Par Apontador" data-cost="60">
             <span class="tool-icon">↗</span><span>Apont.</span>
           </button>
         </div>
         <div class="tool-row" id="tool-row-2">
-          <button class="tool-btn" id="btn-xwing" data-tier="dificil" title="X-Wing">
+          <button class="tool-btn" id="btn-xwing" data-tier="dificil" title="X-Wing" data-cost="80">
             <span class="tool-icon">✕</span><span>X-Wing</span>
           </button>
           <button class="tool-btn" id="btn-nakedtriples" data-tier="dificil" title="Triplos Nus">
@@ -192,12 +192,12 @@
           <button class="tool-btn" id="btn-swordfish" data-tier="especialista" title="Swordfish">
             <span class="tool-icon">🐟</span><span>Sword.</span>
           </button>
-          <button class="tool-btn" id="btn-ywing" data-tier="especialista" title="Y-Wing / XY-Wing">
+          <button class="tool-btn" id="btn-ywing" data-tier="especialista" title="Y-Wing / XY-Wing" data-cost="100">
             <span class="tool-icon">⁓</span><span>Y-Wing</span>
           </button>
         </div>
         <div class="tool-row" id="tool-row-3">
-          <button class="tool-btn" id="btn-wwing" data-tier="mestre" title="W-Wing">
+          <button class="tool-btn" id="btn-wwing" data-tier="mestre" title="W-Wing" data-cost="120">
             <span class="tool-icon">𝕎</span><span>W-Wing</span>
           </button>
           <button class="tool-btn" id="btn-xychain" data-tier="mestre" title="XY-Chain">
@@ -500,32 +500,6 @@
         </div>
       </div>
 
-      <div class="settings-section-title tier-especialista">Especialista 🟣</div>
-
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Swordfish 🐟</div>
-          <div class="setting-desc">X-Wing estendido a 3 linhas/colunas</div>
-        </div>
-        <div class="toggle-wrap">
-          <input type="checkbox" class="toggle-input" id="cfg-enableSwordfish">
-          <label class="toggle-track" for="cfg-enableSwordfish"></label>
-        </div>
-      </div>
-
-      <div class="settings-section-title tier-mestre">Mestre 🔴</div>
-
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">XY-Chain ⛓</div>
-          <div class="setting-desc">Cadeia de células bivalor com candidato eliminável nos endpoints</div>
-        </div>
-        <div class="toggle-wrap">
-          <input type="checkbox" class="toggle-input" id="cfg-enableXYChain">
-          <label class="toggle-track" for="cfg-enableXYChain"></label>
-        </div>
-      </div>
-
       <div class="setting-row">
         <div class="setting-info">
           <div class="setting-label">Coloring 🎨</div>
@@ -536,8 +510,6 @@
           <label class="toggle-track" for="cfg-enableColoring"></label>
         </div>
       </div>
-
-      <div class="settings-section-title tier-extremo">Extremo ⚫</div>
 
       <div class="setting-row">
         <div class="setting-info">

@@ -158,6 +158,15 @@ const ENERGY_TABLE = {
   diabolico:    { cell: 6, unit: 6, finish: 12 },
 };
 
+const TOOL_ENERGY_COST = {
+  singles:    20,   // Únicas / Ocultas   → nível Fácil
+  nakedpairs: 40,   // Pares Nus          → nível Médio
+  pointing:   60,   // Apontador          → nível Difícil
+  xwing:      80,   // X-Wing             → nível Especialista
+  ywing:     100,   // Y-Wing             → nível Mestre
+  wwing:     120,   // W-Wing             → nível Extremo
+};
+
 /* ── Unlock system ── */
 const DIFF_UNLOCK_REQUIRED = {
   facil:        0,
@@ -994,6 +1003,10 @@ function doPlaceNumber(r, c, num) {
   if (isError) {
     STATE.errors++;
     updateErrorDisplay();
+    STATE.energyPoints = Math.floor(STATE.energyPoints / 2);
+    localStorage.setItem('sudoku-energy', STATE.energyPoints);
+    updateEnergyBar();
+    _flashEnergyLoss();
   } else if (num !== 0) {
     STATE.score += calculateCellPoints();
     updateScoreDisplay();
@@ -1475,6 +1488,50 @@ function updateEnergyBar() {
       fill.style.background = '';
     }, 600);
   }
+  updateToolsAffordability();
+}
+
+function canAffordTool(key) {
+  return STATE.energyPoints >= (TOOL_ENERGY_COST[key] || 0);
+}
+
+function spendEnergy(key) {
+  const cost = TOOL_ENERGY_COST[key] || 0;
+  STATE.energyPoints = Math.max(0, STATE.energyPoints - cost);
+  localStorage.setItem('sudoku-energy', STATE.energyPoints);
+  updateEnergyBar();
+  _flashEnergyDrain();
+}
+
+function _flashEnergyDrain() {
+  const fill = document.getElementById('energy-bar-fill');
+  if (!fill) return;
+  fill.style.transition = 'none';
+  fill.style.background = 'linear-gradient(90deg, #F59E0B, #DC2626)';
+  setTimeout(() => { fill.style.background = ''; fill.style.transition = ''; }, 500);
+}
+
+function _flashEnergyLoss() {
+  const container = document.getElementById('energy-container');
+  if (!container) return;
+  container.classList.add('energy-shake');
+  setTimeout(() => container.classList.remove('energy-shake'), 600);
+  _flashEnergyDrain();
+}
+
+function _showNoEnergyFeedback(btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.classList.add('energy-blocked');
+  setTimeout(() => btn.classList.remove('energy-blocked'), 700);
+}
+
+function updateToolsAffordability() {
+  Object.entries(TOOL_ENERGY_COST).forEach(([key, cost]) => {
+    const id = 'btn-' + (key === 'nakedpairs' ? 'nakedpairs' : key);
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.toggle('energy-insufficient', STATE.energyPoints < cost);
+  });
 }
 
 function updateBestScore() {
@@ -1791,6 +1848,8 @@ function detectNakedPairs() {
 function toggleNakedPairs() {
   const an = STATE.analysis;
   if (!an.nakedPairsActive) {
+    if (!canAffordTool('nakedpairs')) { _showNoEnergyFeedback('btn-nakedpairs'); return; }
+    spendEnergy('nakedpairs');
     _cancelOtherAnalysis('nakedpairs');
     an.nakedPairs      = detectNakedPairs();
     an.nakedPairsIndex = 0;
@@ -1880,6 +1939,8 @@ function detectPointingPairs() {
 function togglePointing() {
   const an = STATE.analysis;
   if (!an.pointingActive) {
+    if (!canAffordTool('pointing')) { _showNoEnergyFeedback('btn-pointing'); return; }
+    spendEnergy('pointing');
     _cancelOtherAnalysis('pointing');
     an.pointings      = detectPointingPairs();
     an.pointingIndex  = 0;
@@ -1975,6 +2036,8 @@ function toggleSingles() {
   }
 
   /* Idle — detecta Naked Singles primeiro */
+  if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
+  spendEnergy('singles');
   _cancelOtherAnalysis('singles');
   if (s.enableNakedSingles) {
     const singles = [];
@@ -2591,6 +2654,8 @@ function resetAnalysis() {
 function toggleXWing() {
   const an = STATE.analysis;
   if (!an.xwingActive) {
+    if (!canAffordTool('xwing')) { _showNoEnergyFeedback('btn-xwing'); return; }
+    spendEnergy('xwing');
     _cancelOtherAnalysis('xwing');
     /* Primeira ativação */
     an.xwings     = detectXWings();
@@ -2700,6 +2765,8 @@ function updateXWingBtn() {
 function toggleYWing() {
   const an = STATE.analysis;
   if (!an.ywingActive) {
+    if (!canAffordTool('ywing')) { _showNoEnergyFeedback('btn-ywing'); return; }
+    spendEnergy('ywing');
     _cancelOtherAnalysis('ywing');
     /* Primeira ativação */
     an.ywings     = detectYWings();
@@ -2870,6 +2937,8 @@ function detectWWings() {
 function toggleWWing() {
   const an = STATE.analysis;
   if (!an.wwingActive) {
+    if (!canAffordTool('wwing')) { _showNoEnergyFeedback('btn-wwing'); return; }
+    spendEnergy('wwing');
     _cancelOtherAnalysis('wwing');
     an.wwings = detectWWings(); an.wwingIndex = 0; an.wwingActive = true;
   } else {
