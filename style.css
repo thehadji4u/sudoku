@@ -1599,6 +1599,13 @@ html, body {
   :root { --cell-size: 56px; }
 }
 
+/* ── Nível de Ajuda 1 ── */
+.help-lvl1 .note-eliminate {
+  color: inherit !important;
+  font-weight: normal !important;
+  text-shadow: none !important;
+}
+
 /* ── Feedback Visual de Energia ── */
 /* Shake quando perde energia por erro */
 @keyframes energy-shake {

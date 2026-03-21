@@ -126,6 +126,8 @@ const STATE = {
     enableColoring:      true,
     enableForcingChains: true,
     enableAIC:           true,
+    helpLevel2:          true,
+    enableLongPressBatch:true,
   },
 };
 
@@ -249,6 +251,9 @@ function _attachLogoUnlock() {
 ═══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
+  if (STATE.settings.helpLevel2 === undefined) STATE.settings.helpLevel2 = true;
+  if (STATE.settings.enableLongPressBatch === undefined) STATE.settings.enableLongPressBatch = true;
+  document.body.classList.toggle('help-lvl1', !STATE.settings.helpLevel2);
   applyLanguage(STATE.settings.language || 'pt');
   buildNumpad();
   attachEvents();
@@ -441,7 +446,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -471,6 +476,11 @@ function setupSettingsEvents() {
       }
       if (key === 'simulatorMode') {
         updateControlsForSimMode();
+      }
+      if (key === 'helpLevel2') {
+        document.body.classList.toggle('help-lvl1', !STATE.settings.helpLevel2);
+        updateEnergyBar();
+        updateActionBar();
       }
       if (key === 'autoAnnotations') {
         updateFillBtnVisibility();
@@ -512,7 +522,11 @@ function attachToolBtn(btnId, tapFn, longPressFn) {
       _toolLongPressTriggered = true;
       _toolLongPressTimer = null;
       if (!STATE.puzzle || STATE.paused) return;
-      longPressFn();
+      if (STATE.settings.enableLongPressBatch) {
+        longPressFn();
+      } else {
+        tapFn();
+      }
     }, 600);
   };
 
@@ -1474,12 +1488,17 @@ function updateEnergyBar() {
   updateToolsAffordability();
 }
 
+function getToolCost(key) {
+  const base = TOOL_ENERGY_COST[key] || 0;
+  return STATE.settings.helpLevel2 ? base : Math.floor(base / 2);
+}
+
 function canAffordTool(key) {
-  return STATE.energyPoints >= (TOOL_ENERGY_COST[key] || 0);
+  return STATE.energyPoints >= getToolCost(key);
 }
 
 function spendEnergy(key) {
-  const cost = TOOL_ENERGY_COST[key] || 0;
+  const cost = getToolCost(key);
   STATE.energyPoints = Math.max(0, STATE.energyPoints - cost);
   localStorage.setItem('sudoku-energy', STATE.energyPoints);
   updateEnergyBar();
@@ -1511,7 +1530,7 @@ function _showNoEnergyFeedback(btnId) {
 
 function _applyBatchEnergy(key, items) {
   if (!items || items.length <= 1) return items;
-  const cost = TOOL_ENERGY_COST[key] || 0;
+  const cost = getToolCost(key);
   if (cost === 0) return items;
   
   const affordableExtra = Math.floor(STATE.energyPoints / cost);
@@ -1529,7 +1548,8 @@ function _applyBatchEnergy(key, items) {
 }
 
 function updateToolsAffordability() {
-  Object.entries(TOOL_ENERGY_COST).forEach(([key, cost]) => {
+  Object.entries(TOOL_ENERGY_COST).forEach(([key]) => {
+    const cost = getToolCost(key);
     const id = 'btn-' + (key === 'nakedpairs' ? 'nakedpairs' : key);
     const btn = document.getElementById(id);
     if (btn) btn.classList.toggle('energy-insufficient', STATE.energyPoints < cost);
@@ -1850,17 +1870,22 @@ function detectNakedPairs() {
 function toggleNakedPairs() {
   const an = STATE.analysis;
   if (!an.nakedPairsActive) {
-    if (!canAffordTool('nakedpairs')) { _showNoEnergyFeedback('btn-nakedpairs'); return; }
-    spendEnergy('nakedpairs');
     _cancelOtherAnalysis('nakedpairs');
-    an.nakedPairs      = detectNakedPairs();
+    an.nakedPairs = detectNakedPairs();
+    if (an.nakedPairs.length > 0) {
+      if (!canAffordTool('nakedpairs')) { _showNoEnergyFeedback('btn-nakedpairs'); return; }
+      spendEnergy('nakedpairs');
+    }
     an.nakedPairsIndex = 0;
     an.nakedPairsActive = true;
   } else {
-    an.nakedPairsIndex++;
-    if (an.nakedPairsIndex >= an.nakedPairs.length) {
+    if (an.nakedPairsBatch) { deactivateNakedPairs(); return; }
+    if (an.nakedPairsIndex + 1 >= an.nakedPairs.length) {
       deactivateNakedPairs(); return;
     }
+    if (!canAffordTool('nakedpairs')) { _showNoEnergyFeedback('btn-nakedpairs'); return; }
+    spendEnergy('nakedpairs');
+    an.nakedPairsIndex++;
   }
   STATE.selectedRow = -1; STATE.selectedCol = -1;
   updateNakedPairsBtn(); updateActionBar(); renderHighlights();
@@ -1941,17 +1966,22 @@ function detectPointingPairs() {
 function togglePointing() {
   const an = STATE.analysis;
   if (!an.pointingActive) {
-    if (!canAffordTool('pointing')) { _showNoEnergyFeedback('btn-pointing'); return; }
-    spendEnergy('pointing');
     _cancelOtherAnalysis('pointing');
-    an.pointings      = detectPointingPairs();
+    an.pointings = detectPointingPairs();
+    if (an.pointings.length > 0) {
+      if (!canAffordTool('pointing')) { _showNoEnergyFeedback('btn-pointing'); return; }
+      spendEnergy('pointing');
+    }
     an.pointingIndex  = 0;
     an.pointingActive = true;
   } else {
-    an.pointingIndex++;
-    if (an.pointingIndex >= an.pointings.length) {
+    if (an.pointingBatch) { deactivatePointing(); return; }
+    if (an.pointingIndex + 1 >= an.pointings.length) {
       deactivatePointing(); return;
     }
+    if (!canAffordTool('pointing')) { _showNoEnergyFeedback('btn-pointing'); return; }
+    spendEnergy('pointing');
+    an.pointingIndex++;
   }
   STATE.selectedRow = -1; STATE.selectedCol = -1;
   updatePointingBtn(); updateActionBar(); renderHighlights();
@@ -2021,8 +2051,11 @@ function toggleSingles() {
 
   /* Cycling Naked Singles */
   if (an.singlesActive) {
+    if (an.singlesBatch) { deactivateSingles(); return; }
+    if (an.singlesIndex + 1 >= an.singles.length) { deactivateSingles(); return; }
+    if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
+    spendEnergy('singles');
     an.singlesIndex++;
-    if (an.singlesIndex >= an.singles.length) { deactivateSingles(); return; }
     _pinSingle(an.singles[an.singlesIndex]);
     updateSinglesBtn(); updateActionBar(); renderHighlights();
     return;
@@ -2030,16 +2063,17 @@ function toggleSingles() {
 
   /* Cycling Hidden Singles */
   if (an.hiddenActive) {
+    if (an.singlesBatch) { deactivateHiddenSingles(); return; }
+    if (an.hiddensIndex + 1 >= an.hiddens.length) { deactivateHiddenSingles(); return; }
+    if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
+    spendEnergy('singles');
     an.hiddensIndex++;
-    if (an.hiddensIndex >= an.hiddens.length) { deactivateHiddenSingles(); return; }
     _pinSingle(an.hiddens[an.hiddensIndex]);
     updateSinglesBtn(); updateActionBar(); renderHighlights();
     return;
   }
 
   /* Idle — detecta Naked Singles primeiro */
-  if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
-  spendEnergy('singles');
   _cancelOtherAnalysis('singles');
   if (s.enableNakedSingles) {
     const singles = [];
@@ -2048,6 +2082,8 @@ function toggleSingles() {
         if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
           singles.push({ r, c, val: [...STATE.notes[r][c]][0] });
     if (singles.length > 0) {
+      if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
+      spendEnergy('singles');
       an.singlesActive = true; an.singles = singles; an.singlesIndex = 0;
       STATE.selectedRow = -1; STATE.selectedCol = -1;
       _pinSingle(singles[0]);
@@ -2060,6 +2096,8 @@ function toggleSingles() {
   if (s.enableHiddenSingles) {
     const hiddens = _computeHiddenSingles();
     if (hiddens.length > 0) {
+      if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
+      spendEnergy('singles');
       an.hiddenActive = true; an.hiddens = hiddens; an.hiddensIndex = 0;
       STATE.selectedRow = -1; STATE.selectedCol = -1;
       _pinSingle(hiddens[0]);
@@ -2226,6 +2264,12 @@ function updateActionBar() {
   const label   = document.getElementById('action-bar-label');
   const confirm = document.getElementById('btn-action-confirm');
   if (!bar) return;
+  
+  if (!STATE.settings.helpLevel2) {
+    confirm.classList.add('hidden');
+  } else {
+    confirm.classList.remove('hidden');
+  }
 
   const an = STATE.analysis;
 
@@ -2656,27 +2700,25 @@ function resetAnalysis() {
 function toggleXWing() {
   const an = STATE.analysis;
   if (!an.xwingActive) {
-    if (!canAffordTool('xwing')) { _showNoEnergyFeedback('btn-xwing'); return; }
-    spendEnergy('xwing');
     _cancelOtherAnalysis('xwing');
-    /* Primeira ativação */
-    an.xwings     = detectXWings();
+    an.xwings = detectXWings();
+    if (an.xwings.length > 0) {
+      if (!canAffordTool('xwing')) { _showNoEnergyFeedback('btn-xwing'); return; }
+      spendEnergy('xwing');
+    }
     an.xwingIndex = 0;
     an.xwingActive = true;
   } else {
-    /* Avança para o próximo padrão; se acabou, desativa */
-    an.xwingIndex++;
-    if (an.xwingIndex >= an.xwings.length) {
-      deactivateXWing();
-      return;
+    if (an.xwingBatch) { deactivateXWing(); return; }
+    if (an.xwingIndex + 1 >= an.xwings.length) {
+      deactivateXWing(); return;
     }
+    if (!canAffordTool('xwing')) { _showNoEnergyFeedback('btn-xwing'); return; }
+    spendEnergy('xwing');
+    an.xwingIndex++;
   }
-  /* Deseleciona tabuleiro ao ativar/ciclar */
-  STATE.selectedRow = -1;
-  STATE.selectedCol = -1;
-  updateXWingBtn();
-  updateActionBar();
-  renderHighlights();
+  STATE.selectedRow = -1; STATE.selectedCol = -1;
+  updateXWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function deactivateXWing() {
@@ -2767,27 +2809,26 @@ function updateXWingBtn() {
 function toggleYWing() {
   const an = STATE.analysis;
   if (!an.ywingActive) {
-    if (!canAffordTool('ywing')) { _showNoEnergyFeedback('btn-ywing'); return; }
-    spendEnergy('ywing');
     _cancelOtherAnalysis('ywing');
-    /* Primeira ativação */
-    an.ywings     = detectYWings();
+    an.ywings = detectYWings();
+    if (an.ywings.length > 0) {
+      if (!canAffordTool('ywing')) { _showNoEnergyFeedback('btn-ywing'); return; }
+      spendEnergy('ywing');
+    }
     an.ywingIndex = 0;
     an.ywingActive = true;
   } else {
-    /* Avança para o próximo padrão; se acabou, desativa */
-    an.ywingIndex++;
-    if (an.ywingIndex >= an.ywings.length) {
-      deactivateYWing();
-      return;
+    if (an.ywingBatch) { deactivateYWing(); return; }
+    if (an.ywingIndex + 1 >= an.ywings.length) {
+      deactivateYWing(); return;
     }
+    if (!canAffordTool('ywing')) { _showNoEnergyFeedback('btn-ywing'); return; }
+    spendEnergy('ywing');
+    an.ywingIndex++;
   }
-  /* Deseleciona tabuleiro ao ativar/ciclar */
   STATE.selectedRow = -1;
   STATE.selectedCol = -1;
-  updateYWingBtn();
-  updateActionBar();
-  renderHighlights();
+  updateYWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function deactivateYWing() {
@@ -2939,13 +2980,22 @@ function detectWWings() {
 function toggleWWing() {
   const an = STATE.analysis;
   if (!an.wwingActive) {
+    _cancelOtherAnalysis('wwing');
+    an.wwings = detectWWings();
+    if (an.wwings.length > 0) {
+      if (!canAffordTool('wwing')) { _showNoEnergyFeedback('btn-wwing'); return; }
+      spendEnergy('wwing');
+    }
+    an.wwingIndex = 0;
+    an.wwingActive = true;
+  } else {
+    if (an.wwingBatch) { deactivateWWing(); return; }
+    if (an.wwingIndex + 1 >= an.wwings.length) {
+      deactivateWWing(); return;
+    }
     if (!canAffordTool('wwing')) { _showNoEnergyFeedback('btn-wwing'); return; }
     spendEnergy('wwing');
-    _cancelOtherAnalysis('wwing');
-    an.wwings = detectWWings(); an.wwingIndex = 0; an.wwingActive = true;
-  } else {
     an.wwingIndex++;
-    if (an.wwingIndex >= an.wwings.length) { deactivateWWing(); return; }
   }
   STATE.selectedRow = -1; STATE.selectedCol = -1;
   updateWWingBtn(); updateActionBar(); renderHighlights();
