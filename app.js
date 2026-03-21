@@ -544,44 +544,24 @@ function attachToolBtn(btnId, tapFn, longPressFn) {
    Se já estiver ativo: entra em lote. Se não estiver ativo: detecta e entra em lote. */
 function longPressSingles() {
   const an = STATE.analysis;
-  const s  = STATE.settings;
-  /* Já ativo: entra em modo lote */
-  if (an.singlesActive && an.singles.length > 0) {
+  if (!an.singlesActive && !an.hiddenActive) {
+    toggleSingles();
+  }
+  if (an.singlesActive && an.singles.length > 0 && !an.singlesBatch) {
+    an.singles = _applyBatchEnergy('singles', an.singles);
     an.singlesBatch = true; STATE.pinnedNum = 0;
-    updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
-  }
-  if (an.hiddenActive && an.hiddens.length > 0) {
+    updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
+  } else if (an.hiddenActive && an.hiddens.length > 0 && !an.singlesBatch) {
+    an.hiddens = _applyBatchEnergy('singles', an.hiddens);
     an.singlesBatch = true; STATE.pinnedNum = 0;
-    updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
+    updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
   }
-  /* Não ativo: detecta e ativa em lote */
-  if (s.enableNakedSingles) {
-    const singles = [];
-    for (let r = 0; r < 9; r++)
-      for (let c = 0; c < 9; c++)
-        if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1)
-          singles.push({ r, c, val: [...STATE.notes[r][c]][0] });
-    if (singles.length > 0) {
-      an.singlesActive = true; an.singles = singles; an.singlesIndex = 0; an.singlesBatch = true;
-      STATE.selectedRow = -1; STATE.selectedCol = -1; STATE.pinnedNum = 0;
-      updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
-    }
-  }
-  if (s.enableHiddenSingles) {
-    const hiddens = _computeHiddenSingles();
-    if (hiddens.length > 0) {
-      an.hiddenActive = true; an.hiddens = hiddens; an.hiddensIndex = 0; an.singlesBatch = true;
-      STATE.selectedRow = -1; STATE.selectedCol = -1; STATE.pinnedNum = 0;
-      updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad(); return;
-    }
-  }
-  /* Nada encontrado: age igual ao tap */
-  toggleSingles();
 }
 function longPressNakedPairs() {
   const an = STATE.analysis;
   if (!an.nakedPairsActive) toggleNakedPairs();
-  if (an.nakedPairsActive && an.nakedPairs.length > 0) {
+  if (an.nakedPairsActive && an.nakedPairs.length > 0 && !an.nakedPairsBatch) {
+    an.nakedPairs = _applyBatchEnergy('nakedpairs', an.nakedPairs);
     an.nakedPairsBatch = true;
     updateNakedPairsBtn(); updateActionBar(); renderHighlights();
   }
@@ -589,7 +569,8 @@ function longPressNakedPairs() {
 function longPressPointing() {
   const an = STATE.analysis;
   if (!an.pointingActive) togglePointing();
-  if (an.pointingActive && an.pointings.length > 0) {
+  if (an.pointingActive && an.pointings.length > 0 && !an.pointingBatch) {
+    an.pointings = _applyBatchEnergy('pointing', an.pointings);
     an.pointingBatch = true;
     updatePointingBtn(); updateActionBar(); renderHighlights();
   }
@@ -597,7 +578,8 @@ function longPressPointing() {
 function longPressXWing() {
   const an = STATE.analysis;
   if (!an.xwingActive) toggleXWing();
-  if (an.xwingActive && an.xwings.length > 0) {
+  if (an.xwingActive && an.xwings.length > 0 && !an.xwingBatch) {
+    an.xwings = _applyBatchEnergy('xwing', an.xwings);
     an.xwingBatch = true;
     updateXWingBtn(); updateActionBar(); renderHighlights();
   }
@@ -605,7 +587,8 @@ function longPressXWing() {
 function longPressYWing() {
   const an = STATE.analysis;
   if (!an.ywingActive) toggleYWing();
-  if (an.ywingActive && an.ywings.length > 0) {
+  if (an.ywingActive && an.ywings.length > 0 && !an.ywingBatch) {
+    an.ywings = _applyBatchEnergy('ywing', an.ywings);
     an.ywingBatch = true;
     updateYWingBtn(); updateActionBar(); renderHighlights();
   }
@@ -1524,6 +1507,25 @@ function _showNoEnergyFeedback(btnId) {
   if (!btn) return;
   btn.classList.add('energy-blocked');
   setTimeout(() => btn.classList.remove('energy-blocked'), 700);
+}
+
+function _applyBatchEnergy(key, items) {
+  if (!items || items.length <= 1) return items;
+  const cost = TOOL_ENERGY_COST[key] || 0;
+  if (cost === 0) return items;
+  
+  const affordableExtra = Math.floor(STATE.energyPoints / cost);
+  const requestedExtra = items.length - 1;
+  const toBuy = Math.min(requestedExtra, affordableExtra);
+  
+  if (toBuy > 0) {
+    STATE.energyPoints -= (toBuy * cost);
+    localStorage.setItem('sudoku-energy', STATE.energyPoints);
+    updateEnergyBar();
+    _flashEnergyDrain();
+  }
+  
+  return items.slice(0, 1 + toBuy);
 }
 
 function updateToolsAffordability() {
@@ -2969,7 +2971,8 @@ function executeWWing() {
 function longPressWWing() {
   const an = STATE.analysis;
   if (!an.wwingActive) toggleWWing();
-  if (an.wwingActive && an.wwings.length > 0) {
+  if (an.wwingActive && an.wwings.length > 0 && !an.wwingBatch) {
+    an.wwings = _applyBatchEnergy('wwing', an.wwings);
     an.wwingBatch = true; updateWWingBtn(); updateActionBar(); renderHighlights();
   }
 }
