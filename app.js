@@ -19,6 +19,7 @@ const STATE = {
   difficulty: '',
   errors:     0,
   score:      0,
+  energyPoints: parseInt(localStorage.getItem('sudoku-energy') || '0', 10),
 
   timerSeconds:  0,
   timerInterval: null,
@@ -147,6 +148,16 @@ const DIFF_NAMES = {
   extremo:      'Extremo',
 };
 
+const ENERGY_TABLE = {
+  facil:        { cell: 1, unit: 1, finish: 2 },
+  medio:        { cell: 2, unit: 2, finish: 4 },
+  dificil:      { cell: 3, unit: 3, finish: 6 },
+  especialista: { cell: 4, unit: 4, finish: 8 },
+  mestre:       { cell: 5, unit: 5, finish: 10 },
+  extremo:      { cell: 6, unit: 6, finish: 12 },
+  diabolico:    { cell: 6, unit: 6, finish: 12 },
+};
+
 /* ── Unlock system ── */
 const DIFF_UNLOCK_REQUIRED = {
   facil:        0,
@@ -237,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSavedSession();
   updateDiffButtons();
   _attachLogoUnlock();
+  updateEnergyBar();   // exibe XP salvo ao carregar a página
 });
 
 /* Salva sessão em múltiplos eventos para garantir persistência */
@@ -636,6 +648,7 @@ function startGame(difficulty) {
     renderNumpad();
     updateNotesBtn();
     updateScoreDisplay();
+    updateEnergyBar();
     updateErrorDisplay();
     updateBestScore();
     updateProgressBar();
@@ -681,6 +694,8 @@ function endGame(won) {
     addCompletion(STATE.difficulty);
     updateDiffButtons();
     celebrateVictory();
+    const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
+    awardEnergy(energyTable.finish);
     const rankPos = saveToRanking();
     document.getElementById('v-score').textContent  = STATE.score.toLocaleString('pt-BR');
     document.getElementById('v-time').textContent   = formatTime(STATE.timerSeconds);
@@ -982,6 +997,8 @@ function doPlaceNumber(r, c, num) {
   } else if (num !== 0) {
     STATE.score += calculateCellPoints();
     updateScoreDisplay();
+    const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
+    awardEnergy(energyTable.cell);
   }
   if (num !== 0 && STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, num);
   updateCellContent(r, c);
@@ -997,6 +1014,7 @@ function doPlaceNumber(r, c, num) {
   } else if (num !== 0) {
     correctPop(r, c);
     setTimeout(() => checkCompletions(r, c), 80);
+    setTimeout(() => _checkCompletedUnits(r, c), 80);
     let count = 0;
     for (let rr = 0; rr < 9; rr++)
       for (let cc = 0; cc < 9; cc++)
@@ -1062,6 +1080,27 @@ function checkWin() {
     for (let c = 0; c < 9; c++)
       if (STATE.puzzle[r][c] !== STATE.solution[r][c]) return;
   setTimeout(() => endGame(true), 600);
+}
+
+/* Verifica e recompensa linhas/colunas/quadrantes completados */
+function _checkCompletedUnits(r, c) {
+  const puz   = STATE.puzzle;
+  const table = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
+  const filled = (row, col) => puz[row][col] !== 0;
+
+  // Linha
+  if ([0,1,2,3,4,5,6,7,8].every(cc => filled(r, cc)))
+    awardEnergy(table.unit);
+  // Coluna
+  if ([0,1,2,3,4,5,6,7,8].every(rr => filled(rr, c)))
+    awardEnergy(table.unit);
+  // Quadrante
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  let boxComplete = true;
+  outer: for (let rr = br; rr < br+3; rr++)
+    for (let cc = bc; cc < bc+3; cc++)
+      if (!filled(rr, cc)) { boxComplete = false; break outer; }
+  if (boxComplete) awardEnergy(table.unit);
 }
 
 /* Pontuação acumulativa: cada número correto vale pontos que decrescem com o tempo.
@@ -1252,6 +1291,7 @@ function resumeSession() {
   renderNumpad();
   updateNotesBtn();
   updateScoreDisplay();
+  updateEnergyBar();
   updateErrorDisplay();
   updateBestScore();
   updateProgressBar();
@@ -1408,6 +1448,33 @@ function updateNotesBtn() {
 function updateScoreDisplay() {
   document.getElementById('score-val').textContent =
     STATE.score.toLocaleString('pt-BR');
+}
+
+function awardEnergy(points) {
+  STATE.energyPoints += points;
+  localStorage.setItem('sudoku-energy', STATE.energyPoints);
+  updateEnergyBar();
+}
+
+function updateEnergyBar() {
+  const fill  = document.getElementById('energy-bar-fill');
+  const label = document.getElementById('energy-value');
+  if (!fill || !label) return;
+
+  const total   = STATE.energyPoints;
+  const levelSz = 100;                        // pontos por "nível"
+  const pct     = (total % levelSz) / levelSz * 100;
+
+  fill.style.width = pct + '%';
+  label.textContent = total.toLocaleString('pt-BR');
+
+  // Flash de cor quando completa nível
+  if (total > 0 && total % levelSz === 0) {
+    fill.style.background = 'linear-gradient(90deg, #F59E0B, #EF4444)';
+    setTimeout(() => {
+      fill.style.background = '';
+    }, 600);
+  }
 }
 
 function updateBestScore() {
@@ -4315,17 +4382,35 @@ let _genioClicks = 0;
 let _genioClickTimer = null;
 
 function _attachGenioTrigger() {
-  document.getElementById('score-val').addEventListener('click', () => {
-    if (!STATE.puzzle || STATE.paused) { _genioClicks = 0; return; }
-    _genioClicks++;
-    clearTimeout(_genioClickTimer);
-    if (_genioClicks >= 3) {
-      _genioClicks = 0;
-      activateGenio();
-    } else {
-      _genioClickTimer = setTimeout(() => { _genioClicks = 0; }, 700);
-    }
-  });
+  const energyLbl = document.getElementById('energy-label');
+  if (energyLbl) {
+    energyLbl.addEventListener('click', () => {
+      if (!STATE.puzzle || STATE.paused) { _genioClicks = 0; return; }
+      _genioClicks++;
+      clearTimeout(_genioClickTimer);
+      if (_genioClicks >= 3) {
+        _genioClicks = 0;
+        activateGenio();
+      } else {
+        _genioClickTimer = setTimeout(() => { _genioClicks = 0; }, 700);
+      }
+    });
+  }
+  /* Mantém o listener no score-val (oculto) como fallback */
+  const scoreEl = document.getElementById('score-val');
+  if (scoreEl) {
+    scoreEl.addEventListener('click', () => {
+      if (!STATE.puzzle || STATE.paused) { _genioClicks = 0; return; }
+      _genioClicks++;
+      clearTimeout(_genioClickTimer);
+      if (_genioClicks >= 3) {
+        _genioClicks = 0;
+        activateGenio();
+      } else {
+        _genioClickTimer = setTimeout(() => { _genioClicks = 0; }, 700);
+      }
+    });
+  }
   document.getElementById('btn-genio-cancel').addEventListener('click', _hideGenioPanel);
 }
 
