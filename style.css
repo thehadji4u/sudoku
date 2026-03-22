@@ -48,8 +48,12 @@ html, body {
 .screen {
   display: none;
   flex-direction: column;
-  min-height: 100dvh;
-  min-height: 100vh;
+  height: 100dvh;
+  height: 100vh;
+  overflow: hidden;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
 }
 .screen.active { display: flex; }
 
@@ -61,9 +65,6 @@ html, body {
   justify-content: center;
   gap: 10px;
   padding: 12px 20px;
-  height: 100dvh;
-  height: 100vh;
-  overflow: hidden;
 }
 
 .diff-logo {
@@ -238,10 +239,6 @@ html, body {
 ══════════════════════════════════════════ */
 #screen-game {
   background: #fff;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 /* ── Header ── */
