@@ -237,6 +237,9 @@ html, body {
 ══════════════════════════════════════════ */
 #screen-game {
   background: #fff;
+  height: 100dvh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ── Header ── */
@@ -283,87 +286,101 @@ html, body {
 #energy-container {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
+  position: relative;
 }
+
+#energy-top-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+#energy-icon {
+  font-size: 14px;
+}
+
+#energy-value {
+  font-size: 24px;
+  font-weight: 900;
+  color: #1E40AF;
+  letter-spacing: -1px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 #energy-bar-wrap {
+  position: relative;
   width: 100%;
-  height: 10px;
+  height: 6px;
   background: #E2E8F0;
   border-radius: 999px;
-  overflow: hidden;
+  overflow: visible;
 }
+
 #energy-bar-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #3B82F6, #06B6D4);
   border-radius: 999px;
-  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.5s ease;
 }
-#energy-label {
-  font-size: 12px;
-  font-weight: 700;
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
+
+@keyframes streak-complete {
+  0%   { transform: scaleX(1); opacity: 1; }
+  40%  { transform: scaleX(1.06); opacity: 0.7; }
+  100% { transform: scaleX(0); opacity: 0; }
+}
+.streak-leveling {
+  animation: streak-complete 0.35s ease forwards;
+}
+
+#multiplier-popup {
+  position: absolute;
+  right: -2px;
+  top: -18px;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #1E293B;
+  color: #F8FAFC;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: multiplier-appear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#multiplier-popup.hidden { display: none; }
+
+@keyframes multiplier-appear {
+  from { transform: scale(0.5) translateY(4px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.energy-gain-pop {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 11px;
+  font-weight: 800;
   color: #3B82F6;
-  text-align: right;
-  letter-spacing: 0.5px;
+  pointer-events: none;
+  animation: gain-float 0.9s ease forwards;
+  white-space: nowrap;
 }
-#energy-value {
+.energy-gain-pop.gain-medium {
+  font-size: 14px;
+  color: #10B981;
+}
+.energy-gain-pop.gain-large {
   font-size: 18px;
-  font-weight: 900;
-  color: #3B82F6;
-  letter-spacing: -0.5px;
+  color: #F59E0B;
+  text-shadow: 0 0 8px rgba(245,158,11,0.5);
 }
-
-#multiplier-display {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: center;
-}
-
-#multiplier-badge {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: -0.5px;
-  line-height: 1;
-  background: linear-gradient(135deg, #F59E0B, #EF4444);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: none;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-#multiplier-badge.leveled-up {
-  animation: multiplier-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes multiplier-pop {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.7); }
-  100% { transform: scale(1); }
-}
-
-#multiplier-streak {
-  font-size: 9px;
-  color: #94A3B8;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-#multiplier-display[data-level="2"] #multiplier-badge { background: linear-gradient(135deg, #F59E0B, #F97316); }
-#multiplier-display[data-level="3"] #multiplier-badge { background: linear-gradient(135deg, #EF4444, #DC2626); }
-#multiplier-display[data-level="4"] #multiplier-badge { background: linear-gradient(135deg, #A855F7, #7C3AED); }
-#multiplier-display[data-level="5+"] #multiplier-badge { background: linear-gradient(135deg, #06B6D4, #3B82F6, #A855F7); background-size: 200% 200%; animation: rainbow-shift 1.5s linear infinite; }
-
-@keyframes rainbow-shift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+@keyframes gain-float {
+  0%   { transform: translateY(0);   opacity: 1; }
+  60%  { transform: translateY(-18px); opacity: 1; }
+  100% { transform: translateY(-28px); opacity: 0; }
 }
 
 /* Linha stats: best | diff | erros? | tempo | ⏸ */
@@ -440,11 +457,12 @@ html, body {
 
 /* ── Tabuleiro ── */
 #board-wrap {
+  flex: 1;
+  min-height: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 12px 12px 6px;
-  flex: 1;
+  padding: 6px 12px;
 }
 
 #board {

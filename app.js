@@ -25,7 +25,7 @@ const STATE = {
   timeMultiplier:     1,       // multiplicador por tempo (5x→4x→3x→2x→1x)
   multiplierDisabled: false,   // true se btn-fill foi usado no puzzle
   puzzleStartTime:    0,       // Date.now() ao iniciar puzzle
-  _timeBonusInterval: null,
+  fillUsedThisPuzzle: false,
 
   timerSeconds:  0,
   timerInterval: null,
@@ -649,8 +649,8 @@ function startGame(difficulty) {
     STATE.comboMultiplier    = 1;
     STATE.timeMultiplier     = 1;
     STATE.multiplierDisabled = false;
+    STATE.fillUsedThisPuzzle = false;
     STATE.puzzleStartTime    = Date.now();
-    _startTimeBonusTimer();
 
     STATE.undoStack  = [];
     STATE.undoCount  = 0;
@@ -664,7 +664,6 @@ function startGame(difficulty) {
       active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
       savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
     };
-    updateMultiplierDisplay();
     resetAnalysis();
 
     for (let r = 0; r < 9; r++)
@@ -724,7 +723,6 @@ function endGame(won) {
 
   STATE.streakCount = 0;
   STATE.comboMultiplier = 1;
-  updateMultiplierDisplay();
 
   if (won) {
     addCompletion(STATE.difficulty);
@@ -1037,14 +1035,27 @@ function doPlaceNumber(r, c, num) {
 
     STATE.streakCount = 0;
     STATE.comboMultiplier = 1;
-    updateMultiplierDisplay();
+    updateEnergyBar();
   } else if (num !== 0) {
     STATE.score += calculateCellPoints();
     updateScoreDisplay();
 
     STATE.streakCount++;
+    const prevCombo = STATE.comboMultiplier;
     STATE.comboMultiplier = Math.floor(STATE.streakCount / 10) + 1;
-    updateMultiplierDisplay();
+    if (STATE.comboMultiplier > prevCombo) {
+      const fill = document.getElementById('energy-bar-fill');
+      if (fill) {
+        fill.classList.add('streak-leveling');
+        setTimeout(() => { 
+          fill.classList.remove('streak-leveling'); 
+          updateEnergyBar(); 
+        }, 350);
+      }
+      _showMultiplierPopup(STATE.comboMultiplier);
+    } else {
+      updateEnergyBar();
+    }
 
     const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
     awardEnergy(energyTable.cell);
@@ -1514,62 +1525,41 @@ function getFinalMultiplier() {
   return STATE.comboMultiplier * getTimeMultiplier();
 }
 
-function updateMultiplierDisplay() {
-  const display = document.getElementById('multiplier-display');
-  const badge   = document.getElementById('multiplier-badge');
-  const streak  = document.getElementById('multiplier-streak');
-  if (!display || !badge || !streak) return;
+let _multiplierPopupTimer = null;
 
-  const combo    = STATE.comboMultiplier;
-  const time     = getTimeMultiplier();
-  const final    = getFinalMultiplier();
-  const disabled = STATE.multiplierDisabled;
-
-  if (disabled || (!STATE.puzzle || STATE.paused)) {
-    display.classList.add('hidden');
-    return;
-  }
-
-  display.classList.remove('hidden');
-
-  const prev = badge.textContent;
-  badge.textContent = `×${final}`;
-  if (badge.textContent !== prev && final > 1) {
-    badge.classList.remove('leveled-up');
-    void badge.offsetWidth;
-    badge.classList.add('leveled-up');
-  }
-
-  const lvl = combo >= 5 ? '5+' : combo >= 4 ? '4' : combo >= 3 ? '3' : combo >= 2 ? '2' : '1';
-  display.setAttribute('data-level', lvl);
-
-  if (combo > 1) {
-    const next = combo * 10;
-    const progress = STATE.streakCount % 10;
-    streak.textContent = `${progress}/10 → ×${combo + 1}`;
-  } else {
-    const progress = STATE.streakCount;
-    streak.textContent = progress > 0 ? `${progress}/10 → ×2` : '';
-  }
-
-  if (time > 1) {
-    badge.title = `Combo ×${combo} · Tempo ×${time}`;
-  } else {
-    badge.title = `Combo ×${combo}`;
-  }
+function _showMultiplierPopup(level) {
+  const el = document.getElementById('multiplier-popup');
+  if (!el || level <= 1) return;
+  el.textContent = `×${level}`;
+  el.classList.remove('hidden');
+  el.style.background = _getMultiplierBg(level);
+  if (_multiplierPopupTimer) clearTimeout(_multiplierPopupTimer);
+  _multiplierPopupTimer = setTimeout(() => el.classList.add('hidden'), 2500);
 }
 
-function _startTimeBonusTimer() {
-  if (STATE._timeBonusInterval) clearInterval(STATE._timeBonusInterval);
-  STATE._timeBonusInterval = setInterval(() => {
-    const elapsed = (Date.now() - STATE.puzzleStartTime) / 1000;
-    updateMultiplierDisplay();
-    if (elapsed > 16) { clearInterval(STATE._timeBonusInterval); STATE._timeBonusInterval = null; }
-  }, 500);
+function _getMultiplierBg(level) {
+  const map = { 2: '#059669', 3: '#D97706', 4: '#DC2626', 5: '#7C3AED' };
+  return map[Math.min(level, 5)] || '#1E293B';
+}
+
+function _showEnergyGain(points) {
+  const container = document.getElementById('energy-container');
+  if (!container || points <= 0) return;
+
+  const el = document.createElement('span');
+  el.className = 'energy-gain-pop';
+  el.textContent = '+' + points;
+
+  if (points >= 20) el.classList.add('gain-large');
+  else if (points >= 10) el.classList.add('gain-medium');
+
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 900);
 }
 
 function awardEnergy(points) {
   const finalPoints = points * getFinalMultiplier();
+  _showEnergyGain(finalPoints);
   STATE.energyPoints += finalPoints;
   localStorage.setItem('sudoku-energy', STATE.energyPoints);
   updateEnergyBar();
@@ -1580,20 +1570,21 @@ function updateEnergyBar() {
   const label = document.getElementById('energy-value');
   if (!fill || !label) return;
 
-  const total   = STATE.energyPoints;
-  const levelSz = 100;                        // pontos por "nível"
-  const pct     = (total % levelSz) / levelSz * 100;
+  label.textContent = STATE.energyPoints.toLocaleString('pt-BR');
 
-  fill.style.width = pct + '%';
-  label.textContent = total.toLocaleString('pt-BR');
+  const STREAK_COLORS = {
+    1: 'linear-gradient(90deg, #3B82F6, #06B6D4)',
+    2: 'linear-gradient(90deg, #10B981, #34D399)',
+    3: 'linear-gradient(90deg, #F59E0B, #FBBF24)',
+    4: 'linear-gradient(90deg, #EF4444, #F97316)',
+    5: 'linear-gradient(90deg, #A855F7, #EC4899)',
+  };
 
-  // Flash de cor quando completa nível
-  if (total > 0 && total % levelSz === 0) {
-    fill.style.background = 'linear-gradient(90deg, #F59E0B, #EF4444)';
-    setTimeout(() => {
-      fill.style.background = '';
-    }, 600);
-  }
+  const streak = STATE.streakCount % 10;
+  const pct    = (streak / 10) * 100;
+  fill.style.width      = pct + '%';
+  fill.style.background = STREAK_COLORS[Math.min(STATE.comboMultiplier, 5)] || STREAK_COLORS[1];
+
   updateToolsAffordability();
 }
 
@@ -1615,7 +1606,7 @@ function spendEnergy(key) {
 
   STATE.streakCount = 0;
   STATE.comboMultiplier = 1;
-  updateMultiplierDisplay();
+  updateEnergyBar();
 }
 
 function _flashEnergyDrain() {
@@ -1848,6 +1839,15 @@ function handleNumpadPin(num) {
 
 function handleFill() {
   if (STATE.paused || !STATE.puzzle) return;
+
+  if (!STATE.fillUsedThisPuzzle) {
+    STATE.fillUsedThisPuzzle = true;
+    STATE.energyPoints = Math.max(0, STATE.energyPoints - 50);
+    localStorage.setItem('sudoku-energy', STATE.energyPoints);
+    updateEnergyBar();
+    _flashEnergyDrain();
+  }
+
   STATE.fillNotes = !STATE.fillNotes;
   if (STATE.fillNotes) {
     applyAutoAnnotations();
@@ -2356,7 +2356,6 @@ function updateHiddensBtn() {
 /* ─── Botão de ação (action bar) ─── */
 function handleActionConfirm() {
   STATE.multiplierDisabled = true;
-  updateMultiplierDisplay();
   const an = STATE.analysis;
   if (an.singlesActive           && an.singles.length)        { executeFillSingles();       return; }
   if (an.hiddenActive            && an.hiddens.length)        { executeFillHiddenSingles(); return; }
