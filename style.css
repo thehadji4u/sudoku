@@ -255,6 +255,7 @@ html, body {
   justify-content: space-between;
   padding: 10px 10px 4px;
   gap: 8px;
+  position: relative;
 }
 .ghdr-icon {
   width: 36px;
@@ -283,13 +284,14 @@ html, body {
 
 /* ── Barra de Energia (XP) ── */
 #energy-container {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  flex: 1;
-  min-width: 0;
-  position: relative;
+  pointer-events: none;
 }
 
 #energy-top-row {
@@ -297,6 +299,7 @@ html, body {
   align-items: baseline;
   gap: 4px;
   position: relative;
+  pointer-events: none;
 }
 
 #energy-icon {
@@ -314,7 +317,7 @@ html, body {
 
 #energy-bar-wrap {
   position: relative;
-  width: 100%;
+  width: 120px;
   height: 6px;
   background: #E2E8F0;
   border-radius: 999px;
@@ -360,29 +363,31 @@ html, body {
 
 .energy-gain-pop {
   position: absolute;
-  left: calc(100% + 5px);
+  left: calc(100% + 6px);
   top: 50%;
   transform: translateY(-50%);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 900;
   color: #3B82F6;
   pointer-events: none;
-  animation: gain-float 0.9s ease forwards;
+  animation: gain-float 1s ease forwards;
   white-space: nowrap;
+  z-index: 999;
+  line-height: 1;
 }
 .energy-gain-pop.gain-medium {
-  font-size: 19px;
+  font-size: 21px;
   color: #10B981;
 }
 .energy-gain-pop.gain-large {
-  font-size: 24px;
+  font-size: 26px;
   color: #F59E0B;
-  text-shadow: 0 0 8px rgba(245,158,11,0.5);
+  text-shadow: 0 0 10px rgba(245,158,11,0.6);
 }
 @keyframes gain-float {
-  0%   { transform: translate(0, -50%); opacity: 1; }
-  60%  { transform: translate(0, calc(-50% - 18px)); opacity: 1; }
-  100% { transform: translate(0, calc(-50% - 28px)); opacity: 0; }
+  0%   { transform: translate(0, -50%);          opacity: 1; }
+  55%  { transform: translate(0, calc(-50% - 20px)); opacity: 1; }
+  100% { transform: translate(0, calc(-50% - 32px)); opacity: 0; }
 }
 
 /* Linha stats: best | diff | erros? | tempo | ⏸ */
