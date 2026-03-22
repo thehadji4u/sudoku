@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.51</span>
+      <span class="app-version">v1.52</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -92,11 +92,17 @@
     <header id="game-header">
       <div class="ghdr-top">
         <button class="ghdr-icon" id="btn-back" title="Voltar">‹</button>
-        <div id="energy-container">
-          <div id="energy-bar-wrap">
-            <div id="energy-bar-fill"></div>
+        <div id="energy-group" style="display:flex; flex-direction:column; align-items:center;">
+          <div id="energy-container">
+            <div id="energy-bar-wrap">
+              <div id="energy-bar-fill"></div>
+            </div>
+            <span id="energy-label">⚡ <span id="energy-value">0</span></span>
           </div>
-          <span id="energy-label">⚡ <span id="energy-value">0</span></span>
+          <div id="multiplier-display" class="hidden">
+            <span id="multiplier-badge">×1</span>
+            <span id="multiplier-streak"></span>
+          </div>
         </div>
         <span id="score-val" class="game-score" style="display:none">0</span>
         <button class="ghdr-icon" id="btn-settings-game" title="Configurações"><svg class="gear-svg" viewBox="0 0 24 24"
