@@ -651,6 +651,8 @@ function startGame(difficulty) {
     STATE.multiplierDisabled = false;
     STATE.fillUsedThisPuzzle = false;
     STATE.puzzleStartTime    = Date.now();
+    document.getElementById('fill-cost-badge')?.classList.remove('paid');
+    updateFillCostDisplay();
 
     STATE.undoStack  = [];
     STATE.undoCount  = 0;
@@ -1829,6 +1831,16 @@ function attachNumpadLongPress() {
 }
 
 function handleNumpadPin(num) {
+  if (STATE.pinnedNum !== num) {
+    if (STATE.energyPoints < 1) {
+      _flashEnergyLoss();
+      return;
+    }
+    STATE.energyPoints -= 1;
+    localStorage.setItem('sudoku-energy', STATE.energyPoints);
+    updateEnergyBar();
+    _flashEnergyDrain();
+  }
   STATE.pinnedNum = (STATE.pinnedNum === num) ? 0 : num;
   /* Ao fixar um número no dial, limpa a seleção de célula no tabuleiro */
   STATE.selectedRow = -1;
@@ -1841,11 +1853,21 @@ function handleFill() {
   if (STATE.paused || !STATE.puzzle) return;
 
   if (!STATE.fillUsedThisPuzzle) {
+    const costs = { facil: 50, medio: 100, dificil: 200, especialista: 400, mestre: 800, extremo: 1600, diabolico: 1600 };
+    const cost = costs[STATE.difficulty] || 50;
+    
+    if (STATE.energyPoints < cost) {
+      _showNoEnergyFeedback('btn-fill');
+      _flashEnergyLoss();
+      return;
+    }
+
     STATE.fillUsedThisPuzzle = true;
-    STATE.energyPoints = Math.max(0, STATE.energyPoints - 50);
+    STATE.energyPoints = Math.max(0, STATE.energyPoints - cost);
     localStorage.setItem('sudoku-energy', STATE.energyPoints);
     updateEnergyBar();
     _flashEnergyDrain();
+    document.getElementById('fill-cost-badge')?.classList.add('paid');
   }
 
   STATE.fillNotes = !STATE.fillNotes;
@@ -1865,6 +1887,14 @@ function updateFillBtn() {
   const btn = document.getElementById('btn-fill');
   if (!btn) return;
   btn.classList.toggle('active-mode', STATE.fillNotes);
+}
+
+function updateFillCostDisplay() {
+  const badge = document.getElementById('fill-cost-badge');
+  if (!badge) return;
+  const costs = { facil: 50, medio: 100, dificil: 200, especialista: 400, mestre: 800, extremo: 1600, diabolico: 1600 };
+  const cost = costs[STATE.difficulty] || 50;
+  badge.textContent = '-' + cost + '⚡';
 }
 
 function updateFillBtnVisibility() {

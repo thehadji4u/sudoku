@@ -1727,3 +1727,16 @@ html, body {
   opacity: 0.45;
   filter: grayscale(60%);
 }
+
+.fill-cost {
+  font-size: 8px;
+  color: #EF4444;
+  font-weight: 700;
+  display: block;
+  line-height: 1;
+  transition: opacity 0.4s;
+}
+.fill-cost.paid {
+  opacity: 0;
+  pointer-events: none;
+}
