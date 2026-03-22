@@ -1545,7 +1545,7 @@ function _getMultiplierBg(level) {
 }
 
 function _showEnergyGain(points) {
-  const container = document.getElementById('energy-container');
+  const container = document.getElementById('energy-top-row');
   if (!container || points <= 0) return;
 
   const el = document.createElement('span');

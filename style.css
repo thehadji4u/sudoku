@@ -35,6 +35,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%;
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   color: var(--text-primary);
@@ -287,7 +288,8 @@ html, body {
 #energy-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
   flex: 1;
   min-width: 0;
   position: relative;
@@ -297,6 +299,7 @@ html, body {
   display: flex;
   align-items: baseline;
   gap: 4px;
+  position: relative;
 }
 
 #energy-icon {
@@ -360,9 +363,10 @@ html, body {
 
 .energy-gain-pop {
   position: absolute;
-  right: 0;
-  top: 0;
-  font-size: 11px;
+  left: calc(100% + 5px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px;
   font-weight: 800;
   color: #3B82F6;
   pointer-events: none;
@@ -370,18 +374,18 @@ html, body {
   white-space: nowrap;
 }
 .energy-gain-pop.gain-medium {
-  font-size: 14px;
+  font-size: 19px;
   color: #10B981;
 }
 .energy-gain-pop.gain-large {
-  font-size: 18px;
+  font-size: 24px;
   color: #F59E0B;
   text-shadow: 0 0 8px rgba(245,158,11,0.5);
 }
 @keyframes gain-float {
-  0%   { transform: translateY(0);   opacity: 1; }
-  60%  { transform: translateY(-18px); opacity: 1; }
-  100% { transform: translateY(-28px); opacity: 0; }
+  0%   { transform: translate(0, -50%); opacity: 1; }
+  60%  { transform: translate(0, calc(-50% - 18px)); opacity: 1; }
+  100% { transform: translate(0, calc(-50% - 28px)); opacity: 0; }
 }
 
 /* Linha stats: best | diff | erros? | tempo | ⏸ */
