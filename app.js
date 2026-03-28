@@ -887,6 +887,7 @@ function renderHighlights() {
         el.classList.add('selected');
       } else if (r === sr || c === sc || boxIdx === selBox) {
         el.classList.remove('highlight-match');
+        el.classList.remove('same-num');
         el.classList.add('highlight-sel');
       }
     }
