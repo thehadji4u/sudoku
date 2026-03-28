@@ -877,58 +877,16 @@ function renderHighlights() {
   const selVal  = puzzle[sr][sc];
   const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
 
-  if (settings.enhancedHighlight && selVal > 0) {
-    /* ── Seleção Aprimorada ──
-       Célula selecionada → azul médio
-       Outras ocorrências do número → verde médio
-       Zona da selecionada (linha/col/quad) → azul claro
-       Zonas das ocorrências → verde claro
-       Prioridade: azul sempre sobrepõe verde */
+  /* ── Seleção de célula: apenas linha, coluna e quadrante da célula (azul) ── */
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const el     = cellElements[r][c];
+      const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
 
-    const matchRows  = new Set();
-    const matchCols  = new Set();
-    const matchBoxes = new Set();
-
-    for (let r = 0; r < 9; r++)
-      for (let c = 0; c < 9; c++)
-        if (puzzle[r][c] === selVal && !(r === sr && c === sc)) {
-          matchRows.add(r);
-          matchCols.add(c);
-          matchBoxes.add(Math.floor(r / 3) * 3 + Math.floor(c / 3));
-        }
-
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const el     = cellElements[r][c];
-        const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-
-        if (r === sr && c === sc) {
-          el.classList.add('selected');
-        } else if (puzzle[r][c] === selVal) {
-          el.classList.add('same-num');
-        } else {
-          const inSelZone   = r === sr || c === sc || boxIdx === selBox;
-          const inMatchZone = matchRows.has(r) || matchCols.has(c) || matchBoxes.has(boxIdx);
-          /* Azul tem prioridade sobre verde */
-          if (inSelZone)        el.classList.add('highlight-sel');
-          else if (inMatchZone) el.classList.add('highlight-match');
-        }
-      }
-    }
-  } else {
-    /* ── Seleção padrão: linha, coluna e quadrante da célula selecionada ── */
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const el     = cellElements[r][c];
-        const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-
-        if (r === sr && c === sc) {
-          el.classList.add('selected');
-        } else if (selVal > 0 && puzzle[r][c] === selVal) {
-          el.classList.add('same-num');
-        } else if (r === sr || c === sc || boxIdx === selBox) {
-          el.classList.add('highlight-sel');
-        }
+      if (r === sr && c === sc) {
+        el.classList.add('selected');
+      } else if (r === sr || c === sc || boxIdx === selBox) {
+        el.classList.add('highlight-sel');
       }
     }
   }
