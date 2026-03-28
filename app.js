@@ -860,7 +860,7 @@ function renderHighlights() {
           if (el.classList.contains('same-num') || el.classList.contains('selected')) continue;
           const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
           if (pinRows.has(r) || pinCols.has(c) || pinBoxes.has(boxIdx))
-            el.classList.add('highlight-sel');
+            el.classList.add('highlight-match');
         }
     }
     document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
@@ -877,18 +877,66 @@ function renderHighlights() {
   const selVal  = puzzle[sr][sc];
   const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
 
-  /* ── Seleção de célula: apenas linha, coluna e quadrante (azul) ── */
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const el     = cellElements[r][c];
-      const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+  if (settings.enhancedHighlight && selVal > 0) {
+    /* ── Seleção Aprimorada ──
+       Célula selecionada → azul médio
+       Outras ocorrências do número → verde médio
+       Zona da selecionada (linha/col/quad) → azul claro
+       Zonas das ocorrências → verde claro
+       Prioridade: azul sempre sobrepõe verde */
 
-      if (r === sr && c === sc) {
-        el.classList.add('selected');
-      } else if (r === sr || c === sc || boxIdx === selBox) {
-        el.classList.add('highlight-sel');
+    const matchRows  = new Set();
+    const matchCols  = new Set();
+    const matchBoxes = new Set();
+
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (puzzle[r][c] === selVal && !(r === sr && c === sc)) {
+          matchRows.add(r);
+          matchCols.add(c);
+          matchBoxes.add(Math.floor(r / 3) * 3 + Math.floor(c / 3));
+        }
+
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const el     = cellElements[r][c];
+        const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+
+        if (r === sr && c === sc) {
+          el.classList.add('selected');
+        } else if (puzzle[r][c] === selVal) {
+          el.classList.add('same-num');
+        } else {
+          const inSelZone   = r === sr || c === sc || boxIdx === selBox;
+          const inMatchZone = matchRows.has(r) || matchCols.has(c) || matchBoxes.has(boxIdx);
+          /* Azul tem prioridade sobre verde */
+          if (inSelZone)        el.classList.add('highlight-sel');
+          else if (inMatchZone) el.classList.add('highlight-match');
+        }
       }
     }
+  } else {
+    /* ── Seleção padrão: linha, coluna e quadrante da célula selecionada ── */
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const el     = cellElements[r][c];
+        const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+
+        if (r === sr && c === sc) {
+          el.classList.add('selected');
+        } else if (selVal > 0 && puzzle[r][c] === selVal) {
+          el.classList.add('same-num');
+        } else if (r === sr || c === sc || boxIdx === selBox) {
+          el.classList.add('highlight-sel');
+        }
+      }
+    }
+  }
+
+  /* ── Destaca dígitos de anotação que coincidem com o número selecionado ── */
+  if (selVal > 0) {
+    document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
+      .forEach(s => s.classList.add('note-match'));
   }
 
   /* ── Conflitos no modo simulador ── */
