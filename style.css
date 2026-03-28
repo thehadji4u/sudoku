@@ -551,7 +551,7 @@ html, body {
 /* Destaques */
 .cell.highlight-sel   { background: #DBEAFE; }            /* zona da selecionada — azul claro */
 .cell.highlight-match { background: #DCFCE7; }            /* zonas das ocorrências — verde claro */
-.cell.same-num        { background: #86EFAC; }            /* mesma ocorrência — verde médio */
+.cell.same-num        { background: #BFDBFE; }            /* mesma ocorrência — azul claro */
 .cell.selected        { background: #93C5FD !important; } /* célula selecionada — azul médio */
 
 /* Notas — posição absoluta garante grade 3×3 fixa independente do flex pai */
