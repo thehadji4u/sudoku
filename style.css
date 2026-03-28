@@ -1379,39 +1379,40 @@ html, body {
 }
 .feature-text { flex: 1; }
 
-/* ── Naked Single (Função 5) ── */
+/* ── Naked Single (Função 6) ── */
 .cell.naked-single { background: #FEF3C7; }
 
-.ns-particle {
+/* ── Animação genérica de viagem entre células ── */
+.cell-travel-particle {
   position: fixed;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: radial-gradient(circle, #FEF9C3, #F59E0B);
-  box-shadow: 0 0 10px 4px rgba(245,158,11,0.5);
+  background: radial-gradient(circle, white 0%, var(--travel-color, #F59E0B) 70%);
+  box-shadow: 0 0 10px 4px var(--travel-color, #F59E0B);
   pointer-events: none;
   z-index: 9999;
   will-change: transform;
 }
 
-@keyframes ns-fill {
-  0%   { background: #FCD34D; transform: scale(0.72); }
-  40%  { background: #FDE68A; transform: scale(1.1);  }
-  72%  { background: #FEF3C7; transform: scale(0.97); }
+@keyframes cell-anim-splash {
+  0%   { background: var(--cell-anim-color, #FCD34D); transform: scale(0.72); }
+  40%  { background: var(--cell-anim-color, #FDE68A); transform: scale(1.1);  }
+  72%  { transform: scale(0.97); }
   100% { background: transparent; transform: scale(1); }
 }
-@keyframes ns-ripple {
+@keyframes cell-anim-ripple {
   from { transform: scale(0.3); opacity: 0.9; }
   to   { transform: scale(2.5); opacity: 0; }
 }
-.cell.ns-fill-anim { animation: ns-fill 0.44s ease-out forwards; position: relative; }
-.cell.ns-fill-anim::after {
+.cell.cell-anim-splash { animation: cell-anim-splash 0.44s ease-out forwards; position: relative; }
+.cell.cell-anim-splash::after {
   content: '';
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(245,158,11,0.35), transparent 70%);
-  animation: ns-ripple 0.5s ease-out forwards;
+  background: radial-gradient(circle, var(--cell-anim-color, rgba(245,158,11,0.35)), transparent 70%);
+  animation: cell-anim-ripple 0.5s ease-out forwards;
   pointer-events: none;
 }
 

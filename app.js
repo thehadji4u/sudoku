@@ -1904,6 +1904,66 @@ function handleNumpadPin(num) {
 }
 
 /* ═══════════════════════════════════════
+   ANIMAÇÃO DE CÉLULA — utilitário reutilizável
+═══════════════════════════════════════ */
+
+/**
+ * Anima uma partícula viajando de sourceEl até targetEl, depois executa
+ * um splash na célula destino.
+ *
+ * @param {Element} sourceEl  - elemento DOM de origem
+ * @param {Element} targetEl  - elemento DOM de destino
+ * @param {Object}  opts
+ *   @param {string}   opts.color      - cor CSS da partícula/splash (default: '#F59E0B' amber)
+ *   @param {number}   opts.duration   - duração do voo em ms (default: 500)
+ *   @param {number}   opts.splashMs   - duração do splash em ms (default: 430)
+ *   @param {Function} opts.guard      - função que retorna false para cancelar (default: ()=>true)
+ *   @param {Function} opts.onArrive   - callback executado ao chegar (antes do splash)
+ *   @param {Function} opts.onDone     - callback executado após o splash
+ */
+function animateCellTravel(sourceEl, targetEl, opts = {}) {
+  const {
+    color    = '#F59E0B',
+    duration = 500,
+    splashMs = 430,
+    guard    = () => true,
+    onArrive = () => {},
+    onDone   = () => {},
+  } = opts;
+
+  const fromRect = sourceEl.getBoundingClientRect();
+  const toRect   = targetEl.getBoundingClientRect();
+  const fromX = fromRect.left + fromRect.width  / 2;
+  const fromY = fromRect.top  + fromRect.height / 2;
+  const dx = (toRect.left + toRect.width  / 2) - fromX;
+  const dy = (toRect.top  + toRect.height / 2) - fromY;
+
+  const particle = document.createElement('div');
+  particle.className = 'cell-travel-particle';
+  particle.style.setProperty('--travel-color', color);
+  particle.style.left = fromX + 'px';
+  particle.style.top  = fromY + 'px';
+  document.body.appendChild(particle);
+
+  particle.animate([
+    { transform: 'translate(-50%,-50%) scale(1.3)', opacity: 1 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.4)`, opacity: 0.8 },
+  ], { duration, easing: 'cubic-bezier(0.4,0,0.6,1)', fill: 'forwards' }).onfinish = () => {
+    particle.remove();
+    if (!guard()) return;
+
+    onArrive();
+
+    targetEl.style.setProperty('--cell-anim-color', color);
+    targetEl.classList.add('cell-anim-splash');
+    setTimeout(() => {
+      targetEl.classList.remove('cell-anim-splash');
+      onDone();
+    }, splashMs);
+  };
+}
+
+/* ═══════════════════════════════════════
    NAKED SINGLE — Função 5
 ═══════════════════════════════════════ */
 let _nsGen = 0;
@@ -1956,58 +2016,38 @@ function _processNsQueue(gen, num, sourceEl, queue) {
   const rest = queue.filter((_, i) => i !== idx);
   const toEl = cellElements[tr][tc];
 
-  const fromRect = sourceEl.getBoundingClientRect();
-  const toRect   = toEl.getBoundingClientRect();
-  const fromX = fromRect.left + fromRect.width  / 2;
-  const fromY = fromRect.top  + fromRect.height / 2;
-  const dx = (toRect.left + toRect.width  / 2) - fromX;
-  const dy = (toRect.top  + toRect.height / 2) - fromY;
-
-  /* Partícula viajante */
-  const particle = document.createElement('div');
-  particle.className = 'ns-particle';
-  particle.style.left = fromX + 'px';
-  particle.style.top  = fromY + 'px';
-  document.body.appendChild(particle);
-
-  particle.animate([
-    { transform: 'translate(-50%,-50%) scale(1.3)', opacity: 1 },
-    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.4)`, opacity: 0.8 },
-  ], { duration: 500, easing: 'cubic-bezier(0.4,0,0.6,1)', fill: 'forwards' }).onfinish = () => {
-    particle.remove();
-    if (gen !== _nsGen || STATE.settings.nakedSingleMode < 2 || STATE.gameOver) return;
-
-    /* Preenche célula — mesma lógica de pontuação de acerto manual */
-    pushUndo();
-    STATE.puzzle[tr][tc] = num;
-    STATE.score += calculateCellPoints();
-    updateScoreDisplay();
-    STATE.streakCount++;
-    const prevCombo = STATE.comboMultiplier;
-    STATE.comboMultiplier = Math.floor(STATE.streakCount / 10) + 1;
-    if (STATE.comboMultiplier > prevCombo) {
-      const fill = document.getElementById('energy-bar-fill');
-      if (fill) {
-        fill.classList.add('streak-leveling');
-        setTimeout(() => { fill.classList.remove('streak-leveling'); updateEnergyBar(); }, 350);
+  animateCellTravel(sourceEl, toEl, {
+    color: '#F59E0B',
+    guard: () => gen === _nsGen && STATE.settings.nakedSingleMode >= 2 && !STATE.gameOver,
+    onArrive: () => {
+      /* Preenche célula — mesma lógica de pontuação de acerto manual */
+      pushUndo();
+      STATE.puzzle[tr][tc] = num;
+      STATE.score += calculateCellPoints();
+      updateScoreDisplay();
+      STATE.streakCount++;
+      const prevCombo = STATE.comboMultiplier;
+      STATE.comboMultiplier = Math.floor(STATE.streakCount / 10) + 1;
+      if (STATE.comboMultiplier > prevCombo) {
+        const fill = document.getElementById('energy-bar-fill');
+        if (fill) {
+          fill.classList.add('streak-leveling');
+          setTimeout(() => { fill.classList.remove('streak-leveling'); updateEnergyBar(); }, 350);
+        }
+        _showMultiplierPopup(STATE.comboMultiplier);
+      } else {
+        updateEnergyBar();
       }
-      _showMultiplierPopup(STATE.comboMultiplier);
-    } else {
-      updateEnergyBar();
-    }
-    const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
-    awardEnergy(energyTable.cell);
-    if (STATE.settings.autoRemoveNotes) removeRelatedNotes(tr, tc, num);
+      const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
+      awardEnergy(energyTable.cell);
+      if (STATE.settings.autoRemoveNotes) removeRelatedNotes(tr, tc, num);
 
-    /* Animação de preenchimento */
-    toEl.classList.add('ns-fill-anim');
-    updateCellContent(tr, tc);
-    renderNumpad();
-    updateProgressBar();
-    renderHighlights();
-
-    setTimeout(() => {
-      toEl.classList.remove('ns-fill-anim');
+      updateCellContent(tr, tc);
+      renderNumpad();
+      updateProgressBar();
+      renderHighlights();
+    },
+    onDone: () => {
       setTimeout(() => checkCompletions(tr, tc), 80);
       setTimeout(() => _checkCompletedUnits(tr, tc), 80);
       let count = 0;
@@ -2018,8 +2058,8 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       checkWin();
       /* Próxima célula — parte da última célula preenchida */
       if (rest.length) setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
-    }, 430);
-  };
+    },
+  });
 }
 
 function handleFill() {
