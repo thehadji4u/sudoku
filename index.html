@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.62</span>
+      <span class="app-version">v1.63</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -685,7 +685,7 @@
   <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(() => { });
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => { });
 
       /* Quando o novo SW assume o controle, recarrega automaticamente.
          refreshing evita loop infinito. A sessão é salva pelo beforeunload. */
