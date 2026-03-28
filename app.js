@@ -166,6 +166,16 @@ const ENERGY_TABLE = {
   diabolico:    { cell: 6, unit: 6, finish: 12 },
 };
 
+const ERROR_PENALTY = {
+  facil:        10,
+  medio:        20,
+  dificil:      30,
+  especialista: 40,
+  mestre:       50,
+  extremo:      60,
+  diabolico:    60,
+};
+
 const TOOL_ENERGY_COST = {
   singles:    20,   // Únicas             → nível Fácil
   hiddens:    20,   // Ocultas            → nível Fácil
@@ -1030,7 +1040,8 @@ function doPlaceNumber(r, c, num) {
   if (isError) {
     STATE.errors++;
     updateErrorDisplay();
-    STATE.energyPoints = Math.floor(STATE.energyPoints / 2);
+    const penalty = ERROR_PENALTY[STATE.difficulty] || 10;
+    STATE.energyPoints = Math.max(0, STATE.energyPoints - penalty);
     localStorage.setItem('sudoku-energy', STATE.energyPoints);
     updateEnergyBar();
     _flashEnergyLoss();
