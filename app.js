@@ -135,6 +135,9 @@ const STATE = {
     enableAIC:           true,
     helpLevel2:          true,
     enableLongPressBatch:true,
+    showSelZone:         true,
+    showNoteMatch:       true,
+    enableDialPin:       true,
   },
 };
 
@@ -465,7 +468,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -489,6 +492,13 @@ function setupSettingsEvents() {
       }
       if (key === 'markErrors' || key === 'enhancedHighlight') {
         if (STATE.puzzle) renderBoard();
+      }
+      if (key === 'showSelZone' || key === 'showNoteMatch') {
+        if (STATE.puzzle) renderHighlights();
+      }
+      if (key === 'enableDialPin' && !el.checked) {
+        STATE.pinnedNum = 0;
+        if (STATE.puzzle) { renderNumpad(); renderHighlights(); }
       }
       if (key === 'autoAnnotations' && el.checked && STATE.puzzle) {
         applyAutoAnnotations();
@@ -888,7 +898,7 @@ function renderHighlights() {
 
       if (r === sr && c === sc) {
         el.classList.add('selected');
-      } else if (r === sr || c === sc || boxIdx === selBox) {
+      } else if (settings.showSelZone && (r === sr || c === sc || boxIdx === selBox)) {
         el.classList.remove('highlight-match');
         el.classList.remove('same-num');
         el.classList.add('highlight-sel');
@@ -896,8 +906,8 @@ function renderHighlights() {
     }
   }
 
-  /* ── Destaca dígitos de anotação que coincidem com o número selecionado ── */
-  if (selVal > 0) {
+  /* ── Feature 2: Destaca dígitos de anotação que coincidem com o número selecionado ── */
+  if (settings.showNoteMatch && selVal > 0) {
     document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
       .forEach(s => s.classList.add('note-match'));
   }
@@ -1822,6 +1832,7 @@ function attachNumpadLongPress() {
 }
 
 function handleNumpadPin(num) {
+  if (!STATE.settings.enableDialPin) return;
   if (STATE.pinnedNum !== num) {
     if (STATE.energyPoints < 1) {
       _flashEnergyLoss();
@@ -4598,6 +4609,9 @@ function syncSettingsUI() {
     const el = document.getElementById(id);
     if (el) el.checked = val;
   };
+  toggle('cfg-showSelZone',       s.showSelZone);
+  toggle('cfg-showNoteMatch',     s.showNoteMatch);
+  toggle('cfg-enableDialPin',     s.enableDialPin);
   toggle('cfg-markErrors',        s.markErrors);
   toggle('cfg-failOnErrors',      s.failOnErrors);
   toggle('cfg-autoRemoveNotes',   s.autoRemoveNotes);

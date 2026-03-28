@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.67</span>
+      <span class="app-version">v1.68</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -285,6 +285,64 @@
         <button class="lang-flag-btn" id="lang-en" title="English">🇺🇸 EN</button>
       </div>
 
+      <div class="settings-section-title">Funções</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge">1</span>
+          <div class="feature-text">
+            <div class="setting-label">Zona azul da célula selecionada</div>
+            <div class="setting-desc">Destaca linha, coluna e quadrante da célula selecionada em azul</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-showSelZone">
+          <label class="toggle-track" for="cfg-showSelZone"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge">2</span>
+          <div class="feature-text">
+            <div class="setting-label">Destacar anotações do número selecionado</div>
+            <div class="setting-desc">Realça rascunhos que coincidem com o número da célula selecionada</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-showNoteMatch">
+          <label class="toggle-track" for="cfg-showNoteMatch"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge">3</span>
+          <div class="feature-text">
+            <div class="setting-label">Remover anotações automaticamente</div>
+            <div class="setting-desc">Apaga rascunhos nas componentes ao preencher uma célula</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-autoRemoveNotes">
+          <label class="toggle-track" for="cfg-autoRemoveNotes"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge">4</span>
+          <div class="feature-text">
+            <div class="setting-label">Fixar número do dial (toque longo)</div>
+            <div class="setting-desc">Segure um número no teclado para fixá-lo e destacar suas posições</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enableDialPin">
+          <label class="toggle-track" for="cfg-enableDialPin"></label>
+        </div>
+      </div>
+
       <div class="setting-row">
         <div class="setting-info">
           <div class="setting-label">Marcar erros em vermelho</div>
@@ -313,17 +371,6 @@
           <button id="btn-err-dec">−</button>
           <span id="max-errors-val">3</span>
           <button id="btn-err-inc">+</button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Remover notas automaticamente</div>
-          <div class="setting-desc">Apaga rascunhos ao preencher o número</div>
-        </div>
-        <div class="toggle-wrap">
-          <input type="checkbox" class="toggle-input" id="cfg-autoRemoveNotes">
-          <label class="toggle-track" for="cfg-autoRemoveNotes"></label>
         </div>
       </div>
 

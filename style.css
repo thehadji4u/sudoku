@@ -1350,6 +1350,27 @@ html, body {
   cursor: pointer;
 }
 
+/* Badge numerado das Funções */
+.feature-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--accent, #3B82F6);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.setting-info:has(.feature-badge) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.feature-text { flex: 1; }
+
 /* Título de seção nas configurações */
 .settings-section-title {
   font-size: 11px;
