@@ -138,6 +138,7 @@ const STATE = {
     showSelZone:         true,
     showNoteMatch:       true,
     enableDialPin:       true,
+    nakedSingleMode:     0,
   },
 };
 
@@ -526,6 +527,22 @@ function setupSettingsEvents() {
     });
   });
 
+  /* Tri-toggle for Naked Single mode */
+  const nsToggleEl = document.getElementById('cfg-nakedSingleMode');
+  if (nsToggleEl) {
+    nsToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.nakedSingleMode = val;
+        saveSettings();
+        nsToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _nsGen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
+
   document.getElementById('btn-err-dec').addEventListener('click', () => {
     STATE.settings.maxErrors = Math.max(1, STATE.settings.maxErrors - 1);
     document.getElementById('max-errors-val').textContent = STATE.settings.maxErrors;
@@ -741,6 +758,7 @@ function requestNewGame(diff) {
 
 function endGame(won) {
   STATE.gameOver = true;
+  _nsGen++;
   stopTimer();
   clearSession();
   STATE.score = calculateScore();
@@ -849,7 +867,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -917,6 +935,20 @@ function renderHighlights() {
 
   /* ── Destaques de análise ── */
   renderAnalysisHighlights();
+
+  /* ── Feature 5: Naked Single highlights ── */
+  const nsMode = settings.nakedSingleMode || 0;
+  if (nsMode >= 1 && STATE.puzzle) {
+    const nsNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
+                : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+    if (nsNum > 0) {
+      getNakedSinglesForNum(nsNum).forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+          el.classList.add('naked-single');
+      });
+    }
+  }
 }
 
 function renderNumpad() {
@@ -959,6 +991,11 @@ function handleCellClick(r, c) {
   }
   renderHighlights();
   renderNumpad();
+  /* Naked Single level 2 auto-fill */
+  if (STATE.settings.nakedSingleMode === 2 && STATE.selectedRow === r && STATE.selectedCol === c) {
+    const num = STATE.puzzle[r][c];
+    if (num > 0) triggerNakedSingleFill(num, cellElements[r][c]);
+  }
 }
 
 function handleNumberInput(num) {
@@ -1068,6 +1105,9 @@ function doPlaceNumber(r, c, num) {
       for (let cc = 0; cc < 9; cc++)
         if (STATE.puzzle[rr][cc] === num) count++;
     if (count === 9) setTimeout(() => celebrateDigit(num), 80);
+    /* Naked Single level 2: continue filling after correct placement */
+    if (STATE.settings.nakedSingleMode === 2)
+      setTimeout(() => triggerNakedSingleFill(num, cellElements[r][c]), 200);
   }
   checkWin();
 }
@@ -1849,6 +1889,130 @@ function handleNumpadPin(num) {
   STATE.selectedCol = -1;
   renderNumpad();
   renderHighlights();
+  /* Naked Single level 2 auto-fill */
+  if (STATE.settings.nakedSingleMode === 2 && STATE.pinnedNum > 0) {
+    const pinBtn = document.querySelector(`#numpad [data-num="${STATE.pinnedNum}"]`);
+    if (pinBtn) triggerNakedSingleFill(STATE.pinnedNum, pinBtn);
+  }
+}
+
+/* ═══════════════════════════════════════
+   NAKED SINGLE — Função 5
+═══════════════════════════════════════ */
+let _nsGen = 0;
+
+function getNakedSinglesForNum(n) {
+  if (!STATE.puzzle) return [];
+  const res = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] === 0 && _isOnlyNSCandidate(r, c, n))
+        res.push([r, c]);
+  return res;
+}
+
+function _isNSCandidate(r, c, n) {
+  for (let i = 0; i < 9; i++) {
+    if (i !== c && STATE.puzzle[r][i] === n) return false;
+    if (i !== r && STATE.puzzle[i][c] === n) return false;
+  }
+  const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
+  for (let rr = br; rr < br + 3; rr++)
+    for (let cc = bc; cc < bc + 3; cc++)
+      if ((rr !== r || cc !== c) && STATE.puzzle[rr][cc] === n) return false;
+  return true;
+}
+
+function _isOnlyNSCandidate(r, c, n) {
+  if (!_isNSCandidate(r, c, n)) return false;
+  for (let k = 1; k <= 9; k++)
+    if (k !== n && _isNSCandidate(r, c, k)) return false;
+  return true;
+}
+
+function triggerNakedSingleFill(num, sourceEl) {
+  _nsGen++;
+  const gen = _nsGen;
+  const cells = getNakedSinglesForNum(num);
+  if (!cells.length) return;
+  setTimeout(() => _processNsQueue(gen, num, sourceEl, cells), 320);
+}
+
+function _processNsQueue(gen, num, sourceEl, queue) {
+  if (gen !== _nsGen || STATE.settings.nakedSingleMode < 2 || !queue.length || STATE.gameOver) return;
+
+  const idx = queue.findIndex(([r, c]) =>
+    STATE.puzzle[r][c] === 0 && _isOnlyNSCandidate(r, c, num));
+  if (idx === -1) return;
+
+  const [tr, tc] = queue[idx];
+  const rest = queue.filter((_, i) => i !== idx);
+  const toEl = cellElements[tr][tc];
+
+  const fromRect = sourceEl.getBoundingClientRect();
+  const toRect   = toEl.getBoundingClientRect();
+  const fromX = fromRect.left + fromRect.width  / 2;
+  const fromY = fromRect.top  + fromRect.height / 2;
+  const dx = (toRect.left + toRect.width  / 2) - fromX;
+  const dy = (toRect.top  + toRect.height / 2) - fromY;
+
+  /* Partícula viajante */
+  const particle = document.createElement('div');
+  particle.className = 'ns-particle';
+  particle.style.left = fromX + 'px';
+  particle.style.top  = fromY + 'px';
+  document.body.appendChild(particle);
+
+  particle.animate([
+    { transform: 'translate(-50%,-50%) scale(1.3)', opacity: 1 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.4)`, opacity: 0.8 },
+  ], { duration: 500, easing: 'cubic-bezier(0.4,0,0.6,1)', fill: 'forwards' }).onfinish = () => {
+    particle.remove();
+    if (gen !== _nsGen || STATE.settings.nakedSingleMode < 2 || STATE.gameOver) return;
+
+    /* Preenche célula — mesma lógica de pontuação de acerto manual */
+    pushUndo();
+    STATE.puzzle[tr][tc] = num;
+    STATE.score += calculateCellPoints();
+    updateScoreDisplay();
+    STATE.streakCount++;
+    const prevCombo = STATE.comboMultiplier;
+    STATE.comboMultiplier = Math.floor(STATE.streakCount / 10) + 1;
+    if (STATE.comboMultiplier > prevCombo) {
+      const fill = document.getElementById('energy-bar-fill');
+      if (fill) {
+        fill.classList.add('streak-leveling');
+        setTimeout(() => { fill.classList.remove('streak-leveling'); updateEnergyBar(); }, 350);
+      }
+      _showMultiplierPopup(STATE.comboMultiplier);
+    } else {
+      updateEnergyBar();
+    }
+    const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
+    awardEnergy(energyTable.cell);
+    if (STATE.settings.autoRemoveNotes) removeRelatedNotes(tr, tc, num);
+
+    /* Animação de preenchimento */
+    toEl.classList.add('ns-fill-anim');
+    updateCellContent(tr, tc);
+    renderNumpad();
+    updateProgressBar();
+    renderHighlights();
+
+    setTimeout(() => {
+      toEl.classList.remove('ns-fill-anim');
+      setTimeout(() => checkCompletions(tr, tc), 80);
+      setTimeout(() => _checkCompletedUnits(tr, tc), 80);
+      let count = 0;
+      for (let rr = 0; rr < 9; rr++)
+        for (let cc = 0; cc < 9; cc++)
+          if (STATE.puzzle[rr][cc] === num) count++;
+      if (count === 9) setTimeout(() => celebrateDigit(num), 80);
+      checkWin();
+      /* Próxima célula — parte da última célula preenchida */
+      if (rest.length) setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
+    }, 430);
+  };
 }
 
 function handleFill() {
@@ -4636,6 +4800,14 @@ function syncSettingsUI() {
   toggle('cfg-enableColoring',       s.enableColoring);
   toggle('cfg-enableForcingChains',  s.enableForcingChains);
   toggle('cfg-enableAIC',            s.enableAIC);
+
+  /* Naked Single tri-toggle */
+  const nsToggle = document.getElementById('cfg-nakedSingleMode');
+  if (nsToggle) {
+    const v = s.nakedSingleMode || 0;
+    nsToggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
 
   /* Language buttons */
   ['pt','en'].forEach(l => {

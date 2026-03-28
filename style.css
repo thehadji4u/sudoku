@@ -1371,6 +1371,64 @@ html, body {
 }
 .feature-text { flex: 1; }
 
+/* ── Naked Single (Função 5) ── */
+.cell.naked-single { background: #FEF3C7; }
+
+.ns-particle {
+  position: fixed;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FEF9C3, #F59E0B);
+  box-shadow: 0 0 10px 4px rgba(245,158,11,0.5);
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+}
+
+@keyframes ns-fill {
+  0%   { background: #FCD34D; transform: scale(0.72); }
+  40%  { background: #FDE68A; transform: scale(1.1);  }
+  72%  { background: #FEF3C7; transform: scale(0.97); }
+  100% { background: transparent; transform: scale(1); }
+}
+@keyframes ns-ripple {
+  from { transform: scale(0.3); opacity: 0.9; }
+  to   { transform: scale(2.5); opacity: 0; }
+}
+.cell.ns-fill-anim { animation: ns-fill 0.44s ease-out forwards; position: relative; }
+.cell.ns-fill-anim::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,158,11,0.35), transparent 70%);
+  animation: ns-ripple 0.5s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Tri-toggle (seletor 3 estágios) ── */
+.tri-toggle {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid #E2E8F0;
+  flex-shrink: 0;
+}
+.tri-btn {
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #94A3B8;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.tri-btn + .tri-btn { border-left: 1.5px solid #E2E8F0; }
+.tri-btn.active { background: #F59E0B; color: #fff; }
+
 /* Título de seção nas configurações */
 .settings-section-title {
   font-size: 11px;
