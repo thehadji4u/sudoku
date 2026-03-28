@@ -999,7 +999,9 @@ function doPlaceNumber(r, c, num) {
   }
 
   /* ── Modo Normal ── */
-  const isError = num !== 0 && num !== STATE.solution[r][c];
+  const isMistake    = num !== 0 && num !== STATE.solution[r][c];
+  /* Só penaliza se markErrors estiver ativo; caso contrário trata como acerto */
+  const isError      = isMistake && STATE.settings.markErrors;
   if (isError) {
     STATE.errors++;
     updateErrorDisplay();
@@ -1079,6 +1081,21 @@ function handleUndo() {
   STATE.notes  = snap.notes;
   /* STATE.errors NÃO é restaurado — erros são permanentes e acumulativos */
   STATE.score  = snap.score;
+
+  /* Penalidade de energia pelo undo (apenas fora do simulador) */
+  if (!STATE.simulator.active) {
+    const base     = (ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil).cell;
+    const undoCost = (base + STATE.undoCount) * 2;
+    STATE.energyPoints = Math.max(0, STATE.energyPoints - undoCost);
+    localStorage.setItem('sudoku-energy', STATE.energyPoints);
+    _flashEnergyLoss();
+    updateEnergyBar();
+
+    /* Desfazer zera o multiplicador */
+    STATE.streakCount     = 0;
+    STATE.comboMultiplier = 1;
+  }
+
   STATE.undoCount++;
 
   /* Restaura placements + nextSeq do simulador — garante alternância de cor correta */
