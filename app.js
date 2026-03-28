@@ -26,6 +26,7 @@ const STATE = {
   multiplierDisabled: false,   // true se btn-fill foi usado no puzzle
   puzzleStartTime:    0,       // Date.now() ao iniciar puzzle
   fillUsedThisPuzzle: false,
+  gameOver: false,
 
   timerSeconds:  0,
   timerInterval: null,
@@ -639,6 +640,7 @@ function longPressYWing() {
    CICLO DO JOGO
 ═══════════════════════════════════════ */
 function startGame(difficulty) {
+  STATE.gameOver   = false;
   STATE.difficulty = difficulty;
   showLoading(true);
 
@@ -728,6 +730,7 @@ function requestNewGame(diff) {
 }
 
 function endGame(won) {
+  STATE.gameOver = true;
   stopTimer();
   clearSession();
   STATE.score = calculateScore();
@@ -1251,7 +1254,7 @@ function formatTime(s) {
    SESSÃO SALVA
 ═══════════════════════════════════════ */
 function saveSession() {
-  if (!STATE.puzzle) return;
+  if (!STATE.puzzle || STATE.gameOver) return;
   const session = {
     puzzle:       STATE.puzzle,
     solution:     STATE.solution,
