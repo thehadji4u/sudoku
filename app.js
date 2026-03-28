@@ -894,8 +894,11 @@ function renderHighlights() {
             el.classList.add('highlight-match');
         }
     }
-    document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
-      .forEach(s => s.classList.add('note-match'));
+    /* Função 4 destaca rascunhos apenas se Função 2 (showNoteMatch) estiver ativa */
+    if (settings.showNoteMatch) {
+      document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
+        .forEach(s => s.classList.add('note-match'));
+    }
   }
 
   /* Se nenhuma célula selecionada, encerra após pinned e análise */
@@ -908,7 +911,9 @@ function renderHighlights() {
   const selVal  = puzzle[sr][sc];
   const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
 
-  /* ── Seleção de célula: apenas linha, coluna e quadrante da célula (azul) ── */
+  /* ── Seleção de célula ──
+     Função 1 (showSelZone):    verde nas células com o mesmo número
+     Função 1.1 (enhancedHighlight): azul na zona (linha/coluna/quadrante) — prioridade sobre verde */
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       const el     = cellElements[r][c];
@@ -916,10 +921,12 @@ function renderHighlights() {
 
       if (r === sr && c === sc) {
         el.classList.add('selected');
-      } else if (settings.showSelZone && (r === sr || c === sc || boxIdx === selBox)) {
+      } else if (settings.enhancedHighlight && (r === sr || c === sc || boxIdx === selBox)) {
         el.classList.remove('highlight-match');
         el.classList.remove('same-num');
         el.classList.add('highlight-sel');
+      } else if (settings.showSelZone && selVal > 0 && puzzle[r][c] === selVal) {
+        el.classList.add('same-num');
       }
     }
   }

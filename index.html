@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.69</span>
+      <span class="app-version">v1.70</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -291,13 +291,27 @@
         <div class="setting-info">
           <span class="feature-badge">1</span>
           <div class="feature-text">
-            <div class="setting-label">Zona azul da célula selecionada</div>
-            <div class="setting-desc">Destaca linha, coluna e quadrante da célula selecionada em azul</div>
+            <div class="setting-label">Destacar células com o mesmo número</div>
+            <div class="setting-desc">Marca em verde outras ocorrências do número da célula selecionada</div>
           </div>
         </div>
         <div class="toggle-wrap">
           <input type="checkbox" class="toggle-input" id="cfg-showSelZone">
           <label class="toggle-track" for="cfg-showSelZone"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge sub">1.1</span>
+          <div class="feature-text">
+            <div class="setting-label">Zona azul da célula selecionada</div>
+            <div class="setting-desc">Destaca linha, coluna e quadrante em azul (prioridade sobre verde)</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enhancedHighlight">
+          <label class="toggle-track" for="cfg-enhancedHighlight"></label>
         </div>
       </div>
 
@@ -389,16 +403,6 @@
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Seleção aprimorada</div>
-          <div class="setting-desc">Sombreia todas as linhas, colunas e quadrantes com o mesmo número</div>
-        </div>
-        <div class="toggle-wrap">
-          <input type="checkbox" class="toggle-input" id="cfg-enhancedHighlight">
-          <label class="toggle-track" for="cfg-enhancedHighlight"></label>
-        </div>
-      </div>
 
       <div class="setting-row">
         <div class="setting-info">
