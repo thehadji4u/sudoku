@@ -1227,6 +1227,16 @@ function doPlaceNumber(r, c, num) {
     if (STATE.notes) _animRemoveNoteWave(r, c, num);
     removeRelatedNotes(r, c, num);
   }
+  /* P0: elimina anotações proibidas restantes nas componentes */
+  if (num !== 0 && (STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
+    const forbidden = getP0ComponentForbidden(r, c);
+    if (forbidden.length) {
+      _p0Gen++;
+      const g = _p0Gen;
+      const srcEl = cellElements[r] && cellElements[r][c];
+      if (srcEl) setTimeout(() => _processP0Wave(g, srcEl, forbidden), 60);
+    }
+  }
   updateCellContent(r, c);
   renderHighlights();
   renderNumpad();
@@ -2132,47 +2142,73 @@ function handleNumpadPin(num) {
 ═══════════════════════════════════════ */
 let _p0Gen = 0;
 
-/** Retorna células na mesma linha/coluna/quadrante que têm o número da célula (r,c) como anotação */
-function getP0Targets(r, c) {
-  const num = STATE.puzzle[r][c];
-  if (!num || !STATE.notes) return [];
-  const seen = new Set();
-  const targets = [];
-  const add = (rr, cc) => {
-    const k = rr + ',' + cc;
-    if (!seen.has(k) && STATE.puzzle[rr][cc] === 0 && STATE.notes[rr][cc].has(num)) {
-      seen.add(k); targets.push([rr, cc]);
-    }
-  };
-  for (let i = 0; i < 9; i++) { if (i !== c) add(r, i); }   // linha
-  for (let i = 0; i < 9; i++) { if (i !== r) add(i, c); }   // coluna
+/** True se a nota n está proibida na célula (r,c) — ou seja, n já está colocado
+ *  em alguma célula da mesma linha, coluna ou quadrante */
+function _isForbiddenAt(r, c, n) {
+  for (let i = 0; i < 9; i++) {
+    if (i !== c && STATE.puzzle[r][i] === n) return true;
+    if (i !== r && STATE.puzzle[i][c] === n) return true;
+  }
   const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
   for (let rr = br; rr < br+3; rr++)
     for (let cc = bc; cc < bc+3; cc++)
-      if (rr !== r || cc !== c) add(rr, cc);                  // quadrante
-  return targets;
+      if ((rr !== r || cc !== c) && STATE.puzzle[rr][cc] === n) return true;
+  return false;
+}
+
+/** Retorna [[r2,c2,note], ...] — todas as anotações proibidas nas componentes de (r,c) */
+function getP0ComponentForbidden(r, c) {
+  if (!STATE.notes || !STATE.puzzle) return [];
+  const result = [], seen = new Set();
+  const addCell = (rr, cc) => {
+    const k = rr+','+cc;
+    if (seen.has(k)) return;
+    seen.add(k);
+    if (STATE.puzzle[rr][cc] !== 0) return;
+    STATE.notes[rr][cc].forEach(n => {
+      if (_isForbiddenAt(rr, cc, n)) result.push([rr, cc, n]);
+    });
+  };
+  for (let i = 0; i < 9; i++) { if (i !== c) addCell(r, i); }
+  for (let i = 0; i < 9; i++) { if (i !== r) addCell(i, c); }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let rr = br; rr < br+3; rr++)
+    for (let cc = bc; cc < bc+3; cc++)
+      if (rr !== r || cc !== c) addCell(rr, cc);
+  return result;
+}
+
+/** Para highlight nível 1: células que têm alguma anotação proibida */
+function getP0Targets(r, c) {
+  const forbidden = getP0ComponentForbidden(r, c);
+  const seen = new Set(), cells = [];
+  forbidden.forEach(([rr, cc]) => {
+    const k = rr+','+cc;
+    if (!seen.has(k)) { seen.add(k); cells.push([rr, cc]); }
+  });
+  return cells;
 }
 
 function triggerP0Elim(r, c, fallbackEl) {
+  if (!STATE.puzzle[r][c]) return;
   _p0Gen++;
   const gen = _p0Gen;
-  const num = STATE.puzzle[r][c];
-  if (!num) return;
-  const targets = getP0Targets(r, c);
-  if (!targets.length) return;
+  const forbidden = getP0ComponentForbidden(r, c);
+  if (!forbidden.length) return;
   const sourceEl = cellElements[r][c] || fallbackEl;
-  setTimeout(() => _processP0Wave(gen, num, sourceEl, targets), 80);
+  setTimeout(() => _processP0Wave(gen, sourceEl, forbidden), 80);
 }
 
-/* Onda expansiva: todas as partículas partem ao mesmo tempo,
-   escalonadas por distância — efeito de onda dopamínico */
-function _processP0Wave(gen, num, sourceEl, targets) {
+/* Onda expansiva — cada anotação proibida voa para o seu próprio dial */
+function _processP0Wave(gen, sourceEl, forbidden) {
   if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
-  const valid = targets.filter(([r, c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
+  /* Filtra apenas as que ainda existem */
+  const valid = forbidden.filter(([r, c, n]) =>
+    STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(n));
   if (!valid.length) return;
 
   const srcRect = sourceEl.getBoundingClientRect();
-  const sx = srcRect.left + srcRect.width  / 2;
+  const sx = srcRect.left + srcRect.width / 2;
   const sy = srcRect.top  + srcRect.height / 2;
   valid.sort(([r1,c1],[r2,c2]) => {
     const a = cellElements[r1][c1].getBoundingClientRect();
@@ -2181,16 +2217,16 @@ function _processP0Wave(gen, num, sourceEl, targets) {
          - Math.hypot(b.left+b.width/2-sx, b.top+b.height/2-sy);
   });
 
-  const dial = _numBtnEl(num);
-  valid.forEach(([tr, tc], i) => {
+  valid.forEach(([tr, tc, n], i) => {
     setTimeout(() => {
       if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
-      if (!STATE.notes[tr][tc].has(num)) return;
+      if (!STATE.notes[tr][tc] || !STATE.notes[tr][tc].has(n)) return;
+      const dial = _numBtnEl(n);
       animateCellTravel(cellElements[tr][tc], dial || sourceEl, {
         color: '#22D3EE', duration: 180, splashMs: 120,
         guard: () => gen === _p0Gen && !STATE.gameOver,
         onArrive: () => {
-          STATE.notes[tr][tc].delete(num);
+          STATE.notes[tr][tc].delete(n);
           updateCellContent(tr, tc);
           renderHighlights();
         },
@@ -2433,6 +2469,15 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       if (STATE.settings.autoRemoveNotes) {
         if (STATE.notes) _animRemoveNoteWave(tr, tc, num);
         removeRelatedNotes(tr, tc, num);
+      }
+      /* P0: elimina anotações proibidas restantes nas componentes */
+      if ((STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
+        const forbidden = getP0ComponentForbidden(tr, tc);
+        if (forbidden.length) {
+          _p0Gen++;
+          const g = _p0Gen;
+          setTimeout(() => _processP0Wave(g, cellElements[tr][tc], forbidden), 60);
+        }
       }
       updateCellContent(tr, tc);
       renderNumpad();
