@@ -1225,12 +1225,12 @@ function doPlaceNumber(r, c, num) {
   if (num !== 0 && STATE.notes) _animOwnNotesOnFill(r, c);
   if (num !== 0 && (STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
     /* P0 ativo: coleta alvos ANTES de qualquer remoção e deixa P0 remover via onArrive */
-    const forbidden = getP0ComponentForbidden(r, c);
-    if (forbidden.length) {
+    const targets = getP0Targets(r, c);
+    if (targets.length) {
       _p0Gen++;
       const g = _p0Gen;
       const srcEl = cellElements[r] && cellElements[r][c];
-      if (srcEl) setTimeout(() => _processP0Wave(g, srcEl, forbidden), 60);
+      if (srcEl) setTimeout(() => _processP0Wave(g, num, srcEl, targets), 60);
     }
   } else if (num !== 0 && STATE.settings.autoRemoveNotes) {
     if (STATE.notes) _animRemoveNoteWave(r, c, num);
@@ -2141,69 +2141,42 @@ function handleNumpadPin(num) {
 ═══════════════════════════════════════ */
 let _p0Gen = 0;
 
-/** True se a nota n está proibida na célula (r,c) — ou seja, n já está colocado
- *  em alguma célula da mesma linha, coluna ou quadrante */
-function _isForbiddenAt(r, c, n) {
-  for (let i = 0; i < 9; i++) {
-    if (i !== c && STATE.puzzle[r][i] === n) return true;
-    if (i !== r && STATE.puzzle[i][c] === n) return true;
-  }
-  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
-  for (let rr = br; rr < br+3; rr++)
-    for (let cc = bc; cc < bc+3; cc++)
-      if ((rr !== r || cc !== c) && STATE.puzzle[rr][cc] === n) return true;
-  return false;
-}
-
-/** Retorna [[r2,c2,note], ...] — todas as anotações proibidas nas componentes de (r,c) */
-function getP0ComponentForbidden(r, c) {
-  if (!STATE.notes || !STATE.puzzle) return [];
-  const result = [], seen = new Set();
-  const addCell = (rr, cc) => {
-    const k = rr+','+cc;
-    if (seen.has(k)) return;
-    seen.add(k);
-    if (STATE.puzzle[rr][cc] !== 0) return;
-    STATE.notes[rr][cc].forEach(n => {
-      if (_isForbiddenAt(rr, cc, n)) result.push([rr, cc, n]);
-    });
-  };
-  for (let i = 0; i < 9; i++) { if (i !== c) addCell(r, i); }
-  for (let i = 0; i < 9; i++) { if (i !== r) addCell(i, c); }
-  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
-  for (let rr = br; rr < br+3; rr++)
-    for (let cc = bc; cc < bc+3; cc++)
-      if (rr !== r || cc !== c) addCell(rr, cc);
-  return result;
-}
-
-/** Para highlight nível 1: células que têm alguma anotação proibida */
+/** Para highlight nível 1: células que têm a nota num nas componentes de (r,c) */
 function getP0Targets(r, c) {
-  const forbidden = getP0ComponentForbidden(r, c);
-  const seen = new Set(), cells = [];
-  forbidden.forEach(([rr, cc]) => {
+  const num = STATE.puzzle[r][c];
+  if (!num || !STATE.notes) return [];
+  const seen = new Set(), targets = [];
+  const add = (rr, cc) => {
     const k = rr+','+cc;
-    if (!seen.has(k)) { seen.add(k); cells.push([rr, cc]); }
-  });
-  return cells;
+    if (!seen.has(k) && STATE.puzzle[rr][cc] === 0 && STATE.notes[rr][cc].has(num)) {
+      seen.add(k); targets.push([rr, cc]);
+    }
+  };
+  for (let i = 0; i < 9; i++) { if (i !== c) add(r, i); }
+  for (let i = 0; i < 9; i++) { if (i !== r) add(i, c); }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let rr = br; rr < br+3; rr++)
+    for (let cc = bc; cc < bc+3; cc++)
+      if (rr !== r || cc !== c) add(rr, cc);
+  return targets;
 }
 
 function triggerP0Elim(r, c, fallbackEl) {
-  if (!STATE.puzzle[r][c]) return;
+  const num = STATE.puzzle[r][c];
+  if (!num) return;
   _p0Gen++;
   const gen = _p0Gen;
-  const forbidden = getP0ComponentForbidden(r, c);
-  if (!forbidden.length) return;
+  const targets = getP0Targets(r, c);
+  if (!targets.length) return;
   const sourceEl = cellElements[r][c] || fallbackEl;
-  setTimeout(() => _processP0Wave(gen, sourceEl, forbidden), 80);
+  setTimeout(() => _processP0Wave(gen, num, sourceEl, targets), 80);
 }
 
-/* Onda expansiva — cada anotação proibida voa para o seu próprio dial */
-function _processP0Wave(gen, sourceEl, forbidden) {
+/* Onda expansiva — nota num voa de cada célula componente para o dial[num] */
+function _processP0Wave(gen, num, sourceEl, targets) {
   if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
-  /* Filtra apenas as que ainda existem */
-  const valid = forbidden.filter(([r, c, n]) =>
-    STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(n));
+  const valid = targets.filter(([r, c]) =>
+    STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
   if (!valid.length) return;
 
   const srcRect = sourceEl.getBoundingClientRect();
@@ -2216,16 +2189,16 @@ function _processP0Wave(gen, sourceEl, forbidden) {
          - Math.hypot(b.left+b.width/2-sx, b.top+b.height/2-sy);
   });
 
-  valid.forEach(([tr, tc, n], i) => {
+  const dial = _numBtnEl(num);
+  valid.forEach(([tr, tc], i) => {
     setTimeout(() => {
       if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
-      if (!STATE.notes[tr][tc] || !STATE.notes[tr][tc].has(n)) return;
-      const dial = _numBtnEl(n);
+      if (!STATE.notes[tr][tc] || !STATE.notes[tr][tc].has(num)) return;
       animateCellTravel(cellElements[tr][tc], dial || sourceEl, {
         color: '#22D3EE', duration: 180, splashMs: 120,
         guard: () => gen === _p0Gen && !STATE.gameOver,
         onArrive: () => {
-          STATE.notes[tr][tc].delete(n);
+          STATE.notes[tr][tc].delete(num);
           updateCellContent(tr, tc);
           renderHighlights();
         },
@@ -2467,11 +2440,11 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       awardEnergy(energyTable.cell);
       if ((STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
         /* P0 ativo: coleta alvos ANTES de qualquer remoção */
-        const forbidden = getP0ComponentForbidden(tr, tc);
-        if (forbidden.length) {
+        const targets = getP0Targets(tr, tc);
+        if (targets.length) {
           _p0Gen++;
           const g = _p0Gen;
-          setTimeout(() => _processP0Wave(g, cellElements[tr][tc], forbidden), 60);
+          setTimeout(() => _processP0Wave(g, num, cellElements[tr][tc], targets), 60);
         }
       } else if (STATE.settings.autoRemoveNotes) {
         if (STATE.notes) _animRemoveNoteWave(tr, tc, num);
