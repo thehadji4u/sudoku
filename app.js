@@ -1055,6 +1055,11 @@ function handleCellClick(r, c) {
     const num = STATE.puzzle[r][c];
     if (num > 0) triggerNakedSingleFill(num, cellElements[r][c]);
   }
+  /* Naked Pair level 2 auto-eliminate */
+  if (STATE.settings.nakedPairMode === 2 && STATE.selectedRow === r && STATE.selectedCol === c) {
+    const num = STATE.puzzle[r][c];
+    if (num > 0) triggerNakedPairElim(num, cellElements[r][c]);
+  }
 }
 
 function handleNumberInput(num) {
@@ -1167,6 +1172,9 @@ function doPlaceNumber(r, c, num) {
     /* Naked Single level 2: continue filling after correct placement */
     if (STATE.settings.nakedSingleMode === 2)
       setTimeout(() => triggerNakedSingleFill(num, cellElements[r][c]), 200);
+    /* Naked Pair level 2: eliminate candidates after placement */
+    if (STATE.settings.nakedPairMode === 2)
+      setTimeout(() => triggerNakedPairElim(num, cellElements[r][c]), 200);
   }
   checkWin();
 }
