@@ -985,12 +985,14 @@ function renderHighlights() {
     }
   }
 
-  /* ── Feature 7: Naked Pair highlights ── */
+  /* ── Feature 7: Naked Pair highlights — só mostra se P1 não tem trabalho ── */
   const npMode = settings.nakedPairMode || 0;
   if (npMode >= 1 && STATE.puzzle) {
     const npNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
                 : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
-    if (npNum > 0) {
+    const p1Active = (settings.nakedSingleMode || 0) >= 1 && npNum > 0 &&
+                     (getNakedSinglesForNum(npNum).length > 0 || getNoteNakedsForNum(npNum).length > 0);
+    if (npNum > 0 && !p1Active) {
       getNakedPairsForNum(npNum).forEach(({pair, targets}) => {
         if (!targets.length) return;  /* sem alvos = sem destaque */
         pair.forEach(([r, c]) => {
