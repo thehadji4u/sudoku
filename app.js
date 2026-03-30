@@ -13,6 +13,9 @@ const STATE = {
   selectedRow: -1,
   selectedCol: -1,
   notesMode:   false,
+  notesSwipeMode: null,   // null|'add'|'remove'
+  notesDragCells: new Set(), // "r,c" — multi-cell drag selection
+  notesDragAction: null,  // null|'add'|'remove' — direction for current drag
   fillNotes:   false,
   pinnedNum:   0,
 
@@ -367,7 +370,7 @@ function attachEvents() {
   document.getElementById('btn-pause').addEventListener('click', togglePause);
   document.getElementById('btn-undo').addEventListener('click', handleUndo);
   document.getElementById('btn-erase').addEventListener('click', handleErase);
-  document.getElementById('btn-notes').addEventListener('click', toggleNotesMode);
+  _attachNotesBtnSwipe();
   document.getElementById('btn-fill').addEventListener('click', handleFill);
   attachToolBtn('btn-sim',
     /* tap  — descarta modificações */
@@ -395,8 +398,9 @@ function attachEvents() {
   document.getElementById('btn-action-confirm').addEventListener('click', handleActionConfirm);
   document.getElementById('btn-action-cancel').addEventListener('click', handleActionCancel);
 
-  /* Tabuleiro — clique e long-press */
+  /* Tabuleiro — clique, long-press e drag de notas */
   attachBoardLongPress();
+  _attachBoardNoteDrag();
   document.getElementById('board').addEventListener('click', e => {
     const cell = e.target.closest('[data-row]');
     if (!cell) return;
@@ -744,6 +748,9 @@ function startGame(difficulty) {
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
     STATE.notesMode  = false;
+    STATE.notesSwipeMode = null;
+    STATE.notesDragCells = new Set();
+    STATE.notesDragAction = null;
     STATE.fillNotes  = false;
     STATE.pinnedNum  = 0;
     STATE.simulator  = {
@@ -915,7 +922,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target', 'p0-target'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target', 'p0-target', 'notes-drag-selected'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -1043,6 +1050,15 @@ function renderHighlights() {
       });
     });
   }
+
+  /* Multi-cell note drag selection */
+  if (STATE.notesMode && STATE.notesDragCells.size > 1) {
+    STATE.notesDragCells.forEach(k => {
+      const [dr, dc] = k.split(',').map(Number);
+      if (cellElements[dr] && cellElements[dr][dc])
+        cellElements[dr][dc].classList.add('notes-drag-selected');
+    });
+  }
 }
 
 function renderNumpad() {
@@ -1104,7 +1120,33 @@ function handleNumberInput(num) {
       STATE.puzzle[r][c] === STATE.solution[r][c]) return;
 
   if (STATE.notesMode && num !== 0) {
-    doToggleNote(r, c, num);
+    const dragCells = STATE.notesDragCells;
+    if (dragCells.size > 1) {
+      /* Multi-cell: determine add/remove direction on first press, cycle on next */
+      if (STATE.notesDragAction === null) {
+        /* Start with 'add'; if all already have it, switch to 'remove' */
+        const allHave = [...dragCells].every(k => {
+          const [dr, dc] = k.split(',').map(Number);
+          return STATE.puzzle[dr][dc] === 0 && STATE.notes[dr][dc].has(num);
+        });
+        STATE.notesDragAction = allHave ? 'remove' : 'add';
+      } else {
+        STATE.notesDragAction = STATE.notesDragAction === 'add' ? 'remove' : 'add';
+      }
+      const action = STATE.notesDragAction;
+      pushUndo();
+      dragCells.forEach(k => {
+        const [dr, dc] = k.split(',').map(Number);
+        if (STATE.puzzle[dr][dc] !== 0) return;
+        const notes = STATE.notes[dr][dc];
+        if (action === 'add' && !notes.has(num)) { notes.add(num); _animNoteAdd(dr, dc, num); }
+        else if (action === 'remove' && notes.has(num)) { notes.delete(num); _animNoteRemove(dr, dc, num); }
+        updateCellContent(dr, dc);
+      });
+      renderHighlights();
+    } else {
+      doToggleNote(r, c, num);
+    }
   } else {
     doPlaceNumber(r, c, num);
   }
@@ -1179,7 +1221,11 @@ function doPlaceNumber(r, c, num) {
     const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
     awardEnergy(energyTable.cell);
   }
-  if (num !== 0 && STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, num);
+  if (num !== 0 && STATE.notes) _animOwnNotesOnFill(r, c);
+  if (num !== 0 && STATE.settings.autoRemoveNotes) {
+    if (STATE.notes) _animRemoveNoteWave(r, c, num);
+    removeRelatedNotes(r, c, num);
+  }
   updateCellContent(r, c);
   renderHighlights();
   renderNumpad();
@@ -1199,17 +1245,76 @@ function doPlaceNumber(r, c, num) {
       for (let cc = 0; cc < 9; cc++)
         if (STATE.puzzle[rr][cc] === num) count++;
     if (count === 9) setTimeout(() => celebrateDigit(num), 80);
-    /* Poderes P1/P2 — após preencher célula */
-    setTimeout(() => triggerPowerFunctions(num, cellElements[r][c]), 200);
   }
   checkWin();
 }
 
-function doToggleNote(r, c, num) {
+/* ── Note animations ── */
+function _numBtnEl(num) {
+  return document.querySelector(`.num-btn[data-num="${num}"]`);
+}
+function _animNoteAdd(r, c, num) {
+  const src = _numBtnEl(num);
+  if (!src || !cellElements[r] || !cellElements[r][c]) return;
+  animateCellTravel(src, cellElements[r][c], { color: '#93C5FD', duration: 200, splashMs: 100 });
+}
+function _animNoteRemove(r, c, num) {
+  const dial = _numBtnEl(num);
+  const src = cellElements[r] && cellElements[r][c];
+  if (!src || !dial) return;
+  animateCellTravel(src, dial, { color: '#9CA3AF', duration: 180, splashMs: 90 });
+}
+function _animOwnNotesOnFill(r, c) {
+  if (!STATE.notes || !STATE.notes[r] || !cellElements[r] || !cellElements[r][c]) return;
+  STATE.notes[r][c].forEach(n => {
+    const dial = _numBtnEl(n);
+    if (dial) animateCellTravel(cellElements[r][c], dial, { color: '#6EE7B7', duration: 180, splashMs: 80 });
+  });
+}
+function _animRemoveNoteWave(r, c, num) {
+  if (!STATE.notes || !cellElements[r] || !cellElements[r][c]) return;
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  const targets = [], seen = new Set();
+  const collect = (rr, cc) => {
+    if (rr === r && cc === c) return;
+    const k = rr+','+cc;
+    if (seen.has(k)) return;
+    seen.add(k);
+    if (STATE.puzzle[rr][cc] === 0 && STATE.notes[rr][cc] && STATE.notes[rr][cc].has(num))
+      targets.push([rr, cc]);
+  };
+  for (let i = 0; i < 9; i++) { collect(r, i); collect(i, c); }
+  for (let rr = br; rr < br+3; rr++) for (let cc = bc; cc < bc+3; cc++) collect(rr, cc);
+  if (!targets.length) return;
+  const src = cellElements[r][c];
+  const srcRect = src.getBoundingClientRect();
+  const sx = srcRect.left + srcRect.width/2, sy = srcRect.top + srcRect.height/2;
+  const rainbow = ['#F87171','#FB923C','#FBBF24','#34D399','#60A5FA','#A78BFA','#F472B6'];
+  targets.sort(([r1,c1],[r2,c2]) => {
+    const a = cellElements[r1][c1].getBoundingClientRect();
+    const b = cellElements[r2][c2].getBoundingClientRect();
+    return Math.hypot(a.left+a.width/2-sx,a.top+a.height/2-sy) - Math.hypot(b.left+b.width/2-sx,b.top+b.height/2-sy);
+  });
+  const dial = _numBtnEl(num);
+  targets.forEach(([tr, tc], i) => {
+    setTimeout(() => {
+      if (!cellElements[tr] || !cellElements[tr][tc]) return;
+      animateCellTravel(cellElements[tr][tc], dial || src, {
+        color: rainbow[i % rainbow.length], duration: 200, splashMs: 90,
+      });
+    }, i * 35);
+  });
+}
+
+function doToggleNote(r, c, num, skipAnim) {
   if (STATE.puzzle[r][c] !== 0) return;
-  pushUndo();
   const notes = STATE.notes[r][c];
-  if (notes.has(num)) notes.delete(num); else notes.add(num);
+  const swipe = STATE.notesSwipeMode;
+  const willAdd = swipe === 'add' ? true : swipe === 'remove' ? false : !notes.has(num);
+  if ((willAdd && notes.has(num)) || (!willAdd && !notes.has(num))) return;
+  pushUndo();
+  if (willAdd) { notes.add(num); if (!skipAnim) _animNoteAdd(r, c, num); }
+  else         { notes.delete(num); if (!skipAnim) _animNoteRemove(r, c, num); }
   updateCellContent(r, c);
   renderHighlights(); /* re-aplica classes de seleção/destaque na célula */
 }
@@ -1631,14 +1736,48 @@ function renderRankingTable(diff) {
    UI — CONTROLES
 ═══════════════════════════════════════ */
 function toggleNotesMode() {
-  STATE.notesMode = !STATE.notesMode;
+  if (STATE.notesSwipeMode) {
+    /* Click while in swipe mode: toggle active/paused */
+    STATE.notesMode = !STATE.notesMode;
+  } else {
+    STATE.notesMode = !STATE.notesMode;
+  }
+  STATE.notesDragCells.clear();
+  STATE.notesDragAction = null;
+  updateNotesBtn();
+}
+
+function setNotesSwipeMode(mode) {
+  /* mode: 'add'|'remove' — double-call same mode clears it */
+  if (STATE.notesSwipeMode === mode) {
+    STATE.notesSwipeMode = null;
+    STATE.notesMode = false;
+  } else {
+    STATE.notesSwipeMode = mode;
+    STATE.notesMode = true;
+  }
+  STATE.notesDragCells.clear();
+  STATE.notesDragAction = null;
   updateNotesBtn();
 }
 
 function updateNotesBtn() {
   const btn = document.getElementById('btn-notes');
-  btn.classList.toggle('active-mode', STATE.notesMode);
-  document.getElementById('notes-mode-tag').textContent = STATE.notesMode ? 'ON' : 'OFF';
+  const tag = document.getElementById('notes-mode-tag');
+  const swipe = STATE.notesSwipeMode;
+  btn.classList.remove('notes-add-mode','notes-remove-mode');
+  if (swipe === 'add') {
+    btn.classList.add('notes-add-mode');
+    btn.classList.toggle('active-mode', STATE.notesMode);
+    tag.textContent = STATE.notesMode ? '+' : '+·';
+  } else if (swipe === 'remove') {
+    btn.classList.add('notes-remove-mode');
+    btn.classList.toggle('active-mode', STATE.notesMode);
+    tag.textContent = STATE.notesMode ? '-' : '-·';
+  } else {
+    btn.classList.toggle('active-mode', STATE.notesMode);
+    tag.textContent = STATE.notesMode ? 'ON' : 'OFF';
+  }
 }
 
 function updateScoreDisplay() {
@@ -2450,6 +2589,92 @@ function celebrateVictory() {
       }, delay);
     }
   }
+}
+
+/* ═══════════════════════════════════════
+   NOTAS — SWIPE BUTTON + DRAG MULTI-SELECT
+═══════════════════════════════════════ */
+
+let _notesBtnSwipeStartX = null;
+let _notesBtnLastTap = 0;
+
+function _attachNotesBtnSwipe() {
+  const btn = document.getElementById('btn-notes');
+
+  btn.addEventListener('pointerdown', e => {
+    _notesBtnSwipeStartX = e.clientX;
+  });
+
+  btn.addEventListener('pointerup', e => {
+    if (_notesBtnSwipeStartX === null) return;
+    const dx = e.clientX - _notesBtnSwipeStartX;
+    _notesBtnSwipeStartX = null;
+
+    if (Math.abs(dx) >= 28) {
+      /* Swipe detected */
+      setNotesSwipeMode(dx > 0 ? 'add' : 'remove');
+      return;
+    }
+
+    /* Click — check double-tap (within 350ms) */
+    const now = Date.now();
+    if (now - _notesBtnLastTap < 350) {
+      /* Double-click: exit swipe mode */
+      _notesBtnLastTap = 0;
+      STATE.notesSwipeMode = null;
+      STATE.notesMode = false;
+      STATE.notesDragCells.clear();
+      STATE.notesDragAction = null;
+      updateNotesBtn();
+      return;
+    }
+    _notesBtnLastTap = now;
+    toggleNotesMode();
+  });
+
+  btn.addEventListener('pointercancel', () => { _notesBtnSwipeStartX = null; });
+}
+
+/* Board drag — multi-cell note selection */
+let _noteDragActive = false;
+
+function _attachBoardNoteDrag() {
+  const board = document.getElementById('board');
+  if (!board) return;
+
+  const getCell = e => {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest('[data-row]');
+    if (!cell) return null;
+    return { r: +cell.dataset.row, c: +cell.dataset.col };
+  };
+
+  board.addEventListener('pointerdown', e => {
+    if (!STATE.notesMode) return;
+    const pos = getCell(e);
+    if (!pos) return;
+    _noteDragActive = true;
+    board.setPointerCapture(e.pointerId);
+    const k = pos.r+','+pos.c;
+    STATE.notesDragCells = new Set([k]);
+    STATE.notesDragAction = null;
+    renderHighlights();
+  }, { passive: true });
+
+  board.addEventListener('pointermove', e => {
+    if (!_noteDragActive || !STATE.notesMode) return;
+    const pos = getCell(e);
+    if (!pos) return;
+    const k = pos.r+','+pos.c;
+    if (!STATE.notesDragCells.has(k) && STATE.puzzle[pos.r][pos.c] === 0) {
+      STATE.notesDragCells.add(k);
+      renderHighlights();
+    }
+  }, { passive: true });
+
+  const endDrag = () => { _noteDragActive = false; };
+  board.addEventListener('pointerup', endDrag, { passive: true });
+  board.addEventListener('pointercancel', endDrag, { passive: true });
 }
 
 /* ═══════════════════════════════════════

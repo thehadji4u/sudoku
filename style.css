@@ -787,6 +787,11 @@ html, body {
   color: #fff;
 }
 .ctrl-btn.disabled { opacity: .35; pointer-events: none; }
+.ctrl-btn.notes-add-mode.active-mode    { background: #16A34A; color: #fff; }
+.ctrl-btn.notes-add-mode:not(.active-mode) { background: #BBF7D0; color: #166534; }
+.ctrl-btn.notes-remove-mode.active-mode  { background: #DC2626; color: #fff; }
+.ctrl-btn.notes-remove-mode:not(.active-mode) { background: #FECACA; color: #991B1B; }
+.cell.notes-drag-selected { outline: 2px solid #60A5FA; outline-offset: -2px; }
 
 /* ══════════════════════════════════════════
    MODAIS
