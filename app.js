@@ -885,7 +885,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -991,12 +991,19 @@ function renderHighlights() {
     const npNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
                 : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
     if (npNum > 0) {
-      getNakedPairsForNum(npNum).forEach(({pair}) => {
+      getNakedPairsForNum(npNum).forEach(({pair, targets}) => {
         pair.forEach(([r, c]) => {
           const el = cellElements[r][c];
           if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
               !el.classList.contains('naked-single') && !el.classList.contains('naked-single-note'))
             el.classList.add('naked-pair');
+        });
+        targets.forEach(([r, c]) => {
+          const el = cellElements[r][c];
+          if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
+              !el.classList.contains('naked-single') && !el.classList.contains('naked-single-note') &&
+              !el.classList.contains('naked-pair'))
+            el.classList.add('naked-pair-target');
         });
       });
     }

@@ -1383,7 +1383,8 @@ html, body {
 .cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
 .cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
 /* ── Naked Pair (Função 7) ── */
-.cell.naked-pair        { background: #EDE9FE; }  /* violeta claro */
+.cell.naked-pair        { background: #EDE9FE; }  /* violeta claro — par */
+.cell.naked-pair-target { background: #FEE2E2; }  /* vermelho claro — alvo de eliminação */
 
 /* ── Animação genérica de viagem entre células ── */
 .cell-travel-particle {
