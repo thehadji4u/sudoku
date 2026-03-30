@@ -1001,7 +1001,7 @@ function renderHighlights() {
         });
         targets.forEach(([r, c]) => {
           const el = cellElements[r][c];
-          if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
+          if (!el.classList.contains('selected') &&
               !el.classList.contains('naked-single') && !el.classList.contains('naked-single-note') &&
               !el.classList.contains('naked-pair'))
             el.classList.add('naked-pair-target');
@@ -1051,15 +1051,10 @@ function handleCellClick(r, c) {
   }
   renderHighlights();
   renderNumpad();
-  /* Naked Single level 2 auto-fill */
-  if (STATE.settings.nakedSingleMode === 2 && STATE.selectedRow === r && STATE.selectedCol === c) {
-    const num = STATE.puzzle[r][c];
-    if (num > 0) triggerNakedSingleFill(num, cellElements[r][c]);
-  }
-  /* Naked Pair level 2 auto-eliminate */
-  if (STATE.settings.nakedPairMode === 2 && STATE.selectedRow === r && STATE.selectedCol === c) {
-    const npNum = STATE.puzzle[r][c] > 0 ? STATE.puzzle[r][c] : STATE.pinnedNum;
-    if (npNum > 0) triggerNakedPairElim(npNum, cellElements[r][c]);
+  /* Poderes P1/P2 — seleção de célula */
+  if (STATE.selectedRow === r && STATE.selectedCol === c) {
+    const pNum = STATE.puzzle[r][c] > 0 ? STATE.puzzle[r][c] : STATE.pinnedNum;
+    if (pNum > 0) triggerPowerFunctions(pNum, cellElements[r][c]);
   }
 }
 
@@ -1170,12 +1165,8 @@ function doPlaceNumber(r, c, num) {
       for (let cc = 0; cc < 9; cc++)
         if (STATE.puzzle[rr][cc] === num) count++;
     if (count === 9) setTimeout(() => celebrateDigit(num), 80);
-    /* Naked Single level 2: continue filling after correct placement */
-    if (STATE.settings.nakedSingleMode === 2)
-      setTimeout(() => triggerNakedSingleFill(num, cellElements[r][c]), 200);
-    /* Naked Pair level 2: eliminate candidates after placement */
-    if (STATE.settings.nakedPairMode === 2)
-      setTimeout(() => triggerNakedPairElim(num, cellElements[r][c]), 200);
+    /* Poderes P1/P2 — após preencher célula */
+    setTimeout(() => triggerPowerFunctions(num, cellElements[r][c]), 200);
   }
   checkWin();
 }
@@ -1957,15 +1948,31 @@ function handleNumpadPin(num) {
   STATE.selectedCol = -1;
   renderNumpad();
   renderHighlights();
-  /* Naked Single level 2 auto-fill */
-  if (STATE.settings.nakedSingleMode === 2 && STATE.pinnedNum > 0) {
-    const pinBtn = document.querySelector(`#numpad [data-num="${STATE.pinnedNum}"]`);
-    if (pinBtn) triggerNakedSingleFill(STATE.pinnedNum, pinBtn);
+  /* Poderes P1/P2 — pin de número */
+  if (STATE.pinnedNum > 0) triggerPowerFunctions(STATE.pinnedNum, null);
+}
+
+/* ═══════════════════════════════════════
+   PODERES — dispatcher com prioridade P1 > P2
+═══════════════════════════════════════ */
+
+/**
+ * Dispara poderes em ordem de prioridade: P1 (Naked Single) > P2 (Naked Pair).
+ * Só executa o poder de menor índice que tiver trabalho a fazer.
+ * Usado em: seleção de célula, pin de número, após preencher célula.
+ */
+function triggerPowerFunctions(num, sourceEl) {
+  if (!STATE.puzzle || !num || STATE.gameOver) return;
+  const p1 = STATE.settings.nakedSingleMode || 0;
+  const p2 = STATE.settings.nakedPairMode   || 0;
+
+  if (p1 >= 2) {
+    const hasWork = getNakedSinglesForNum(num).length > 0 ||
+                    getNoteNakedsForNum(num).length  > 0;
+    if (hasWork) { triggerNakedSingleFill(num, sourceEl); return; }
   }
-  /* Naked Pair level 2 auto-eliminate */
-  if (STATE.settings.nakedPairMode === 2 && STATE.pinnedNum > 0) {
-    const pinBtn = document.querySelector(`#numpad [data-num="${STATE.pinnedNum}"]`);
-    if (pinBtn) triggerNakedPairElim(STATE.pinnedNum, pinBtn);
+  if (p2 >= 2) {
+    triggerNakedPairElim(num, sourceEl);
   }
 }
 

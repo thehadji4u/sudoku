@@ -1372,6 +1372,14 @@ html, body {
   font-size: 10px;
   background: #94A3B8;
 }
+.feature-badge.power {
+  background: #F59E0B;
+  min-width: 28px;
+  width: auto;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 10px;
+}
 .setting-info:has(.feature-badge) {
   display: flex;
   align-items: center;
