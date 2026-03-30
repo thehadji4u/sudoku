@@ -1290,6 +1290,7 @@ function _animRemoveNoteWave(r, c, num) {
   const src = cellElements[r][c];
   const srcRect = src.getBoundingClientRect();
   const sx = srcRect.left + srcRect.width/2, sy = srcRect.top + srcRect.height/2;
+  const p0On = (STATE.settings.p0Mode || 0) >= 2;
   const rainbow = ['#F87171','#FB923C','#FBBF24','#34D399','#60A5FA','#A78BFA','#F472B6'];
   targets.sort(([r1,c1],[r2,c2]) => {
     const a = cellElements[r1][c1].getBoundingClientRect();
@@ -1301,7 +1302,7 @@ function _animRemoveNoteWave(r, c, num) {
     setTimeout(() => {
       if (!cellElements[tr] || !cellElements[tr][tc]) return;
       animateCellTravel(cellElements[tr][tc], dial || src, {
-        color: rainbow[i % rainbow.length], duration: 200, splashMs: 90,
+        color: p0On ? '#22D3EE' : rainbow[i % rainbow.length], duration: 200, splashMs: 90,
       });
     }, i * 35);
   });
@@ -2170,32 +2171,52 @@ function _processP0Wave(gen, num, sourceEl, targets) {
   const valid = targets.filter(([r, c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
   if (!valid.length) return;
 
-  /* Ordena por distância da célula fonte para efeito de onda */
   const srcRect = sourceEl.getBoundingClientRect();
   const sx = srcRect.left + srcRect.width  / 2;
   const sy = srcRect.top  + srcRect.height / 2;
   valid.sort(([r1,c1],[r2,c2]) => {
     const a = cellElements[r1][c1].getBoundingClientRect();
     const b = cellElements[r2][c2].getBoundingClientRect();
-    return Math.hypot(a.left-sx, a.top-sy) - Math.hypot(b.left-sx, b.top-sy);
+    return Math.hypot(a.left+a.width/2-sx, a.top+a.height/2-sy)
+         - Math.hypot(b.left+b.width/2-sx, b.top+b.height/2-sy);
   });
 
+  const dial = _numBtnEl(num);
   valid.forEach(([tr, tc], i) => {
     setTimeout(() => {
       if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
-      animateCellTravel(sourceEl, cellElements[tr][tc], {
-        color:    '#22D3EE',
-        duration: 180,
-        splashMs: 150,
-        guard:    () => gen === _p0Gen && STATE.settings.p0Mode >= 2 && !STATE.gameOver,
-        onArrive: () => {
-          STATE.notes[tr][tc].delete(num);
-          updateCellContent(tr, tc);
-          renderHighlights();
-        },
-        onDone: () => {},
+      if (!STATE.notes[tr][tc].has(num)) return;
+      /* Remove imediatamente — animação é puramente visual */
+      STATE.notes[tr][tc].delete(num);
+      updateCellContent(tr, tc);
+      renderHighlights();
+      animateCellTravel(cellElements[tr][tc], dial || sourceEl, {
+        color: '#22D3EE', duration: 180, splashMs: 120,
+        guard: () => gen === _p0Gen && !STATE.gameOver,
       });
-    }, i * 30);  /* 30ms de escalonamento entre cada partícula */
+    }, i * 30);
+  });
+}
+
+/* Onda de retorno de anotações ao dial — reutilizada em P0 e autoRemove */
+function _noteReturnWave(srcEl, targets, num, color) {
+  if (!targets.length) return;
+  const srcRect = srcEl.getBoundingClientRect();
+  const sx = srcRect.left + srcRect.width/2, sy = srcRect.top + srcRect.height/2;
+  const sorted = [...targets].sort(([r1,c1],[r2,c2]) => {
+    const a = cellElements[r1][c1].getBoundingClientRect();
+    const b = cellElements[r2][c2].getBoundingClientRect();
+    return Math.hypot(a.left+a.width/2-sx, a.top+a.height/2-sy)
+         - Math.hypot(b.left+b.width/2-sx, b.top+b.height/2-sy);
+  });
+  const dial = _numBtnEl(num);
+  sorted.forEach(([tr, tc], i) => {
+    setTimeout(() => {
+      if (!cellElements[tr] || !cellElements[tr][tc]) return;
+      animateCellTravel(cellElements[tr][tc], dial || srcEl, {
+        color, duration: 180, splashMs: 110,
+      });
+    }, i * 30);
   });
 }
 
@@ -2507,18 +2528,20 @@ function _processNpQueue(gen, num, sourceEl, queue) {
 
   const [tr, tc] = queue[idx];
   const rest = queue.filter((_, i) => i !== idx);
-  const toEl = cellElements[tr][tc];
+  const dial  = _numBtnEl(num);
+  const fromEl = cellElements[tr][tc];
 
-  animateCellTravel(sourceEl, toEl, {
-    color: '#EF4444',  /* vermelho — remoção de candidato */
+  /* Apaga a anotação imediatamente e anima a partícula da célula para o dial */
+  STATE.notes[tr][tc].delete(num);
+  updateCellContent(tr, tc);
+  renderHighlights();
+
+  animateCellTravel(fromEl, dial || sourceEl, {
+    color: '#EF4444',
     guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 && !STATE.gameOver,
-    onArrive: () => {
-      STATE.notes[tr][tc].delete(num);
-      updateCellContent(tr, tc);
-      renderHighlights();
-    },
+    onArrive: () => {},
     onDone: () => {
-      if (rest.length) setTimeout(() => _processNpQueue(gen, num, toEl, rest), 280);
+      if (rest.length) setTimeout(() => _processNpQueue(gen, num, fromEl, rest), 280);
     },
   });
 }
