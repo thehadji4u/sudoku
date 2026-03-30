@@ -1223,12 +1223,8 @@ function doPlaceNumber(r, c, num) {
     awardEnergy(energyTable.cell);
   }
   if (num !== 0 && STATE.notes) _animOwnNotesOnFill(r, c);
-  if (num !== 0 && STATE.settings.autoRemoveNotes) {
-    if (STATE.notes) _animRemoveNoteWave(r, c, num);
-    removeRelatedNotes(r, c, num);
-  }
-  /* P0: elimina anotações proibidas restantes nas componentes */
   if (num !== 0 && (STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
+    /* P0 ativo: coleta alvos ANTES de qualquer remoção e deixa P0 remover via onArrive */
     const forbidden = getP0ComponentForbidden(r, c);
     if (forbidden.length) {
       _p0Gen++;
@@ -1236,6 +1232,9 @@ function doPlaceNumber(r, c, num) {
       const srcEl = cellElements[r] && cellElements[r][c];
       if (srcEl) setTimeout(() => _processP0Wave(g, srcEl, forbidden), 60);
     }
+  } else if (num !== 0 && STATE.settings.autoRemoveNotes) {
+    if (STATE.notes) _animRemoveNoteWave(r, c, num);
+    removeRelatedNotes(r, c, num);
   }
   updateCellContent(r, c);
   renderHighlights();
@@ -2466,18 +2465,17 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       }
       const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
       awardEnergy(energyTable.cell);
-      if (STATE.settings.autoRemoveNotes) {
-        if (STATE.notes) _animRemoveNoteWave(tr, tc, num);
-        removeRelatedNotes(tr, tc, num);
-      }
-      /* P0: elimina anotações proibidas restantes nas componentes */
       if ((STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
+        /* P0 ativo: coleta alvos ANTES de qualquer remoção */
         const forbidden = getP0ComponentForbidden(tr, tc);
         if (forbidden.length) {
           _p0Gen++;
           const g = _p0Gen;
           setTimeout(() => _processP0Wave(g, cellElements[tr][tc], forbidden), 60);
         }
+      } else if (STATE.settings.autoRemoveNotes) {
+        if (STATE.notes) _animRemoveNoteWave(tr, tc, num);
+        removeRelatedNotes(tr, tc, num);
       }
       updateCellContent(tr, tc);
       renderNumpad();
