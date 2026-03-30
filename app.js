@@ -2186,13 +2186,14 @@ function _processP0Wave(gen, num, sourceEl, targets) {
     setTimeout(() => {
       if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
       if (!STATE.notes[tr][tc].has(num)) return;
-      /* Remove imediatamente — animação é puramente visual */
-      STATE.notes[tr][tc].delete(num);
-      updateCellContent(tr, tc);
-      renderHighlights();
       animateCellTravel(cellElements[tr][tc], dial || sourceEl, {
         color: '#22D3EE', duration: 180, splashMs: 120,
         guard: () => gen === _p0Gen && !STATE.gameOver,
+        onArrive: () => {
+          STATE.notes[tr][tc].delete(num);
+          updateCellContent(tr, tc);
+          renderHighlights();
+        },
       });
     }, i * 30);
   });
@@ -2407,6 +2408,8 @@ function _processNsQueue(gen, num, sourceEl, queue) {
     color,
     guard: () => gen === _nsGen && STATE.settings.nakedSingleMode >= 2 && !STATE.gameOver,
     onArrive: () => {
+      /* Devolve anotações da célula ao dial antes de preencher */
+      if (STATE.notes) _animOwnNotesOnFill(tr, tc);
       /* Preenche célula — mesma lógica de pontuação de acerto manual */
       pushUndo();
       STATE.puzzle[tr][tc] = num;
@@ -2427,8 +2430,10 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       }
       const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
       awardEnergy(energyTable.cell);
-      if (STATE.settings.autoRemoveNotes) removeRelatedNotes(tr, tc, num);
-
+      if (STATE.settings.autoRemoveNotes) {
+        if (STATE.notes) _animRemoveNoteWave(tr, tc, num);
+        removeRelatedNotes(tr, tc, num);
+      }
       updateCellContent(tr, tc);
       renderNumpad();
       updateProgressBar();
@@ -2531,15 +2536,14 @@ function _processNpQueue(gen, num, sourceEl, queue) {
   const dial  = _numBtnEl(num);
   const fromEl = cellElements[tr][tc];
 
-  /* Apaga a anotação imediatamente e anima a partícula da célula para o dial */
-  STATE.notes[tr][tc].delete(num);
-  updateCellContent(tr, tc);
-  renderHighlights();
-
   animateCellTravel(fromEl, dial || sourceEl, {
     color: '#EF4444',
     guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 && !STATE.gameOver,
-    onArrive: () => {},
+    onArrive: () => {
+      STATE.notes[tr][tc].delete(num);
+      updateCellContent(tr, tc);
+      renderHighlights();
+    },
     onDone: () => {
       if (rest.length) setTimeout(() => _processNpQueue(gen, num, fromEl, rest), 280);
     },
