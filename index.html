@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.74</span>
+      <span class="app-version">v1.75</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -357,7 +357,36 @@
         </div>
       </div>
 
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge">6</span>
+          <div class="feature-text">
+            <div class="setting-label">Iniciar com todas as anotações</div>
+            <div class="setting-desc">Preenche células vazias com 1–9; use P0 para eliminar as proibidas</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-fillAllNotes">
+          <label class="toggle-track" for="cfg-fillAllNotes"></label>
+        </div>
+      </div>
+
       <div class="settings-section-title">Poderes ⚡</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge power">P0</span>
+          <div class="feature-text">
+            <div class="setting-label">Eliminar notas proibidas</div>
+            <div class="setting-desc">Indica e/ou elimina anotações inválidas nas componentes da célula selecionada</div>
+          </div>
+        </div>
+        <div class="tri-toggle" id="cfg-p0Mode">
+          <button class="tri-btn active" data-val="0">Off</button>
+          <button class="tri-btn" data-val="1">Nv1</button>
+          <button class="tri-btn" data-val="2">Nv2</button>
+        </div>
+      </div>
 
       <div class="setting-row">
         <div class="setting-info">

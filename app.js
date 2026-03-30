@@ -140,6 +140,8 @@ const STATE = {
     enableDialPin:       true,
     nakedSingleMode:     0,
     nakedPairMode:       0,
+    p0Mode:              0,
+    fillAllNotes:        false,
   },
 };
 
@@ -528,6 +530,32 @@ function setupSettingsEvents() {
     });
   });
 
+  /* Toggle fillAllNotes */
+  const fillAllEl = document.getElementById('cfg-fillAllNotes');
+  if (fillAllEl) {
+    fillAllEl.addEventListener('change', () => {
+      STATE.settings.fillAllNotes = fillAllEl.checked;
+      saveSettings();
+      if (fillAllEl.checked && STATE.puzzle && !STATE.gameOver) fillAllCellNotes();
+    });
+  }
+
+  /* Tri-toggle for P0 mode */
+  const p0ToggleEl = document.getElementById('cfg-p0Mode');
+  if (p0ToggleEl) {
+    p0ToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.p0Mode = val;
+        saveSettings();
+        p0ToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _p0Gen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
+
   /* Tri-toggle for Naked Pair mode */
   const npToggleEl = document.getElementById('cfg-nakedPairMode');
   if (npToggleEl) {
@@ -750,6 +778,7 @@ function startGame(difficulty) {
     updateControlsForSimMode();
     updateAnalysisToolsVisibility();
     /* autoAnnotations: only controls btn-fill visibility — no auto-fill on start */
+    if (STATE.settings.fillAllNotes) fillAllCellNotes();
 
     showLoading(false);
     showGameScreen();
@@ -775,6 +804,7 @@ function requestNewGame(diff) {
 
 function endGame(won) {
   STATE.gameOver = true;
+  _p0Gen++;
   _nsGen++;
   _npGen++;
   stopTimer();
@@ -885,7 +915,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target', 'p0-target'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -961,55 +991,57 @@ function renderHighlights() {
   /* ── Destaques de análise ── */
   renderAnalysisHighlights();
 
-  /* ── Feature 5: Naked Single highlights ── */
-  const nsMode = settings.nakedSingleMode || 0;
-  if (nsMode >= 1 && STATE.puzzle) {
-    const nsNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
-                : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
-    if (nsNum > 0) {
-      /* board-logic nakeds — amber */
-      const boardNS = new Set(getNakedSinglesForNum(nsNum).map(([r,c]) => r+','+c));
-      getNakedSinglesForNum(nsNum).forEach(([r, c]) => {
-        const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
-          el.classList.add('naked-single');
-      });
-      /* note-based nakeds — laranja (só se não já marcado como amber) */
-      getNoteNakedsForNum(nsNum).forEach(([r, c]) => {
-        if (boardNS.has(r+','+c)) return;
-        const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
-            !el.classList.contains('naked-single'))
-          el.classList.add('naked-single-note');
-      });
-    }
+  /* ── Poderes: P0 > P1 > P2 — só mostra o poder de menor índice com trabalho ── */
+  const activeNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
+                  : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+
+  /* P0 — eliminar notas proibidas nas componentes da célula selecionada */
+  const p0Targets = ((settings.p0Mode || 0) >= 1 && sr >= 0 && sc >= 0 && puzzle[sr][sc] > 0)
+                    ? getP0Targets(sr, sc) : [];
+  const p0Active = p0Targets.length > 0;
+  if (p0Active) {
+    p0Targets.forEach(([r, c]) => {
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected')) el.classList.add('p0-target');
+    });
   }
 
-  /* ── Feature 7: Naked Pair highlights — só mostra se P1 não tem trabalho ── */
+  /* P1 — naked single (só se P0 sem trabalho) */
+  const nsMode = settings.nakedSingleMode || 0;
+  if (!p0Active && nsMode >= 1 && STATE.puzzle && activeNum > 0) {
+    const boardNS = new Set(getNakedSinglesForNum(activeNum).map(([r,c]) => r+','+c));
+    getNakedSinglesForNum(activeNum).forEach(([r, c]) => {
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+        el.classList.add('naked-single');
+    });
+    getNoteNakedsForNum(activeNum).forEach(([r, c]) => {
+      if (boardNS.has(r+','+c)) return;
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
+          !el.classList.contains('naked-single'))
+        el.classList.add('naked-single-note');
+    });
+  }
+
+  /* P2 — naked pair (só se P0 e P1 sem trabalho) */
+  const p1Active = !p0Active && nsMode >= 1 && activeNum > 0 &&
+                   (getNakedSinglesForNum(activeNum).length > 0 || getNoteNakedsForNum(activeNum).length > 0);
   const npMode = settings.nakedPairMode || 0;
-  if (npMode >= 1 && STATE.puzzle) {
-    const npNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
-                : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
-    const p1Active = (settings.nakedSingleMode || 0) >= 1 && npNum > 0 &&
-                     (getNakedSinglesForNum(npNum).length > 0 || getNoteNakedsForNum(npNum).length > 0);
-    if (npNum > 0 && !p1Active) {
-      getNakedPairsForNum(npNum).forEach(({pair, targets}) => {
-        if (!targets.length) return;  /* sem alvos = sem destaque */
-        pair.forEach(([r, c]) => {
-          const el = cellElements[r][c];
-          if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
-              !el.classList.contains('naked-single') && !el.classList.contains('naked-single-note'))
-            el.classList.add('naked-pair');
-        });
-        targets.forEach(([r, c]) => {
-          const el = cellElements[r][c];
-          if (!el.classList.contains('selected') &&
-              !el.classList.contains('naked-single') && !el.classList.contains('naked-single-note') &&
-              !el.classList.contains('naked-pair'))
-            el.classList.add('naked-pair-target');
-        });
+  if (!p0Active && !p1Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
+    getNakedPairsForNum(activeNum).forEach(({pair, targets}) => {
+      if (!targets.length) return;
+      pair.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+          el.classList.add('naked-pair');
       });
-    }
+      targets.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('naked-pair'))
+          el.classList.add('naked-pair-target');
+      });
+    });
   }
 }
 
@@ -1955,7 +1987,79 @@ function handleNumpadPin(num) {
 }
 
 /* ═══════════════════════════════════════
-   PODERES — dispatcher com prioridade P1 > P2
+   PODER P0 — elimina notas proibidas nas componentes da célula selecionada
+═══════════════════════════════════════ */
+let _p0Gen = 0;
+
+/** Retorna células na mesma linha/coluna/quadrante que têm o número da célula (r,c) como anotação */
+function getP0Targets(r, c) {
+  const num = STATE.puzzle[r][c];
+  if (!num || !STATE.notes) return [];
+  const seen = new Set();
+  const targets = [];
+  const add = (rr, cc) => {
+    const k = rr + ',' + cc;
+    if (!seen.has(k) && STATE.puzzle[rr][cc] === 0 && STATE.notes[rr][cc].has(num)) {
+      seen.add(k); targets.push([rr, cc]);
+    }
+  };
+  for (let i = 0; i < 9; i++) { if (i !== c) add(r, i); }   // linha
+  for (let i = 0; i < 9; i++) { if (i !== r) add(i, c); }   // coluna
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let rr = br; rr < br+3; rr++)
+    for (let cc = bc; cc < bc+3; cc++)
+      if (rr !== r || cc !== c) add(rr, cc);                  // quadrante
+  return targets;
+}
+
+function triggerP0Elim(r, c, fallbackEl) {
+  _p0Gen++;
+  const gen = _p0Gen;
+  const num = STATE.puzzle[r][c];
+  if (!num) return;
+  const targets = getP0Targets(r, c);
+  if (!targets.length) return;
+  const sourceEl = cellElements[r][c] || fallbackEl;
+  setTimeout(() => _processP0Queue(gen, num, sourceEl, targets), 320);
+}
+
+function _processP0Queue(gen, num, sourceEl, queue) {
+  if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || !queue.length || STATE.gameOver) return;
+  const idx = queue.findIndex(([r, c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
+  if (idx === -1) return;
+  const [tr, tc] = queue[idx];
+  const rest = queue.filter((_, i) => i !== idx);
+  const toEl = cellElements[tr][tc];
+  animateCellTravel(sourceEl, toEl, {
+    color: '#22D3EE',
+    guard: () => gen === _p0Gen && STATE.settings.p0Mode >= 2 && !STATE.gameOver,
+    onArrive: () => {
+      STATE.notes[tr][tc].delete(num);
+      updateCellContent(tr, tc);
+      renderHighlights();
+    },
+    onDone: () => {
+      if (rest.length) setTimeout(() => _processP0Queue(gen, num, toEl, rest), 280);
+    },
+  });
+}
+
+/* Preenche todas as células vazias com anotações 1–9 */
+function fillAllCellNotes() {
+  if (!STATE.puzzle || !STATE.notes) return;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] === 0)
+        STATE.notes[r][c] = new Set([1,2,3,4,5,6,7,8,9]);
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] === 0)
+        updateCellContent(r, c);
+  saveSession();
+}
+
+/* ═══════════════════════════════════════
+   PODERES — dispatcher com prioridade P0 > P1 > P2
 ═══════════════════════════════════════ */
 
 /**
@@ -1965,9 +2069,17 @@ function handleNumpadPin(num) {
  */
 function triggerPowerFunctions(num, sourceEl) {
   if (!STATE.puzzle || !num || STATE.gameOver) return;
+  const p0 = STATE.settings.p0Mode          || 0;
   const p1 = STATE.settings.nakedSingleMode || 0;
   const p2 = STATE.settings.nakedPairMode   || 0;
 
+  /* P0: requer célula selecionada com esse número preenchido */
+  if (p0 >= 2) {
+    const sr = STATE.selectedRow, sc = STATE.selectedCol;
+    if (sr >= 0 && sc >= 0 && STATE.puzzle[sr][sc] === num) {
+      if (getP0Targets(sr, sc).length) { triggerP0Elim(sr, sc, sourceEl); return; }
+    }
+  }
   if (p1 >= 2) {
     const hasWork = getNakedSinglesForNum(num).length > 0 ||
                     getNoteNakedsForNum(num).length  > 0;
@@ -5041,6 +5153,16 @@ function syncSettingsUI() {
   toggle('cfg-enableColoring',       s.enableColoring);
   toggle('cfg-enableForcingChains',  s.enableForcingChains);
   toggle('cfg-enableAIC',            s.enableAIC);
+
+  toggle('cfg-fillAllNotes', s.fillAllNotes);
+
+  /* P0 tri-toggle */
+  const p0Toggle = document.getElementById('cfg-p0Mode');
+  if (p0Toggle) {
+    const v = s.p0Mode || 0;
+    p0Toggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
 
   /* Naked Single tri-toggle */
   const nsToggle = document.getElementById('cfg-nakedSingleMode');
