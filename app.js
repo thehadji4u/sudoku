@@ -2020,29 +2020,42 @@ function triggerP0Elim(r, c, fallbackEl) {
   const targets = getP0Targets(r, c);
   if (!targets.length) return;
   const sourceEl = cellElements[r][c] || fallbackEl;
-  setTimeout(() => _processP0Queue(gen, num, sourceEl, targets), 150);
+  setTimeout(() => _processP0Wave(gen, num, sourceEl, targets), 80);
 }
 
-function _processP0Queue(gen, num, sourceEl, queue) {
-  if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || !queue.length || STATE.gameOver) return;
-  const idx = queue.findIndex(([r, c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
-  if (idx === -1) return;
-  const [tr, tc] = queue[idx];
-  const rest = queue.filter((_, i) => i !== idx);
-  const toEl = cellElements[tr][tc];
-  animateCellTravel(sourceEl, toEl, {
-    color:    '#22D3EE',
-    duration: 220,
-    splashMs: 180,
-    guard: () => gen === _p0Gen && STATE.settings.p0Mode >= 2 && !STATE.gameOver,
-    onArrive: () => {
-      STATE.notes[tr][tc].delete(num);
-      updateCellContent(tr, tc);
-      renderHighlights();
-    },
-    onDone: () => {
-      if (rest.length) setTimeout(() => _processP0Queue(gen, num, toEl, rest), 80);
-    },
+/* Onda expansiva: todas as partículas partem ao mesmo tempo,
+   escalonadas por distância — efeito de onda dopamínico */
+function _processP0Wave(gen, num, sourceEl, targets) {
+  if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
+  const valid = targets.filter(([r, c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
+  if (!valid.length) return;
+
+  /* Ordena por distância da célula fonte para efeito de onda */
+  const srcRect = sourceEl.getBoundingClientRect();
+  const sx = srcRect.left + srcRect.width  / 2;
+  const sy = srcRect.top  + srcRect.height / 2;
+  valid.sort(([r1,c1],[r2,c2]) => {
+    const a = cellElements[r1][c1].getBoundingClientRect();
+    const b = cellElements[r2][c2].getBoundingClientRect();
+    return Math.hypot(a.left-sx, a.top-sy) - Math.hypot(b.left-sx, b.top-sy);
+  });
+
+  valid.forEach(([tr, tc], i) => {
+    setTimeout(() => {
+      if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
+      animateCellTravel(sourceEl, cellElements[tr][tc], {
+        color:    '#22D3EE',
+        duration: 180,
+        splashMs: 150,
+        guard:    () => gen === _p0Gen && STATE.settings.p0Mode >= 2 && !STATE.gameOver,
+        onArrive: () => {
+          STATE.notes[tr][tc].delete(num);
+          updateCellContent(tr, tc);
+          renderHighlights();
+        },
+        onDone: () => {},
+      });
+    }, i * 30);  /* 30ms de escalonamento entre cada partícula */
   });
 }
 
