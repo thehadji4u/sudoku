@@ -1380,7 +1380,8 @@ html, body {
 .feature-text { flex: 1; }
 
 /* ── Naked Single (Função 6) ── */
-.cell.naked-single { background: #FEF3C7; }
+.cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
+.cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
 
 /* ── Animação genérica de viagem entre células ── */
 .cell-travel-particle {

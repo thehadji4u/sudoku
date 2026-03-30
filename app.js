@@ -867,7 +867,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -949,10 +949,20 @@ function renderHighlights() {
     const nsNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
                 : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
     if (nsNum > 0) {
+      /* board-logic nakeds — amber */
+      const boardNS = new Set(getNakedSinglesForNum(nsNum).map(([r,c]) => r+','+c));
       getNakedSinglesForNum(nsNum).forEach(([r, c]) => {
         const el = cellElements[r][c];
         if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
           el.classList.add('naked-single');
+      });
+      /* note-based nakeds — laranja (só se não já marcado como amber) */
+      getNoteNakedsForNum(nsNum).forEach(([r, c]) => {
+        if (boardNS.has(r+','+c)) return;
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
+            !el.classList.contains('naked-single'))
+          el.classList.add('naked-single-note');
       });
     }
   }
@@ -1978,6 +1988,19 @@ function getNakedSinglesForNum(n) {
   return res;
 }
 
+/* Naked singles identificados por notas: célula vazia cujas anotações contêm APENAS n */
+function getNoteNakedsForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const res = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++) {
+      const ns = STATE.notes[r][c];
+      if (STATE.puzzle[r][c] === 0 && ns.size === 1 && ns.has(n))
+        res.push([r, c]);
+    }
+  return res;
+}
+
 function _isNSCandidate(r, c, n) {
   for (let i = 0; i < 9; i++) {
     if (i !== c && STATE.puzzle[r][i] === n) return false;
@@ -2000,7 +2023,13 @@ function _isOnlyNSCandidate(r, c, n) {
 function triggerNakedSingleFill(num, sourceEl) {
   _nsGen++;
   const gen = _nsGen;
-  const cells = getNakedSinglesForNum(num);
+  /* board-logic nakeds (amber) + note-based nakeds não duplicados (laranja) */
+  const boardSet = new Set(getNakedSinglesForNum(num).map(([r,c]) => r+','+c));
+  const boardCells = getNakedSinglesForNum(num).map(([r,c]) => [r,c,'#F59E0B']);
+  const noteCells  = getNoteNakedsForNum(num)
+    .filter(([r,c]) => !boardSet.has(r+','+c))
+    .map(([r,c]) => [r,c,'#FB923C']);
+  const cells = [...boardCells, ...noteCells];
   if (!cells.length) return;
   setTimeout(() => _processNsQueue(gen, num, sourceEl, cells), 320);
 }
@@ -2008,16 +2037,21 @@ function triggerNakedSingleFill(num, sourceEl) {
 function _processNsQueue(gen, num, sourceEl, queue) {
   if (gen !== _nsGen || STATE.settings.nakedSingleMode < 2 || !queue.length || STATE.gameOver) return;
 
-  const idx = queue.findIndex(([r, c]) =>
-    STATE.puzzle[r][c] === 0 && _isOnlyNSCandidate(r, c, num));
+  const idx = queue.findIndex(([r, c, clr]) => {
+    if (STATE.puzzle[r][c] !== 0) return false;
+    /* amber: valida via board logic; laranja: valida via notas */
+    return clr === '#FB923C'
+      ? (STATE.notes[r][c].size === 1 && STATE.notes[r][c].has(num))
+      : _isOnlyNSCandidate(r, c, num);
+  });
   if (idx === -1) return;
 
-  const [tr, tc] = queue[idx];
+  const [tr, tc, color] = queue[idx];
   const rest = queue.filter((_, i) => i !== idx);
   const toEl = cellElements[tr][tc];
 
   animateCellTravel(sourceEl, toEl, {
-    color: '#F59E0B',
+    color,
     guard: () => gen === _nsGen && STATE.settings.nakedSingleMode >= 2 && !STATE.gameOver,
     onArrive: () => {
       /* Preenche célula — mesma lógica de pontuação de acerto manual */
