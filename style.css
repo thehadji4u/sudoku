@@ -551,7 +551,7 @@ html, body {
 /* Destaques */
 .cell.highlight-sel   { background: #DBEAFE; }            /* zona da selecionada — azul claro */
 .cell.highlight-match { background: #DCFCE7; }            /* zonas das ocorrências — verde claro */
-.cell.same-num        { background: #86EFAC; }            /* mesma ocorrência — verde médio */
+.cell.same-num        { background: #BFDBFE; }            /* mesma ocorrência — azul claro */
 .cell.selected        { background: #93C5FD !important; } /* célula selecionada — azul médio */
 
 /* Notas — posição absoluta garante grade 3×3 fixa independente do flex pai */
@@ -1354,6 +1354,109 @@ html, body {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Badge numerado das Funções */
+.feature-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--accent, #3B82F6);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.feature-badge.sub {
+  width: auto;
+  min-width: 28px;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: #94A3B8;
+}
+.feature-badge.power {
+  background: #F59E0B;
+  min-width: 28px;
+  width: auto;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+.setting-info:has(.feature-badge) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.feature-text { flex: 1; }
+
+/* ── P0 — eliminar notas proibidas ── */
+.cell.p0-target { background: #CFFAFE; }  /* ciano claro */
+
+/* ── Naked Single (Função 6) ── */
+.cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
+.cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
+/* ── Naked Pair (Função 7) ── */
+.cell.naked-pair        { background: #EDE9FE; }  /* violeta claro — par */
+.cell.naked-pair-target { background: #FEE2E2; }  /* vermelho claro — alvo de eliminação */
+
+/* ── Animação genérica de viagem entre células ── */
+.cell-travel-particle {
+  position: fixed;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, white 0%, var(--travel-color, #F59E0B) 70%);
+  box-shadow: 0 0 10px 4px var(--travel-color, #F59E0B);
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+}
+
+@keyframes cell-anim-splash {
+  0%   { background: var(--cell-anim-color, #FCD34D); transform: scale(0.72); }
+  40%  { background: var(--cell-anim-color, #FDE68A); transform: scale(1.1);  }
+  72%  { transform: scale(0.97); }
+  100% { background: transparent; transform: scale(1); }
+}
+@keyframes cell-anim-ripple {
+  from { transform: scale(0.3); opacity: 0.9; }
+  to   { transform: scale(2.5); opacity: 0; }
+}
+.cell.cell-anim-splash { animation: cell-anim-splash 0.44s ease-out forwards; position: relative; }
+.cell.cell-anim-splash::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--cell-anim-color, rgba(245,158,11,0.35)), transparent 70%);
+  animation: cell-anim-ripple 0.5s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Tri-toggle (seletor 3 estágios) ── */
+.tri-toggle {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid #E2E8F0;
+  flex-shrink: 0;
+}
+.tri-btn {
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #94A3B8;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.tri-btn + .tri-btn { border-left: 1.5px solid #E2E8F0; }
+.tri-btn.active { background: #F59E0B; color: #fff; }
 
 /* Título de seção nas configurações */
 .settings-section-title {
