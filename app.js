@@ -1057,8 +1057,8 @@ function handleCellClick(r, c) {
   }
   /* Naked Pair level 2 auto-eliminate */
   if (STATE.settings.nakedPairMode === 2 && STATE.selectedRow === r && STATE.selectedCol === c) {
-    const num = STATE.puzzle[r][c];
-    if (num > 0) triggerNakedPairElim(num, cellElements[r][c]);
+    const npNum = STATE.puzzle[r][c] > 0 ? STATE.puzzle[r][c] : STATE.pinnedNum;
+    if (npNum > 0) triggerNakedPairElim(npNum, cellElements[r][c]);
   }
 }
 
@@ -2201,12 +2201,14 @@ function getNakedPairsForNum(n) {
   });
 }
 
-function triggerNakedPairElim(num, sourceEl) {
+function triggerNakedPairElim(num, fallbackEl) {
   _npGen++;
   const gen = _npGen;
-  /* Coleta todos os targets únicos de todos os pares encontrados */
   const pairs = getNakedPairsForNum(num);
   if (!pairs.length) return;
+  /* Usa a 1ª célula do par como fonte — animação parte de dentro do tabuleiro */
+  const [pr, pc] = pairs[0].pair[0];
+  const sourceEl = cellElements[pr][pc] || fallbackEl;
   const seen = new Set();
   const queue = [];
   pairs.forEach(({targets}) => {
