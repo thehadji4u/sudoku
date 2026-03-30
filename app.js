@@ -992,6 +992,7 @@ function renderHighlights() {
                 : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
     if (npNum > 0) {
       getNakedPairsForNum(npNum).forEach(({pair, targets}) => {
+        if (!targets.length) return;  /* sem alvos = sem destaque */
         pair.forEach(([r, c]) => {
           const el = cellElements[r][c];
           if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
