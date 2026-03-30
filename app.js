@@ -139,6 +139,7 @@ const STATE = {
     showNoteMatch:       true,
     enableDialPin:       true,
     nakedSingleMode:     0,
+    nakedPairMode:       0,
   },
 };
 
@@ -527,6 +528,22 @@ function setupSettingsEvents() {
     });
   });
 
+  /* Tri-toggle for Naked Pair mode */
+  const npToggleEl = document.getElementById('cfg-nakedPairMode');
+  if (npToggleEl) {
+    npToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.nakedPairMode = val;
+        saveSettings();
+        npToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _npGen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
+
   /* Tri-toggle for Naked Single mode */
   const nsToggleEl = document.getElementById('cfg-nakedSingleMode');
   if (nsToggleEl) {
@@ -759,6 +776,7 @@ function requestNewGame(diff) {
 function endGame(won) {
   STATE.gameOver = true;
   _nsGen++;
+  _npGen++;
   stopTimer();
   clearSession();
   STATE.score = calculateScore();
@@ -867,7 +885,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -963,6 +981,23 @@ function renderHighlights() {
         if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
             !el.classList.contains('naked-single'))
           el.classList.add('naked-single-note');
+      });
+    }
+  }
+
+  /* ── Feature 7: Naked Pair highlights ── */
+  const npMode = settings.nakedPairMode || 0;
+  if (npMode >= 1 && STATE.puzzle) {
+    const npNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
+                : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+    if (npNum > 0) {
+      getNakedPairsForNum(npNum).forEach(({pair}) => {
+        pair.forEach(([r, c]) => {
+          const el = cellElements[r][c];
+          if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
+              !el.classList.contains('naked-single') && !el.classList.contains('naked-single-note'))
+            el.classList.add('naked-pair');
+        });
       });
     }
   }
@@ -1911,6 +1946,11 @@ function handleNumpadPin(num) {
     const pinBtn = document.querySelector(`#numpad [data-num="${STATE.pinnedNum}"]`);
     if (pinBtn) triggerNakedSingleFill(STATE.pinnedNum, pinBtn);
   }
+  /* Naked Pair level 2 auto-eliminate */
+  if (STATE.settings.nakedPairMode === 2 && STATE.pinnedNum > 0) {
+    const pinBtn = document.querySelector(`#numpad [data-num="${STATE.pinnedNum}"]`);
+    if (pinBtn) triggerNakedPairElim(STATE.pinnedNum, pinBtn);
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -2092,6 +2132,99 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       checkWin();
       /* Próxima célula — parte da última célula preenchida */
       if (rest.length) setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
+    },
+  });
+}
+
+/* ═══════════════════════════════════════
+   NAKED PAIR — Função 7
+═══════════════════════════════════════ */
+let _npGen = 0;
+
+/**
+ * Retorna todos os naked pairs que contêm o número n.
+ * Um naked pair: duas células na mesma unidade com exatamente 2 anotações iguais.
+ * Retorna [{pair:[[r1,c1],[r2,c2]], targets:[[r,c],...]}]
+ * targets = células da mesma unidade que têm n como anotação (candidatos a eliminar).
+ */
+function getNakedPairsForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const results = [];
+
+  const checkUnit = (cells) => {
+    const bi = cells.filter(([r,c]) =>
+      STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 2);
+    for (let i = 0; i < bi.length; i++) {
+      for (let j = i + 1; j < bi.length; j++) {
+        const [r1,c1] = bi[i], [r2,c2] = bi[j];
+        const ns1 = STATE.notes[r1][c1], ns2 = STATE.notes[r2][c2];
+        if (ns1.size === 2 && [...ns1].every(x => ns2.has(x)) && ns1.has(n)) {
+          const targets = cells.filter(([r,c]) =>
+            (r !== r1 || c !== c1) && (r !== r2 || c !== c2) &&
+            STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
+          results.push({ pair: [[r1,c1],[r2,c2]], targets });
+        }
+      }
+    }
+  };
+
+  for (let i = 0; i < 9; i++) {
+    checkUnit(Array.from({length:9}, (_,j) => [i,j]));          // row
+    checkUnit(Array.from({length:9}, (_,j) => [j,i]));          // col
+    const br = Math.floor(i/3)*3, bc = (i%3)*3;
+    checkUnit(Array.from({length:9}, (_,k) => [br+Math.floor(k/3), bc+k%3])); // box
+  }
+
+  /* deduplica pares iguais (podem aparecer em múltiplas unidades) */
+  const seen = new Set();
+  return results.filter(({pair, targets}) => {
+    const key = pair.map(([r,c]) => r+','+c).sort().join('|') + '>' +
+                targets.map(([r,c]) => r+','+c).sort().join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function triggerNakedPairElim(num, sourceEl) {
+  _npGen++;
+  const gen = _npGen;
+  /* Coleta todos os targets únicos de todos os pares encontrados */
+  const pairs = getNakedPairsForNum(num);
+  if (!pairs.length) return;
+  const seen = new Set();
+  const queue = [];
+  pairs.forEach(({targets}) => {
+    targets.forEach(([r,c]) => {
+      const key = r+','+c;
+      if (!seen.has(key)) { seen.add(key); queue.push([r,c]); }
+    });
+  });
+  if (!queue.length) return;
+  setTimeout(() => _processNpQueue(gen, num, sourceEl, queue), 320);
+}
+
+function _processNpQueue(gen, num, sourceEl, queue) {
+  if (gen !== _npGen || STATE.settings.nakedPairMode < 2 || !queue.length || STATE.gameOver) return;
+
+  const idx = queue.findIndex(([r,c]) =>
+    STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
+  if (idx === -1) return;
+
+  const [tr, tc] = queue[idx];
+  const rest = queue.filter((_, i) => i !== idx);
+  const toEl = cellElements[tr][tc];
+
+  animateCellTravel(sourceEl, toEl, {
+    color: '#EF4444',  /* vermelho — remoção de candidato */
+    guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 && !STATE.gameOver,
+    onArrive: () => {
+      STATE.notes[tr][tc].delete(num);
+      updateCellContent(tr, tc);
+      renderHighlights();
+    },
+    onDone: () => {
+      if (rest.length) setTimeout(() => _processNpQueue(gen, num, toEl, rest), 280);
     },
   });
 }
@@ -4887,6 +5020,14 @@ function syncSettingsUI() {
   if (nsToggle) {
     const v = s.nakedSingleMode || 0;
     nsToggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
+
+  /* Naked Pair tri-toggle */
+  const npToggle = document.getElementById('cfg-nakedPairMode');
+  if (npToggle) {
+    const v = s.nakedPairMode || 0;
+    npToggle.querySelectorAll('.tri-btn').forEach(b =>
       b.classList.toggle('active', +b.dataset.val === v));
   }
 

@@ -1382,6 +1382,8 @@ html, body {
 /* ── Naked Single (Função 6) ── */
 .cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
 .cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
+/* ── Naked Pair (Função 7) ── */
+.cell.naked-pair        { background: #EDE9FE; }  /* violeta claro */
 
 /* ── Animação genérica de viagem entre células ── */
 .cell-travel-particle {
