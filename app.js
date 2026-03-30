@@ -13,6 +13,9 @@ const STATE = {
   selectedRow: -1,
   selectedCol: -1,
   notesMode:   false,
+  notesSwipeMode: null,   // null|'add'|'remove'
+  notesDragCells: new Set(), // "r,c" — multi-cell drag selection
+  notesDragAction: null,  // null|'add'|'remove' — direction for current drag
   fillNotes:   false,
   pinnedNum:   0,
 
@@ -26,6 +29,7 @@ const STATE = {
   multiplierDisabled: false,   // true se btn-fill foi usado no puzzle
   puzzleStartTime:    0,       // Date.now() ao iniciar puzzle
   fillUsedThisPuzzle: false,
+  gameOver: false,
 
   timerSeconds:  0,
   timerInterval: null,
@@ -134,6 +138,13 @@ const STATE = {
     enableAIC:           true,
     helpLevel2:          true,
     enableLongPressBatch:true,
+    showSelZone:         true,
+    showNoteMatch:       true,
+    enableDialPin:       true,
+    nakedSingleMode:     0,
+    nakedPairMode:       0,
+    p0Mode:              0,
+    fillAllNotes:        false,
   },
 };
 
@@ -359,7 +370,7 @@ function attachEvents() {
   document.getElementById('btn-pause').addEventListener('click', togglePause);
   document.getElementById('btn-undo').addEventListener('click', handleUndo);
   document.getElementById('btn-erase').addEventListener('click', handleErase);
-  document.getElementById('btn-notes').addEventListener('click', toggleNotesMode);
+  _attachNotesBtnSwipe();
   document.getElementById('btn-fill').addEventListener('click', handleFill);
   attachToolBtn('btn-sim',
     /* tap  — descarta modificações */
@@ -387,8 +398,9 @@ function attachEvents() {
   document.getElementById('btn-action-confirm').addEventListener('click', handleActionConfirm);
   document.getElementById('btn-action-cancel').addEventListener('click', handleActionCancel);
 
-  /* Tabuleiro — clique e long-press */
+  /* Tabuleiro — clique, long-press e drag de notas */
   attachBoardLongPress();
+  _attachBoardNoteDrag();
   document.getElementById('board').addEventListener('click', e => {
     const cell = e.target.closest('[data-row]');
     if (!cell) return;
@@ -464,7 +476,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -488,6 +500,13 @@ function setupSettingsEvents() {
       }
       if (key === 'markErrors' || key === 'enhancedHighlight') {
         if (STATE.puzzle) renderBoard();
+      }
+      if (key === 'showSelZone' || key === 'showNoteMatch') {
+        if (STATE.puzzle) renderHighlights();
+      }
+      if (key === 'enableDialPin' && !el.checked) {
+        STATE.pinnedNum = 0;
+        if (STATE.puzzle) { renderNumpad(); renderHighlights(); }
       }
       if (key === 'autoAnnotations' && el.checked && STATE.puzzle) {
         applyAutoAnnotations();
@@ -514,6 +533,64 @@ function setupSettingsEvents() {
       }
     });
   });
+
+  /* Toggle fillAllNotes */
+  const fillAllEl = document.getElementById('cfg-fillAllNotes');
+  if (fillAllEl) {
+    fillAllEl.addEventListener('change', () => {
+      STATE.settings.fillAllNotes = fillAllEl.checked;
+      saveSettings();
+      if (fillAllEl.checked && STATE.puzzle && !STATE.gameOver) fillAllCellNotes();
+    });
+  }
+
+  /* Tri-toggle for P0 mode */
+  const p0ToggleEl = document.getElementById('cfg-p0Mode');
+  if (p0ToggleEl) {
+    p0ToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.p0Mode = val;
+        saveSettings();
+        p0ToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _p0Gen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
+
+  /* Tri-toggle for Naked Pair mode */
+  const npToggleEl = document.getElementById('cfg-nakedPairMode');
+  if (npToggleEl) {
+    npToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.nakedPairMode = val;
+        saveSettings();
+        npToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _npGen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
+
+  /* Tri-toggle for Naked Single mode */
+  const nsToggleEl = document.getElementById('cfg-nakedSingleMode');
+  if (nsToggleEl) {
+    nsToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.nakedSingleMode = val;
+        saveSettings();
+        nsToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _nsGen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
 
   document.getElementById('btn-err-dec').addEventListener('click', () => {
     STATE.settings.maxErrors = Math.max(1, STATE.settings.maxErrors - 1);
@@ -639,6 +716,7 @@ function longPressYWing() {
    CICLO DO JOGO
 ═══════════════════════════════════════ */
 function startGame(difficulty) {
+  STATE.gameOver   = false;
   STATE.difficulty = difficulty;
   showLoading(true);
 
@@ -670,6 +748,9 @@ function startGame(difficulty) {
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
     STATE.notesMode  = false;
+    STATE.notesSwipeMode = null;
+    STATE.notesDragCells = new Set();
+    STATE.notesDragAction = null;
     STATE.fillNotes  = false;
     STATE.pinnedNum  = 0;
     STATE.simulator  = {
@@ -704,6 +785,7 @@ function startGame(difficulty) {
     updateControlsForSimMode();
     updateAnalysisToolsVisibility();
     /* autoAnnotations: only controls btn-fill visibility — no auto-fill on start */
+    if (STATE.settings.fillAllNotes) fillAllCellNotes();
 
     showLoading(false);
     showGameScreen();
@@ -728,6 +810,10 @@ function requestNewGame(diff) {
 }
 
 function endGame(won) {
+  STATE.gameOver = true;
+  _p0Gen++;
+  _nsGen++;
+  _npGen++;
   stopTimer();
   clearSession();
   STATE.score = calculateScore();
@@ -836,7 +922,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target', 'p0-target', 'notes-drag-selected'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -860,11 +946,14 @@ function renderHighlights() {
           if (el.classList.contains('same-num') || el.classList.contains('selected')) continue;
           const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
           if (pinRows.has(r) || pinCols.has(c) || pinBoxes.has(boxIdx))
-            el.classList.add('highlight-sel');
+            el.classList.add('highlight-match');
         }
     }
-    document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
-      .forEach(s => s.classList.add('note-match'));
+    /* Função 4 destaca rascunhos apenas se Função 2 (showNoteMatch) estiver ativa */
+    if (settings.showNoteMatch) {
+      document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
+        .forEach(s => s.classList.add('note-match'));
+    }
   }
 
   /* Se nenhuma célula selecionada, encerra após pinned e análise */
@@ -877,7 +966,9 @@ function renderHighlights() {
   const selVal  = puzzle[sr][sc];
   const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
 
-  /* ── Seleção de célula: apenas linha, coluna e quadrante (azul) ── */
+  /* ── Seleção de célula ──
+     Função 1 (showSelZone):    verde nas células com o mesmo número
+     Função 1.1 (enhancedHighlight): azul na zona (linha/coluna/quadrante) — prioridade sobre verde */
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       const el     = cellElements[r][c];
@@ -885,10 +976,20 @@ function renderHighlights() {
 
       if (r === sr && c === sc) {
         el.classList.add('selected');
-      } else if (r === sr || c === sc || boxIdx === selBox) {
+      } else if (settings.enhancedHighlight && (r === sr || c === sc || boxIdx === selBox)) {
+        el.classList.remove('highlight-match');
+        el.classList.remove('same-num');
         el.classList.add('highlight-sel');
+      } else if (settings.showSelZone && selVal > 0 && puzzle[r][c] === selVal) {
+        el.classList.add('same-num');
       }
     }
+  }
+
+  /* ── Feature 2: Destaca dígitos de anotação que coincidem com o número selecionado ── */
+  if (settings.showNoteMatch && selVal > 0) {
+    document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
+      .forEach(s => s.classList.add('note-match'));
   }
 
   /* ── Conflitos no modo simulador ── */
@@ -896,6 +997,68 @@ function renderHighlights() {
 
   /* ── Destaques de análise ── */
   renderAnalysisHighlights();
+
+  /* ── Poderes: P0 > P1 > P2 — só mostra o poder de menor índice com trabalho ── */
+  const activeNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
+                  : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+
+  /* P0 — eliminar notas proibidas nas componentes da célula selecionada */
+  const p0Targets = ((settings.p0Mode || 0) >= 1 && sr >= 0 && sc >= 0 && puzzle[sr][sc] > 0)
+                    ? getP0Targets(sr, sc) : [];
+  const p0Active = p0Targets.length > 0;
+  if (p0Active) {
+    p0Targets.forEach(([r, c]) => {
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected')) el.classList.add('p0-target');
+    });
+  }
+
+  /* P1 — naked single (só se P0 sem trabalho) */
+  const nsMode = settings.nakedSingleMode || 0;
+  if (!p0Active && nsMode >= 1 && STATE.puzzle && activeNum > 0) {
+    const boardNS = new Set(getNakedSinglesForNum(activeNum).map(([r,c]) => r+','+c));
+    getNakedSinglesForNum(activeNum).forEach(([r, c]) => {
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+        el.classList.add('naked-single');
+    });
+    getNoteNakedsForNum(activeNum).forEach(([r, c]) => {
+      if (boardNS.has(r+','+c)) return;
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
+          !el.classList.contains('naked-single'))
+        el.classList.add('naked-single-note');
+    });
+  }
+
+  /* P2 — naked pair (só se P0 e P1 sem trabalho) */
+  const p1Active = !p0Active && nsMode >= 1 && activeNum > 0 &&
+                   (getNakedSinglesForNum(activeNum).length > 0 || getNoteNakedsForNum(activeNum).length > 0);
+  const npMode = settings.nakedPairMode || 0;
+  if (!p0Active && !p1Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
+    getNakedPairsForNum(activeNum).forEach(({pair, targets}) => {
+      if (!targets.length) return;
+      pair.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+          el.classList.add('naked-pair');
+      });
+      targets.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('naked-pair'))
+          el.classList.add('naked-pair-target');
+      });
+    });
+  }
+
+  /* Multi-cell note drag selection */
+  if (STATE.notesMode && STATE.notesDragCells.size > 1) {
+    STATE.notesDragCells.forEach(k => {
+      const [dr, dc] = k.split(',').map(Number);
+      if (cellElements[dr] && cellElements[dr][dc])
+        cellElements[dr][dc].classList.add('notes-drag-selected');
+    });
+  }
 }
 
 function renderNumpad() {
@@ -938,6 +1101,11 @@ function handleCellClick(r, c) {
   }
   renderHighlights();
   renderNumpad();
+  /* Poderes P1/P2 — seleção de célula */
+  if (STATE.selectedRow === r && STATE.selectedCol === c) {
+    const pNum = STATE.puzzle[r][c] > 0 ? STATE.puzzle[r][c] : STATE.pinnedNum;
+    if (pNum > 0) triggerPowerFunctions(pNum, cellElements[r][c]);
+  }
 }
 
 function handleNumberInput(num) {
@@ -952,7 +1120,33 @@ function handleNumberInput(num) {
       STATE.puzzle[r][c] === STATE.solution[r][c]) return;
 
   if (STATE.notesMode && num !== 0) {
-    doToggleNote(r, c, num);
+    const dragCells = STATE.notesDragCells;
+    if (dragCells.size > 1) {
+      /* Multi-cell: determine add/remove direction on first press, cycle on next */
+      if (STATE.notesDragAction === null) {
+        /* Start with 'add'; if all already have it, switch to 'remove' */
+        const allHave = [...dragCells].every(k => {
+          const [dr, dc] = k.split(',').map(Number);
+          return STATE.puzzle[dr][dc] === 0 && STATE.notes[dr][dc].has(num);
+        });
+        STATE.notesDragAction = allHave ? 'remove' : 'add';
+      } else {
+        STATE.notesDragAction = STATE.notesDragAction === 'add' ? 'remove' : 'add';
+      }
+      const action = STATE.notesDragAction;
+      pushUndo();
+      dragCells.forEach(k => {
+        const [dr, dc] = k.split(',').map(Number);
+        if (STATE.puzzle[dr][dc] !== 0) return;
+        const notes = STATE.notes[dr][dc];
+        if (action === 'add' && !notes.has(num)) { notes.add(num); _animNoteAdd(dr, dc, num); }
+        else if (action === 'remove' && notes.has(num)) { notes.delete(num); _animNoteRemove(dr, dc, num); }
+        updateCellContent(dr, dc);
+      });
+      renderHighlights();
+    } else {
+      doToggleNote(r, c, num);
+    }
   } else {
     doPlaceNumber(r, c, num);
   }
@@ -988,7 +1182,9 @@ function doPlaceNumber(r, c, num) {
   }
 
   /* ── Modo Normal ── */
-  const isError = num !== 0 && num !== STATE.solution[r][c];
+  const isMistake    = num !== 0 && num !== STATE.solution[r][c];
+  /* Só penaliza se markErrors estiver ativo; caso contrário trata como acerto */
+  const isError      = isMistake && STATE.settings.markErrors;
   if (isError) {
     STATE.errors++;
     updateErrorDisplay();
@@ -1025,7 +1221,11 @@ function doPlaceNumber(r, c, num) {
     const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
     awardEnergy(energyTable.cell);
   }
-  if (num !== 0 && STATE.settings.autoRemoveNotes) removeRelatedNotes(r, c, num);
+  if (num !== 0 && STATE.notes) _animOwnNotesOnFill(r, c);
+  if (num !== 0 && STATE.settings.autoRemoveNotes) {
+    if (STATE.notes) _animRemoveNoteWave(r, c, num);
+    removeRelatedNotes(r, c, num);
+  }
   updateCellContent(r, c);
   renderHighlights();
   renderNumpad();
@@ -1049,11 +1249,72 @@ function doPlaceNumber(r, c, num) {
   checkWin();
 }
 
-function doToggleNote(r, c, num) {
+/* ── Note animations ── */
+function _numBtnEl(num) {
+  return document.querySelector(`.num-btn[data-num="${num}"]`);
+}
+function _animNoteAdd(r, c, num) {
+  const src = _numBtnEl(num);
+  if (!src || !cellElements[r] || !cellElements[r][c]) return;
+  animateCellTravel(src, cellElements[r][c], { color: '#93C5FD', duration: 200, splashMs: 100 });
+}
+function _animNoteRemove(r, c, num) {
+  const dial = _numBtnEl(num);
+  const src = cellElements[r] && cellElements[r][c];
+  if (!src || !dial) return;
+  animateCellTravel(src, dial, { color: '#9CA3AF', duration: 180, splashMs: 90 });
+}
+function _animOwnNotesOnFill(r, c) {
+  if (!STATE.notes || !STATE.notes[r] || !cellElements[r] || !cellElements[r][c]) return;
+  STATE.notes[r][c].forEach(n => {
+    const dial = _numBtnEl(n);
+    if (dial) animateCellTravel(cellElements[r][c], dial, { color: '#6EE7B7', duration: 180, splashMs: 80 });
+  });
+}
+function _animRemoveNoteWave(r, c, num) {
+  if (!STATE.notes || !cellElements[r] || !cellElements[r][c]) return;
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  const targets = [], seen = new Set();
+  const collect = (rr, cc) => {
+    if (rr === r && cc === c) return;
+    const k = rr+','+cc;
+    if (seen.has(k)) return;
+    seen.add(k);
+    if (STATE.puzzle[rr][cc] === 0 && STATE.notes[rr][cc] && STATE.notes[rr][cc].has(num))
+      targets.push([rr, cc]);
+  };
+  for (let i = 0; i < 9; i++) { collect(r, i); collect(i, c); }
+  for (let rr = br; rr < br+3; rr++) for (let cc = bc; cc < bc+3; cc++) collect(rr, cc);
+  if (!targets.length) return;
+  const src = cellElements[r][c];
+  const srcRect = src.getBoundingClientRect();
+  const sx = srcRect.left + srcRect.width/2, sy = srcRect.top + srcRect.height/2;
+  const rainbow = ['#F87171','#FB923C','#FBBF24','#34D399','#60A5FA','#A78BFA','#F472B6'];
+  targets.sort(([r1,c1],[r2,c2]) => {
+    const a = cellElements[r1][c1].getBoundingClientRect();
+    const b = cellElements[r2][c2].getBoundingClientRect();
+    return Math.hypot(a.left+a.width/2-sx,a.top+a.height/2-sy) - Math.hypot(b.left+b.width/2-sx,b.top+b.height/2-sy);
+  });
+  const dial = _numBtnEl(num);
+  targets.forEach(([tr, tc], i) => {
+    setTimeout(() => {
+      if (!cellElements[tr] || !cellElements[tr][tc]) return;
+      animateCellTravel(cellElements[tr][tc], dial || src, {
+        color: rainbow[i % rainbow.length], duration: 200, splashMs: 90,
+      });
+    }, i * 35);
+  });
+}
+
+function doToggleNote(r, c, num, skipAnim) {
   if (STATE.puzzle[r][c] !== 0) return;
-  pushUndo();
   const notes = STATE.notes[r][c];
-  if (notes.has(num)) notes.delete(num); else notes.add(num);
+  const swipe = STATE.notesSwipeMode;
+  const willAdd = swipe === 'add' ? true : swipe === 'remove' ? false : !notes.has(num);
+  if ((willAdd && notes.has(num)) || (!willAdd && !notes.has(num))) return;
+  pushUndo();
+  if (willAdd) { notes.add(num); if (!skipAnim) _animNoteAdd(r, c, num); }
+  else         { notes.delete(num); if (!skipAnim) _animNoteRemove(r, c, num); }
   updateCellContent(r, c);
   renderHighlights(); /* re-aplica classes de seleção/destaque na célula */
 }
@@ -1068,6 +1329,21 @@ function handleUndo() {
   STATE.notes  = snap.notes;
   /* STATE.errors NÃO é restaurado — erros são permanentes e acumulativos */
   STATE.score  = snap.score;
+
+  /* Penalidade de energia pelo undo (apenas fora do simulador) */
+  if (!STATE.simulator.active) {
+    const base     = (ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil).cell;
+    const undoCost = (base + STATE.undoCount) * 2;
+    STATE.energyPoints = Math.max(0, STATE.energyPoints - undoCost);
+    localStorage.setItem('sudoku-energy', STATE.energyPoints);
+    _flashEnergyLoss();
+    updateEnergyBar();
+
+    /* Desfazer zera o multiplicador */
+    STATE.streakCount     = 0;
+    STATE.comboMultiplier = 1;
+  }
+
   STATE.undoCount++;
 
   /* Restaura placements + nextSeq do simulador — garante alternância de cor correta */
@@ -1243,7 +1519,7 @@ function formatTime(s) {
    SESSÃO SALVA
 ═══════════════════════════════════════ */
 function saveSession() {
-  if (!STATE.puzzle) return;
+  if (!STATE.puzzle || STATE.gameOver) return;
   const session = {
     puzzle:       STATE.puzzle,
     solution:     STATE.solution,
@@ -1460,14 +1736,48 @@ function renderRankingTable(diff) {
    UI — CONTROLES
 ═══════════════════════════════════════ */
 function toggleNotesMode() {
-  STATE.notesMode = !STATE.notesMode;
+  if (STATE.notesSwipeMode) {
+    /* Click while in swipe mode: toggle active/paused */
+    STATE.notesMode = !STATE.notesMode;
+  } else {
+    STATE.notesMode = !STATE.notesMode;
+  }
+  STATE.notesDragCells.clear();
+  STATE.notesDragAction = null;
+  updateNotesBtn();
+}
+
+function setNotesSwipeMode(mode) {
+  /* mode: 'add'|'remove' — double-call same mode clears it */
+  if (STATE.notesSwipeMode === mode) {
+    STATE.notesSwipeMode = null;
+    STATE.notesMode = false;
+  } else {
+    STATE.notesSwipeMode = mode;
+    STATE.notesMode = true;
+  }
+  STATE.notesDragCells.clear();
+  STATE.notesDragAction = null;
   updateNotesBtn();
 }
 
 function updateNotesBtn() {
   const btn = document.getElementById('btn-notes');
-  btn.classList.toggle('active-mode', STATE.notesMode);
-  document.getElementById('notes-mode-tag').textContent = STATE.notesMode ? 'ON' : 'OFF';
+  const tag = document.getElementById('notes-mode-tag');
+  const swipe = STATE.notesSwipeMode;
+  btn.classList.remove('notes-add-mode','notes-remove-mode');
+  if (swipe === 'add') {
+    btn.classList.add('notes-add-mode');
+    btn.classList.toggle('active-mode', STATE.notesMode);
+    tag.textContent = STATE.notesMode ? '+' : '+·';
+  } else if (swipe === 'remove') {
+    btn.classList.add('notes-remove-mode');
+    btn.classList.toggle('active-mode', STATE.notesMode);
+    tag.textContent = STATE.notesMode ? '-' : '-·';
+  } else {
+    btn.classList.toggle('active-mode', STATE.notesMode);
+    tag.textContent = STATE.notesMode ? 'ON' : 'OFF';
+  }
 }
 
 function updateScoreDisplay() {
@@ -1794,6 +2104,7 @@ function attachNumpadLongPress() {
 }
 
 function handleNumpadPin(num) {
+  if (!STATE.settings.enableDialPin) return;
   if (STATE.pinnedNum !== num) {
     if (STATE.energyPoints < 1) {
       _flashEnergyLoss();
@@ -1810,6 +2121,405 @@ function handleNumpadPin(num) {
   STATE.selectedCol = -1;
   renderNumpad();
   renderHighlights();
+  /* Poderes P1/P2 — pin de número */
+  if (STATE.pinnedNum > 0) triggerPowerFunctions(STATE.pinnedNum, null);
+}
+
+/* ═══════════════════════════════════════
+   PODER P0 — elimina notas proibidas nas componentes da célula selecionada
+═══════════════════════════════════════ */
+let _p0Gen = 0;
+
+/** Retorna células na mesma linha/coluna/quadrante que têm o número da célula (r,c) como anotação */
+function getP0Targets(r, c) {
+  const num = STATE.puzzle[r][c];
+  if (!num || !STATE.notes) return [];
+  const seen = new Set();
+  const targets = [];
+  const add = (rr, cc) => {
+    const k = rr + ',' + cc;
+    if (!seen.has(k) && STATE.puzzle[rr][cc] === 0 && STATE.notes[rr][cc].has(num)) {
+      seen.add(k); targets.push([rr, cc]);
+    }
+  };
+  for (let i = 0; i < 9; i++) { if (i !== c) add(r, i); }   // linha
+  for (let i = 0; i < 9; i++) { if (i !== r) add(i, c); }   // coluna
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let rr = br; rr < br+3; rr++)
+    for (let cc = bc; cc < bc+3; cc++)
+      if (rr !== r || cc !== c) add(rr, cc);                  // quadrante
+  return targets;
+}
+
+function triggerP0Elim(r, c, fallbackEl) {
+  _p0Gen++;
+  const gen = _p0Gen;
+  const num = STATE.puzzle[r][c];
+  if (!num) return;
+  const targets = getP0Targets(r, c);
+  if (!targets.length) return;
+  const sourceEl = cellElements[r][c] || fallbackEl;
+  setTimeout(() => _processP0Wave(gen, num, sourceEl, targets), 80);
+}
+
+/* Onda expansiva: todas as partículas partem ao mesmo tempo,
+   escalonadas por distância — efeito de onda dopamínico */
+function _processP0Wave(gen, num, sourceEl, targets) {
+  if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
+  const valid = targets.filter(([r, c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
+  if (!valid.length) return;
+
+  /* Ordena por distância da célula fonte para efeito de onda */
+  const srcRect = sourceEl.getBoundingClientRect();
+  const sx = srcRect.left + srcRect.width  / 2;
+  const sy = srcRect.top  + srcRect.height / 2;
+  valid.sort(([r1,c1],[r2,c2]) => {
+    const a = cellElements[r1][c1].getBoundingClientRect();
+    const b = cellElements[r2][c2].getBoundingClientRect();
+    return Math.hypot(a.left-sx, a.top-sy) - Math.hypot(b.left-sx, b.top-sy);
+  });
+
+  valid.forEach(([tr, tc], i) => {
+    setTimeout(() => {
+      if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
+      animateCellTravel(sourceEl, cellElements[tr][tc], {
+        color:    '#22D3EE',
+        duration: 180,
+        splashMs: 150,
+        guard:    () => gen === _p0Gen && STATE.settings.p0Mode >= 2 && !STATE.gameOver,
+        onArrive: () => {
+          STATE.notes[tr][tc].delete(num);
+          updateCellContent(tr, tc);
+          renderHighlights();
+        },
+        onDone: () => {},
+      });
+    }, i * 30);  /* 30ms de escalonamento entre cada partícula */
+  });
+}
+
+/* Preenche todas as células vazias com anotações 1–9 */
+function fillAllCellNotes() {
+  if (!STATE.puzzle || !STATE.notes) return;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] === 0)
+        STATE.notes[r][c] = new Set([1,2,3,4,5,6,7,8,9]);
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] === 0)
+        updateCellContent(r, c);
+  saveSession();
+}
+
+/* ═══════════════════════════════════════
+   PODERES — dispatcher com prioridade P0 > P1 > P2
+═══════════════════════════════════════ */
+
+/**
+ * Dispara poderes em ordem de prioridade: P1 (Naked Single) > P2 (Naked Pair).
+ * Só executa o poder de menor índice que tiver trabalho a fazer.
+ * Usado em: seleção de célula, pin de número, após preencher célula.
+ */
+function triggerPowerFunctions(num, sourceEl) {
+  if (!STATE.puzzle || !num || STATE.gameOver) return;
+  const p0 = STATE.settings.p0Mode          || 0;
+  const p1 = STATE.settings.nakedSingleMode || 0;
+  const p2 = STATE.settings.nakedPairMode   || 0;
+
+  /* P0: requer célula selecionada com esse número preenchido */
+  if (p0 >= 2) {
+    const sr = STATE.selectedRow, sc = STATE.selectedCol;
+    if (sr >= 0 && sc >= 0 && STATE.puzzle[sr][sc] === num) {
+      if (getP0Targets(sr, sc).length) { triggerP0Elim(sr, sc, sourceEl); return; }
+    }
+  }
+  if (p1 >= 2) {
+    const hasWork = getNakedSinglesForNum(num).length > 0 ||
+                    getNoteNakedsForNum(num).length  > 0;
+    if (hasWork) { triggerNakedSingleFill(num, sourceEl); return; }
+  }
+  if (p2 >= 2) {
+    triggerNakedPairElim(num, sourceEl);
+  }
+}
+
+/* ═══════════════════════════════════════
+   ANIMAÇÃO DE CÉLULA — utilitário reutilizável
+═══════════════════════════════════════ */
+
+/**
+ * Anima uma partícula viajando de sourceEl até targetEl, depois executa
+ * um splash na célula destino.
+ *
+ * @param {Element} sourceEl  - elemento DOM de origem
+ * @param {Element} targetEl  - elemento DOM de destino
+ * @param {Object}  opts
+ *   @param {string}   opts.color      - cor CSS da partícula/splash (default: '#F59E0B' amber)
+ *   @param {number}   opts.duration   - duração do voo em ms (default: 500)
+ *   @param {number}   opts.splashMs   - duração do splash em ms (default: 430)
+ *   @param {Function} opts.guard      - função que retorna false para cancelar (default: ()=>true)
+ *   @param {Function} opts.onArrive   - callback executado ao chegar (antes do splash)
+ *   @param {Function} opts.onDone     - callback executado após o splash
+ */
+function animateCellTravel(sourceEl, targetEl, opts = {}) {
+  const {
+    color    = '#F59E0B',
+    duration = 500,
+    splashMs = 430,
+    guard    = () => true,
+    onArrive = () => {},
+    onDone   = () => {},
+  } = opts;
+
+  const fromRect = sourceEl.getBoundingClientRect();
+  const toRect   = targetEl.getBoundingClientRect();
+  const fromX = fromRect.left + fromRect.width  / 2;
+  const fromY = fromRect.top  + fromRect.height / 2;
+  const dx = (toRect.left + toRect.width  / 2) - fromX;
+  const dy = (toRect.top  + toRect.height / 2) - fromY;
+
+  const particle = document.createElement('div');
+  particle.className = 'cell-travel-particle';
+  particle.style.setProperty('--travel-color', color);
+  particle.style.left = fromX + 'px';
+  particle.style.top  = fromY + 'px';
+  document.body.appendChild(particle);
+
+  particle.animate([
+    { transform: 'translate(-50%,-50%) scale(1.3)', opacity: 1 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.4)`, opacity: 0.8 },
+  ], { duration, easing: 'cubic-bezier(0.4,0,0.6,1)', fill: 'forwards' }).onfinish = () => {
+    particle.remove();
+    if (!guard()) return;
+
+    onArrive();
+
+    targetEl.style.setProperty('--cell-anim-color', color);
+    targetEl.classList.add('cell-anim-splash');
+    setTimeout(() => {
+      targetEl.classList.remove('cell-anim-splash');
+      onDone();
+    }, splashMs);
+  };
+}
+
+/* ═══════════════════════════════════════
+   NAKED SINGLE — Função 5
+═══════════════════════════════════════ */
+let _nsGen = 0;
+
+function getNakedSinglesForNum(n) {
+  if (!STATE.puzzle) return [];
+  const res = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (STATE.puzzle[r][c] === 0 && _isOnlyNSCandidate(r, c, n))
+        res.push([r, c]);
+  return res;
+}
+
+/* Naked singles identificados por notas: célula vazia cujas anotações contêm APENAS n */
+function getNoteNakedsForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const res = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++) {
+      const ns = STATE.notes[r][c];
+      if (STATE.puzzle[r][c] === 0 && ns.size === 1 && ns.has(n))
+        res.push([r, c]);
+    }
+  return res;
+}
+
+function _isNSCandidate(r, c, n) {
+  for (let i = 0; i < 9; i++) {
+    if (i !== c && STATE.puzzle[r][i] === n) return false;
+    if (i !== r && STATE.puzzle[i][c] === n) return false;
+  }
+  const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
+  for (let rr = br; rr < br + 3; rr++)
+    for (let cc = bc; cc < bc + 3; cc++)
+      if ((rr !== r || cc !== c) && STATE.puzzle[rr][cc] === n) return false;
+  return true;
+}
+
+function _isOnlyNSCandidate(r, c, n) {
+  if (!_isNSCandidate(r, c, n)) return false;
+  for (let k = 1; k <= 9; k++)
+    if (k !== n && _isNSCandidate(r, c, k)) return false;
+  return true;
+}
+
+function triggerNakedSingleFill(num, sourceEl) {
+  _nsGen++;
+  const gen = _nsGen;
+  /* board-logic nakeds (amber) + note-based nakeds não duplicados (laranja) */
+  const boardSet = new Set(getNakedSinglesForNum(num).map(([r,c]) => r+','+c));
+  const boardCells = getNakedSinglesForNum(num).map(([r,c]) => [r,c,'#F59E0B']);
+  const noteCells  = getNoteNakedsForNum(num)
+    .filter(([r,c]) => !boardSet.has(r+','+c))
+    .map(([r,c]) => [r,c,'#FB923C']);
+  const cells = [...boardCells, ...noteCells];
+  if (!cells.length) return;
+  setTimeout(() => _processNsQueue(gen, num, sourceEl, cells), 320);
+}
+
+function _processNsQueue(gen, num, sourceEl, queue) {
+  if (gen !== _nsGen || STATE.settings.nakedSingleMode < 2 || !queue.length || STATE.gameOver) return;
+
+  const idx = queue.findIndex(([r, c, clr]) => {
+    if (STATE.puzzle[r][c] !== 0) return false;
+    /* amber: valida via board logic; laranja: valida via notas */
+    return clr === '#FB923C'
+      ? (STATE.notes[r][c].size === 1 && STATE.notes[r][c].has(num))
+      : _isOnlyNSCandidate(r, c, num);
+  });
+  if (idx === -1) return;
+
+  const [tr, tc, color] = queue[idx];
+  const rest = queue.filter((_, i) => i !== idx);
+  const toEl = cellElements[tr][tc];
+
+  animateCellTravel(sourceEl, toEl, {
+    color,
+    guard: () => gen === _nsGen && STATE.settings.nakedSingleMode >= 2 && !STATE.gameOver,
+    onArrive: () => {
+      /* Preenche célula — mesma lógica de pontuação de acerto manual */
+      pushUndo();
+      STATE.puzzle[tr][tc] = num;
+      STATE.score += calculateCellPoints();
+      updateScoreDisplay();
+      STATE.streakCount++;
+      const prevCombo = STATE.comboMultiplier;
+      STATE.comboMultiplier = Math.floor(STATE.streakCount / 10) + 1;
+      if (STATE.comboMultiplier > prevCombo) {
+        const fill = document.getElementById('energy-bar-fill');
+        if (fill) {
+          fill.classList.add('streak-leveling');
+          setTimeout(() => { fill.classList.remove('streak-leveling'); updateEnergyBar(); }, 350);
+        }
+        _showMultiplierPopup(STATE.comboMultiplier);
+      } else {
+        updateEnergyBar();
+      }
+      const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
+      awardEnergy(energyTable.cell);
+      if (STATE.settings.autoRemoveNotes) removeRelatedNotes(tr, tc, num);
+
+      updateCellContent(tr, tc);
+      renderNumpad();
+      updateProgressBar();
+      renderHighlights();
+    },
+    onDone: () => {
+      setTimeout(() => checkCompletions(tr, tc), 80);
+      setTimeout(() => _checkCompletedUnits(tr, tc), 80);
+      let count = 0;
+      for (let rr = 0; rr < 9; rr++)
+        for (let cc = 0; cc < 9; cc++)
+          if (STATE.puzzle[rr][cc] === num) count++;
+      if (count === 9) setTimeout(() => celebrateDigit(num), 80);
+      checkWin();
+      /* Próxima célula — parte da última célula preenchida */
+      if (rest.length) setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
+    },
+  });
+}
+
+/* ═══════════════════════════════════════
+   NAKED PAIR — Função 7
+═══════════════════════════════════════ */
+let _npGen = 0;
+
+/**
+ * Retorna todos os naked pairs que contêm o número n.
+ * Um naked pair: duas células na mesma unidade com exatamente 2 anotações iguais.
+ * Retorna [{pair:[[r1,c1],[r2,c2]], targets:[[r,c],...]}]
+ * targets = células da mesma unidade que têm n como anotação (candidatos a eliminar).
+ */
+function getNakedPairsForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const results = [];
+
+  const checkUnit = (cells) => {
+    const bi = cells.filter(([r,c]) =>
+      STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 2);
+    for (let i = 0; i < bi.length; i++) {
+      for (let j = i + 1; j < bi.length; j++) {
+        const [r1,c1] = bi[i], [r2,c2] = bi[j];
+        const ns1 = STATE.notes[r1][c1], ns2 = STATE.notes[r2][c2];
+        if (ns1.size === 2 && [...ns1].every(x => ns2.has(x)) && ns1.has(n)) {
+          const targets = cells.filter(([r,c]) =>
+            (r !== r1 || c !== c1) && (r !== r2 || c !== c2) &&
+            STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
+          results.push({ pair: [[r1,c1],[r2,c2]], targets });
+        }
+      }
+    }
+  };
+
+  for (let i = 0; i < 9; i++) {
+    checkUnit(Array.from({length:9}, (_,j) => [i,j]));          // row
+    checkUnit(Array.from({length:9}, (_,j) => [j,i]));          // col
+    const br = Math.floor(i/3)*3, bc = (i%3)*3;
+    checkUnit(Array.from({length:9}, (_,k) => [br+Math.floor(k/3), bc+k%3])); // box
+  }
+
+  /* deduplica pares iguais (podem aparecer em múltiplas unidades) */
+  const seen = new Set();
+  return results.filter(({pair, targets}) => {
+    const key = pair.map(([r,c]) => r+','+c).sort().join('|') + '>' +
+                targets.map(([r,c]) => r+','+c).sort().join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function triggerNakedPairElim(num, fallbackEl) {
+  _npGen++;
+  const gen = _npGen;
+  const pairs = getNakedPairsForNum(num);
+  if (!pairs.length) return;
+  /* Usa a 1ª célula do par como fonte — animação parte de dentro do tabuleiro */
+  const [pr, pc] = pairs[0].pair[0];
+  const sourceEl = cellElements[pr][pc] || fallbackEl;
+  const seen = new Set();
+  const queue = [];
+  pairs.forEach(({targets}) => {
+    targets.forEach(([r,c]) => {
+      const key = r+','+c;
+      if (!seen.has(key)) { seen.add(key); queue.push([r,c]); }
+    });
+  });
+  if (!queue.length) return;
+  setTimeout(() => _processNpQueue(gen, num, sourceEl, queue), 320);
+}
+
+function _processNpQueue(gen, num, sourceEl, queue) {
+  if (gen !== _npGen || STATE.settings.nakedPairMode < 2 || !queue.length || STATE.gameOver) return;
+
+  const idx = queue.findIndex(([r,c]) =>
+    STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
+  if (idx === -1) return;
+
+  const [tr, tc] = queue[idx];
+  const rest = queue.filter((_, i) => i !== idx);
+  const toEl = cellElements[tr][tc];
+
+  animateCellTravel(sourceEl, toEl, {
+    color: '#EF4444',  /* vermelho — remoção de candidato */
+    guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 && !STATE.gameOver,
+    onArrive: () => {
+      STATE.notes[tr][tc].delete(num);
+      updateCellContent(tr, tc);
+      renderHighlights();
+    },
+    onDone: () => {
+      if (rest.length) setTimeout(() => _processNpQueue(gen, num, toEl, rest), 280);
+    },
+  });
 }
 
 function handleFill() {
@@ -1879,6 +2589,92 @@ function celebrateVictory() {
       }, delay);
     }
   }
+}
+
+/* ═══════════════════════════════════════
+   NOTAS — SWIPE BUTTON + DRAG MULTI-SELECT
+═══════════════════════════════════════ */
+
+let _notesBtnSwipeStartX = null;
+let _notesBtnLastTap = 0;
+
+function _attachNotesBtnSwipe() {
+  const btn = document.getElementById('btn-notes');
+
+  btn.addEventListener('pointerdown', e => {
+    _notesBtnSwipeStartX = e.clientX;
+  });
+
+  btn.addEventListener('pointerup', e => {
+    if (_notesBtnSwipeStartX === null) return;
+    const dx = e.clientX - _notesBtnSwipeStartX;
+    _notesBtnSwipeStartX = null;
+
+    if (Math.abs(dx) >= 28) {
+      /* Swipe detected */
+      setNotesSwipeMode(dx > 0 ? 'add' : 'remove');
+      return;
+    }
+
+    /* Click — check double-tap (within 350ms) */
+    const now = Date.now();
+    if (now - _notesBtnLastTap < 350) {
+      /* Double-click: exit swipe mode */
+      _notesBtnLastTap = 0;
+      STATE.notesSwipeMode = null;
+      STATE.notesMode = false;
+      STATE.notesDragCells.clear();
+      STATE.notesDragAction = null;
+      updateNotesBtn();
+      return;
+    }
+    _notesBtnLastTap = now;
+    toggleNotesMode();
+  });
+
+  btn.addEventListener('pointercancel', () => { _notesBtnSwipeStartX = null; });
+}
+
+/* Board drag — multi-cell note selection */
+let _noteDragActive = false;
+
+function _attachBoardNoteDrag() {
+  const board = document.getElementById('board');
+  if (!board) return;
+
+  const getCell = e => {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest('[data-row]');
+    if (!cell) return null;
+    return { r: +cell.dataset.row, c: +cell.dataset.col };
+  };
+
+  board.addEventListener('pointerdown', e => {
+    if (!STATE.notesMode) return;
+    const pos = getCell(e);
+    if (!pos) return;
+    _noteDragActive = true;
+    board.setPointerCapture(e.pointerId);
+    const k = pos.r+','+pos.c;
+    STATE.notesDragCells = new Set([k]);
+    STATE.notesDragAction = null;
+    renderHighlights();
+  }, { passive: true });
+
+  board.addEventListener('pointermove', e => {
+    if (!_noteDragActive || !STATE.notesMode) return;
+    const pos = getCell(e);
+    if (!pos) return;
+    const k = pos.r+','+pos.c;
+    if (!STATE.notesDragCells.has(k) && STATE.puzzle[pos.r][pos.c] === 0) {
+      STATE.notesDragCells.add(k);
+      renderHighlights();
+    }
+  }, { passive: true });
+
+  const endDrag = () => { _noteDragActive = false; };
+  board.addEventListener('pointerup', endDrag, { passive: true });
+  board.addEventListener('pointercancel', endDrag, { passive: true });
 }
 
 /* ═══════════════════════════════════════
@@ -4570,6 +5366,9 @@ function syncSettingsUI() {
     const el = document.getElementById(id);
     if (el) el.checked = val;
   };
+  toggle('cfg-showSelZone',       s.showSelZone);
+  toggle('cfg-showNoteMatch',     s.showNoteMatch);
+  toggle('cfg-enableDialPin',     s.enableDialPin);
   toggle('cfg-markErrors',        s.markErrors);
   toggle('cfg-failOnErrors',      s.failOnErrors);
   toggle('cfg-autoRemoveNotes',   s.autoRemoveNotes);
@@ -4594,6 +5393,32 @@ function syncSettingsUI() {
   toggle('cfg-enableColoring',       s.enableColoring);
   toggle('cfg-enableForcingChains',  s.enableForcingChains);
   toggle('cfg-enableAIC',            s.enableAIC);
+
+  toggle('cfg-fillAllNotes', s.fillAllNotes);
+
+  /* P0 tri-toggle */
+  const p0Toggle = document.getElementById('cfg-p0Mode');
+  if (p0Toggle) {
+    const v = s.p0Mode || 0;
+    p0Toggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
+
+  /* Naked Single tri-toggle */
+  const nsToggle = document.getElementById('cfg-nakedSingleMode');
+  if (nsToggle) {
+    const v = s.nakedSingleMode || 0;
+    nsToggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
+
+  /* Naked Pair tri-toggle */
+  const npToggle = document.getElementById('cfg-nakedPairMode');
+  if (npToggle) {
+    const v = s.nakedPairMode || 0;
+    npToggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
 
   /* Language buttons */
   ['pt','en'].forEach(l => {
