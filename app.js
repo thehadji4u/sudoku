@@ -2020,7 +2020,7 @@ function triggerP0Elim(r, c, fallbackEl) {
   const targets = getP0Targets(r, c);
   if (!targets.length) return;
   const sourceEl = cellElements[r][c] || fallbackEl;
-  setTimeout(() => _processP0Queue(gen, num, sourceEl, targets), 320);
+  setTimeout(() => _processP0Queue(gen, num, sourceEl, targets), 150);
 }
 
 function _processP0Queue(gen, num, sourceEl, queue) {
@@ -2031,7 +2031,9 @@ function _processP0Queue(gen, num, sourceEl, queue) {
   const rest = queue.filter((_, i) => i !== idx);
   const toEl = cellElements[tr][tc];
   animateCellTravel(sourceEl, toEl, {
-    color: '#22D3EE',
+    color:    '#22D3EE',
+    duration: 220,
+    splashMs: 180,
     guard: () => gen === _p0Gen && STATE.settings.p0Mode >= 2 && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
@@ -2039,7 +2041,7 @@ function _processP0Queue(gen, num, sourceEl, queue) {
       renderHighlights();
     },
     onDone: () => {
-      if (rest.length) setTimeout(() => _processP0Queue(gen, num, toEl, rest), 280);
+      if (rest.length) setTimeout(() => _processP0Queue(gen, num, toEl, rest), 80);
     },
   });
 }
