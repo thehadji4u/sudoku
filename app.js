@@ -405,6 +405,7 @@ function attachEvents() {
     const cell = e.target.closest('[data-row]');
     if (!cell) return;
     if (_cellLongPressed) { _cellLongPressed = false; return; }
+    if (_noteDragMoved)   { _noteDragMoved = false; return; }
     handleCellClick(+cell.dataset.row, +cell.dataset.col);
   });
 
@@ -2595,31 +2596,30 @@ function celebrateVictory() {
    NOTAS — SWIPE BUTTON + DRAG MULTI-SELECT
 ═══════════════════════════════════════ */
 
-let _notesBtnSwipeStartX = null;
 let _notesBtnLastTap = 0;
 
 function _attachNotesBtnSwipe() {
   const btn = document.getElementById('btn-notes');
+  let startX = null;
 
   btn.addEventListener('pointerdown', e => {
-    _notesBtnSwipeStartX = e.clientX;
+    startX = e.clientX;
+    btn.setPointerCapture(e.pointerId);
   });
 
   btn.addEventListener('pointerup', e => {
-    if (_notesBtnSwipeStartX === null) return;
-    const dx = e.clientX - _notesBtnSwipeStartX;
-    _notesBtnSwipeStartX = null;
+    if (startX === null) return;
+    const dx = e.clientX - startX;
+    startX = null;
 
-    if (Math.abs(dx) >= 28) {
-      /* Swipe detected */
+    if (Math.abs(dx) >= 30) {
       setNotesSwipeMode(dx > 0 ? 'add' : 'remove');
       return;
     }
 
-    /* Click — check double-tap (within 350ms) */
+    /* tap — check double */
     const now = Date.now();
     if (now - _notesBtnLastTap < 350) {
-      /* Double-click: exit swipe mode */
       _notesBtnLastTap = 0;
       STATE.notesSwipeMode = null;
       STATE.notesMode = false;
@@ -2632,49 +2632,67 @@ function _attachNotesBtnSwipe() {
     toggleNotesMode();
   });
 
-  btn.addEventListener('pointercancel', () => { _notesBtnSwipeStartX = null; });
+  btn.addEventListener('pointercancel', () => { startX = null; });
 }
 
 /* Board drag — multi-cell note selection */
 let _noteDragActive = false;
+let _noteDragMoved  = false;  /* true se arrastou p/ >1 célula (suprime click) */
 
 function _attachBoardNoteDrag() {
   const board = document.getElementById('board');
   if (!board) return;
 
-  const getCell = e => {
-    const el = document.elementFromPoint(e.clientX, e.clientY);
+  const cellAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
     const cell = el && el.closest('[data-row]');
-    if (!cell) return null;
-    return { r: +cell.dataset.row, c: +cell.dataset.col };
+    return cell ? { r: +cell.dataset.row, c: +cell.dataset.col } : null;
   };
 
-  board.addEventListener('pointerdown', e => {
-    if (!STATE.notesMode) return;
-    const pos = getCell(e);
+  const dragStart = (x, y) => {
+    if (!STATE.notesMode || !STATE.puzzle) return;
+    const pos = cellAt(x, y);
     if (!pos) return;
     _noteDragActive = true;
-    board.setPointerCapture(e.pointerId);
-    const k = pos.r+','+pos.c;
-    STATE.notesDragCells = new Set([k]);
+    _noteDragMoved  = false;
+    STATE.notesDragCells = new Set([pos.r+','+pos.c]);
     STATE.notesDragAction = null;
     renderHighlights();
-  }, { passive: true });
+  };
 
-  board.addEventListener('pointermove', e => {
-    if (!_noteDragActive || !STATE.notesMode) return;
-    const pos = getCell(e);
+  const dragMove = (x, y) => {
+    if (!_noteDragActive || !STATE.notesMode || !STATE.puzzle) return;
+    const pos = cellAt(x, y);
     if (!pos) return;
     const k = pos.r+','+pos.c;
     if (!STATE.notesDragCells.has(k) && STATE.puzzle[pos.r][pos.c] === 0) {
       STATE.notesDragCells.add(k);
+      _noteDragMoved = true;
       renderHighlights();
     }
-  }, { passive: true });
+  };
 
-  const endDrag = () => { _noteDragActive = false; };
-  board.addEventListener('pointerup', endDrag, { passive: true });
-  board.addEventListener('pointercancel', endDrag, { passive: true });
+  const dragEnd = () => { _noteDragActive = false; };
+
+  /* Touch */
+  board.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    dragStart(t.clientX, t.clientY);
+  }, { passive: true });
+  board.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    dragMove(t.clientX, t.clientY);
+  }, { passive: true });
+  board.addEventListener('touchend',    dragEnd, { passive: true });
+  board.addEventListener('touchcancel', dragEnd, { passive: true });
+
+  /* Mouse (desktop) */
+  board.addEventListener('mousedown', e => dragStart(e.clientX, e.clientY));
+  board.addEventListener('mousemove', e => {
+    if (e.buttons === 0) { dragEnd(); return; }
+    dragMove(e.clientX, e.clientY);
+  });
+  board.addEventListener('mouseup', dragEnd);
 }
 
 /* ═══════════════════════════════════════
