@@ -2686,8 +2686,6 @@ function getNakedPairsForNum(n) {
 function triggerNakedPairElim(num, fallbackEl) {
   _npGen++;
   const gen = _npGen;
-  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
-  renderHighlights();
 
   const pairs = getNakedPairsForNum(num);
   if (!pairs.length) return;
@@ -2826,8 +2824,6 @@ function getNakedQuadsForNum(n) {
 function triggerNakedTripleElim(num, fallbackEl) {
   _ntGen++;
   const gen = _ntGen;
-  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
-  renderHighlights();
 
   const triples = getNakedTriplesForNum(num);
   if (!triples.length) return;
@@ -2896,8 +2892,6 @@ function _processNtQueue(gen, num, sourceEl, queue) {
 function triggerNakedQuadElim(num, fallbackEl) {
   _nqGen++;
   const gen = _nqGen;
-  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
-  renderHighlights();
 
   const quads = getNakedQuadsForNum(num);
   if (!quads.length) return;
