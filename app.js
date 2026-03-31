@@ -2238,6 +2238,8 @@ function triggerP0Elim(r, c, fallbackEl) {
   const targets = getP0Targets(r, c);
   if (!targets.length) return;
   const sourceEl = cellElements[r][c] || fallbackEl;
+  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+  renderHighlights();
   setTimeout(() => _processP0Wave(gen, num, sourceEl, targets), 80);
 }
 
@@ -2501,6 +2503,7 @@ function _isOnlyNSCandidate(r, c, n) {
 function triggerNakedSingleFill(num, sourceEl) {
   _nsGen++;
   const gen = _nsGen;
+  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
   /* board-logic nakeds (amber) + note-based nakeds não duplicados (laranja) */
   const boardSet = new Set(getNakedSinglesForNum(num).map(([r,c]) => r+','+c));
   const boardCells = getNakedSinglesForNum(num).map(([r,c]) => [r,c,'#F59E0B']);
@@ -2646,6 +2649,7 @@ function getNakedPairsForNum(n) {
 function triggerNakedPairElim(num, fallbackEl) {
   _npGen++;
   const gen = _npGen;
+  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
   const pairs = getNakedPairsForNum(num);
   if (!pairs.length) return;
   /* Usa a 1ª célula do par como fonte — animação parte de dentro do tabuleiro */
@@ -2765,6 +2769,7 @@ function getNakedQuadsForNum(n) {
 function triggerNakedGroupElim(num, fallbackEl) {
   _ntGen++;
   const gen = _ntGen;
+  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
   const groups = [...getNakedTriplesForNum(num), ...getNakedQuadsForNum(num)];
   if (!groups.length) return;
   const [fr, fc] = groups[0].sourceCells[0];
@@ -2843,6 +2848,7 @@ function getHiddenSinglesForNum(n) {
 function triggerHiddenSingleFill(num, sourceEl) {
   _nhGen++;
   const gen = _nhGen;
+  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
   const cells = getHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
   if (!cells.length) return;
   setTimeout(() => _processNhQueue(gen, num, sourceEl, cells), 320);
