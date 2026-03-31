@@ -289,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.classList.toggle('help-lvl1', !STATE.settings.helpLevel2);
   applyLanguage(STATE.settings.language || 'pt');
   buildNumpad();
+  renderNumpad();
   attachEvents();
   syncSettingsUI();
   checkIOSBanner();
@@ -477,6 +478,10 @@ function attachEvents() {
   /* Gênio da Lâmpada — 3 cliques rápidos no placar */
   _attachGenioTrigger();
 
+  /* Botão "Executar" (Pn nível 1) */
+  const execBtn = document.getElementById('btn-power-exec');
+  if (execBtn) execBtn.addEventListener('click', () => { if (execBtn._execFn) execBtn._execFn(); });
+
   /* Settings close button */
   const scBtn = document.getElementById('btn-settings-close');
   if (scBtn) scBtn.addEventListener('click', closeAllModals);
@@ -498,7 +503,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -523,7 +528,7 @@ function setupSettingsEvents() {
       if (key === 'markErrors' || key === 'enhancedHighlight') {
         if (STATE.puzzle) renderBoard();
       }
-      if (key === 'showSelZone' || key === 'showNoteMatch') {
+      if (key === 'showSelZone' || key === 'showNoteMatch' || key === 'showZoneComp') {
         if (STATE.puzzle) renderHighlights();
       }
       if (key === 'enableDialPin' && !el.checked) {
@@ -987,7 +992,11 @@ function buildNotesHTML(noteSet) {
 
 function renderHighlights() {
   /* Guard: tabuleiro não renderizado ou puzzle não iniciado */
-  if (!cellElements.length || !cellElements[0] || !STATE.puzzle) return;
+  if (!cellElements.length || !cellElements[0] || !STATE.puzzle) {
+    const eb = document.getElementById('btn-power-exec');
+    if (eb) eb.classList.add('hidden');
+    return;
+  }
 
   const { selectedRow: sr, selectedCol: sc, puzzle, settings } = STATE;
 
@@ -1033,6 +1042,8 @@ function renderHighlights() {
   if (sr < 0) {
     if (STATE.simulator.active) renderSimConflicts();
     renderAnalysisHighlights();   /* garante que análises ativas continuam visíveis */
+    const eb0 = document.getElementById('btn-power-exec');
+    if (eb0) eb0.classList.add('hidden');
     return;
   }
 
@@ -1187,6 +1198,42 @@ function renderHighlights() {
           el.classList.add('p-elim-target');
       });
     });
+  }
+
+  /* Botão "Executar" — aparece quando Pn está no nível 1 e tem trabalho visível */
+  {
+    const execBtn = document.getElementById('btn-power-exec');
+    if (execBtn) {
+      const p5Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active &&
+                       nqMode >= 1 && activeNum > 0 &&
+                       getNakedQuadsForNum(activeNum).some(({targets}) => targets.length > 0);
+      let execFn = null, execLabel = null;
+      if (activeNum > 0 && !STATE.gameOver) {
+        const nbtn = document.querySelector(`[data-num="${activeNum}"]`);
+        if (p0Active && (settings.p0Mode || 0) === 1) {
+          const _sr = STATE.selectedRow, _sc = STATE.selectedCol;
+          execLabel = 'P0'; execFn = () => triggerP0Elim(_sr, _sc, nbtn);
+        } else if (p1Active && (settings.nakedSingleMode || 0) === 1) {
+          execLabel = 'P1'; execFn = () => triggerNakedSingleFill(activeNum, nbtn);
+        } else if (p2Active && (settings.p5Mode || 0) === 1) {
+          execLabel = 'P2'; execFn = () => triggerHiddenSingleFill(activeNum, nbtn);
+        } else if (p3Active && (settings.nakedPairMode || 0) === 1) {
+          execLabel = 'P3'; execFn = () => triggerNakedPairElim(activeNum, nbtn);
+        } else if (p4Active && (settings.p3Mode || 0) === 1) {
+          execLabel = 'P4'; execFn = () => triggerNakedTripleElim(activeNum, nbtn);
+        } else if (p5Active && (settings.p4Mode || 0) === 1) {
+          execLabel = 'P5'; execFn = () => triggerNakedQuadElim(activeNum, nbtn);
+        }
+      }
+      if (execFn) {
+        execBtn.textContent = `⚡ Executar ${execLabel}`;
+        execBtn.classList.remove('hidden');
+        execBtn._execFn = execFn;
+      } else {
+        execBtn.classList.add('hidden');
+        execBtn._execFn = null;
+      }
+    }
   }
 
   /* Multi-cell note drag selection */

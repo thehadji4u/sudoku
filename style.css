@@ -734,7 +734,13 @@ html, body {
   background: var(--accent-light);
 }
 .num-btn.done { color: var(--success) !important; font-size: clamp(20px, 6.5vw, 32px); pointer-events: none; opacity: 1; }
-.num-btn.selected-num { color: var(--accent); }
+.num-btn.selected-num {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-radius: 12px;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35), 0 4px 14px rgba(99, 102, 241, 0.40);
+  transform: scale(1.10);
+}
 .num-btn.pinned {
   background: rgba(59, 130, 246, 0.14);
   box-shadow: 0 0 0 2.5px #3B82F6, 0 0 10px rgba(59, 130, 246, 0.28);
@@ -746,6 +752,26 @@ html, body {
   color: #DC2626;
 }
 .num-btn.erase:active { background: #FEF2F2; }
+
+/* ── Botão Executar (Pn nível 1) ── */
+#btn-power-exec {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 4px 12px 2px;
+  padding: 10px 0;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.40);
+  transition: transform .12s, box-shadow .12s, opacity .15s;
+}
+#btn-power-exec:active { transform: scale(0.96); box-shadow: 0 1px 4px rgba(99,102,241,0.25); }
+#btn-power-exec.hidden { display: none; }
 
 /* ── Controles ── */
 #controls {
