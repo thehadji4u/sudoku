@@ -1398,9 +1398,33 @@ html, body {
 /* ── Naked Single (Função 6) ── */
 .cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
 .cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
-/* ── Naked Pair (Função 7) ── */
-.cell.naked-pair        { background: #EDE9FE; }  /* violeta claro — par */
-.cell.naked-pair-target { background: #FEE2E2; }  /* vermelho claro — alvo de eliminação */
+/* ── Note-removal powers: source/target/pulse ── */
+.cell.p2-source { background: #EDE9FE; }   /* P2 — Naked Pair    — violeta claro */
+.cell.p3-source { background: #DDD6FE; }   /* P3 — Naked Triple  — violeta médio */
+.cell.p4-source { background: #C4B5FD; }   /* P4 — Naked Quad    — violeta forte */
+
+/* Target cells (uniform for all removal powers) */
+.cell.p-elim-target { background: #FEF2F2; }
+/* Only the specific note being eliminated gets red (set via p-elim-note class on the digit) */
+.note-digit.p-elim-note { color: #EF4444 !important; font-weight: 700; }
+
+/* Source glow/pulse before animation */
+@keyframes p-source-pulse {
+  0%   { box-shadow: none; }
+  40%  { box-shadow: inset 0 0 0 3px var(--p-glow, #F87171), 0 0 10px var(--p-glow, #F87171); }
+  100% { box-shadow: none; }
+}
+.cell.p-source-glow { animation: p-source-pulse 0.55s ease-out forwards; }
+
+/* Target flash while note is leaving */
+@keyframes p-target-flash {
+  0%, 100% { background: #FEF2F2; }
+  50%       { background: #FECACA; }
+}
+.cell.p-target-flash { animation: p-target-flash 0.45s ease-in-out; }
+
+/* ── P5 — Hidden Single ── */
+.cell.p5-single { background: #F5F3FF; box-shadow: inset 0 0 0 2px #C084FC; }  /* violeta claro */
 
 /* ── Animação genérica de viagem entre células ── */
 .cell-travel-particle {
