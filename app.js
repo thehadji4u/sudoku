@@ -144,6 +144,8 @@ const STATE = {
     nakedSingleMode:     0,
     nakedPairMode:       0,
     p0Mode:              0,
+    p3Mode:              0,
+    p4Mode:              0,
     fillAllNotes:        false,
   },
 };
@@ -593,6 +595,38 @@ function setupSettingsEvents() {
     });
   }
 
+  /* Tri-toggle for P3 mode */
+  const p3ToggleEl = document.getElementById('cfg-p3Mode');
+  if (p3ToggleEl) {
+    p3ToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.p3Mode = val;
+        saveSettings();
+        p3ToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _ntGen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
+
+  /* Tri-toggle for P4 mode */
+  const p4ToggleEl = document.getElementById('cfg-p4Mode');
+  if (p4ToggleEl) {
+    p4ToggleEl.querySelectorAll('.tri-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.val);
+        STATE.settings.p4Mode = val;
+        saveSettings();
+        p4ToggleEl.querySelectorAll('.tri-btn').forEach(b =>
+          b.classList.toggle('active', +b.dataset.val === val));
+        _nhGen++;
+        if (STATE.puzzle) renderHighlights();
+      });
+    });
+  }
+
   document.getElementById('btn-err-dec').addEventListener('click', () => {
     STATE.settings.maxErrors = Math.max(1, STATE.settings.maxErrors - 1);
     document.getElementById('max-errors-val').textContent = STATE.settings.maxErrors;
@@ -790,6 +824,7 @@ function startGame(difficulty) {
 
     showLoading(false);
     showGameScreen();
+    if (STATE.settings.fillAllNotes) setTimeout(_triggerGameStartP0, 400);
   }, 30);
 }
 
@@ -815,6 +850,8 @@ function endGame(won) {
   _p0Gen++;
   _nsGen++;
   _npGen++;
+  _ntGen++;
+  _nhGen++;
   stopTimer();
   clearSession();
   STATE.score = calculateScore();
@@ -923,7 +960,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target', 'p0-target', 'notes-drag-selected'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'naked-pair', 'naked-pair-target', 'p0-target', 'p3-source', 'p3-target', 'p4-single', 'notes-drag-selected'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -1049,6 +1086,38 @@ function renderHighlights() {
         if (!el.classList.contains('selected') && !el.classList.contains('naked-pair'))
           el.classList.add('naked-pair-target');
       });
+    });
+  }
+
+  /* P3 — naked triple/quad (só se P0, P1 e P2 sem trabalho) */
+  const p2Active = !p0Active && !p1Active && npMode >= 1 && activeNum > 0 &&
+                   getNakedPairsForNum(activeNum).length > 0;
+  const p3Mode = settings.p3Mode || 0;
+  if (!p0Active && !p1Active && !p2Active && p3Mode >= 1 && STATE.puzzle && activeNum > 0) {
+    const groups = [...getNakedTriplesForNum(activeNum), ...getNakedQuadsForNum(activeNum)];
+    groups.forEach(({ sourceCells, targets }) => {
+      sourceCells.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+          el.classList.add('p3-source');
+      });
+      targets.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('p3-source'))
+          el.classList.add('p3-target');
+      });
+    });
+  }
+  const p3Active = !p0Active && !p1Active && !p2Active && p3Mode >= 1 && activeNum > 0 &&
+                   (getNakedTriplesForNum(activeNum).length > 0 || getNakedQuadsForNum(activeNum).length > 0);
+
+  /* P4 — hidden single (só se P0, P1, P2 e P3 sem trabalho) */
+  const p4Mode = settings.p4Mode || 0;
+  if (!p0Active && !p1Active && !p2Active && !p3Active && p4Mode >= 1 && STATE.puzzle && activeNum > 0) {
+    getHiddenSinglesForNum(activeNum).forEach(([r, c]) => {
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+        el.classList.add('p4-single');
     });
   }
 
@@ -1223,7 +1292,7 @@ function doPlaceNumber(r, c, num) {
     awardEnergy(energyTable.cell);
   }
   if (num !== 0 && STATE.notes) _animOwnNotesOnFill(r, c);
-  if (num !== 0 && (STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
+  if (num !== 0 && (STATE.settings.p0Mode || 0) >= 2 && STATE.notes && STATE.settings.autoRemoveNotes) {
     /* P0 ativo: coleta alvos ANTES de qualquer remoção e deixa P0 remover via onArrive */
     const targets = getP0Targets(r, c);
     if (targets.length) {
@@ -1274,11 +1343,11 @@ function _animNoteRemove(r, c, num) {
   if (!src || !dial) return;
   animateCellTravel(src, dial, { color: '#9CA3AF', duration: 180, splashMs: 90 });
 }
-function _animOwnNotesOnFill(r, c) {
+function _animOwnNotesOnFill(r, c, durMs = 180, splMs = 80) {
   if (!STATE.notes || !STATE.notes[r] || !cellElements[r] || !cellElements[r][c]) return;
   STATE.notes[r][c].forEach(n => {
     const dial = _numBtnEl(n);
-    if (dial) animateCellTravel(cellElements[r][c], dial, { color: '#6EE7B7', duration: 180, splashMs: 80 });
+    if (dial) animateCellTravel(cellElements[r][c], dial, { color: '#6EE7B7', duration: durMs, splashMs: splMs });
   });
 }
 function _animRemoveNoteWave(r, c, num) {
@@ -2243,6 +2312,44 @@ function fillAllCellNotes() {
   saveSession();
 }
 
+/* P0 sweep automático ao iniciar partida (show visual) */
+function _triggerGameStartP0() {
+  if (!STATE.notes || (STATE.settings.p0Mode || 0) < 2 || !STATE.settings.autoRemoveNotes || STATE.gameOver) return;
+  const gen = ++_p0Gen;
+  const allParticles = [];
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (STATE.puzzle[r][c] === 0) continue;
+      const num = STATE.puzzle[r][c];
+      const srcEl = cellElements[r][c];
+      if (!srcEl) continue;
+      const targets = getP0Targets(r, c);
+      targets.forEach(([tr, tc]) => {
+        allParticles.push({ num, srcEl, tr, tc });
+      });
+    }
+  }
+  if (!allParticles.length) return;
+  /* Ordena por (tr+tc) para efeito de onda diagonal */
+  allParticles.sort((a, b) => (a.tr + a.tc) - (b.tr + b.tc));
+  allParticles.forEach(({ num, srcEl, tr, tc }, i) => {
+    setTimeout(() => {
+      if (gen !== _p0Gen || STATE.gameOver) return;
+      if (!STATE.notes[tr][tc] || !STATE.notes[tr][tc].has(num)) return;
+      const dial = _numBtnEl(num);
+      animateCellTravel(cellElements[tr][tc], dial || srcEl, {
+        color: '#22D3EE', duration: 150, splashMs: 70,
+        guard: () => gen === _p0Gen && !STATE.gameOver,
+        onArrive: () => {
+          STATE.notes[tr][tc].delete(num);
+          updateCellContent(tr, tc);
+        },
+      });
+    }, i * 18);
+  });
+  setTimeout(() => { if (gen === _p0Gen) renderHighlights(); }, allParticles.length * 18 + 300);
+}
+
 /* ═══════════════════════════════════════
    PODERES — dispatcher com prioridade P0 > P1 > P2
 ═══════════════════════════════════════ */
@@ -2257,9 +2364,11 @@ function triggerPowerFunctions(num, sourceEl) {
   const p0 = STATE.settings.p0Mode          || 0;
   const p1 = STATE.settings.nakedSingleMode || 0;
   const p2 = STATE.settings.nakedPairMode   || 0;
+  const p3 = STATE.settings.p3Mode          || 0;
+  const p4 = STATE.settings.p4Mode          || 0;
 
   /* P0: requer célula selecionada com esse número preenchido */
-  if (p0 >= 2) {
+  if (p0 >= 2 && STATE.settings.autoRemoveNotes) {
     const sr = STATE.selectedRow, sc = STATE.selectedCol;
     if (sr >= 0 && sc >= 0 && STATE.puzzle[sr][sc] === num) {
       if (getP0Targets(sr, sc).length) { triggerP0Elim(sr, sc, sourceEl); return; }
@@ -2271,7 +2380,14 @@ function triggerPowerFunctions(num, sourceEl) {
     if (hasWork) { triggerNakedSingleFill(num, sourceEl); return; }
   }
   if (p2 >= 2) {
-    triggerNakedPairElim(num, sourceEl);
+    if (getNakedPairsForNum(num).length > 0) { triggerNakedPairElim(num, sourceEl); return; }
+  }
+  if (p3 >= 2) {
+    const hasWork3 = getNakedTriplesForNum(num).length > 0 || getNakedQuadsForNum(num).length > 0;
+    if (hasWork3) { triggerNakedGroupElim(num, sourceEl); return; }
+  }
+  if (p4 >= 2) {
+    if (getHiddenSinglesForNum(num).length > 0) { triggerHiddenSingleFill(num, sourceEl); return; }
   }
 }
 
@@ -2417,7 +2533,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
     guard: () => gen === _nsGen && STATE.settings.nakedSingleMode >= 2 && !STATE.gameOver,
     onArrive: () => {
       /* Devolve anotações da célula ao dial antes de preencher */
-      if (STATE.notes) _animOwnNotesOnFill(tr, tc);
+      if (STATE.notes) _animOwnNotesOnFill(tr, tc, 460, 200);
       /* Preenche célula — mesma lógica de pontuação de acerto manual */
       pushUndo();
       STATE.puzzle[tr][tc] = num;
@@ -2438,7 +2554,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       }
       const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
       awardEnergy(energyTable.cell);
-      if ((STATE.settings.p0Mode || 0) >= 2 && STATE.notes) {
+      if ((STATE.settings.p0Mode || 0) >= 2 && STATE.notes && STATE.settings.autoRemoveNotes) {
         /* P0 ativo: coleta alvos ANTES de qualquer remoção */
         const targets = getP0Targets(tr, tc);
         if (targets.length) {
@@ -2465,7 +2581,12 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       if (count === 9) setTimeout(() => celebrateDigit(num), 80);
       checkWin();
       /* Próxima célula — parte da última célula preenchida */
-      if (rest.length) setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
+      if (rest.length) {
+        setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
+      } else {
+        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        renderHighlights(); renderNumpad();
+      }
     },
   });
 }
@@ -2474,6 +2595,8 @@ function _processNsQueue(gen, num, sourceEl, queue) {
    NAKED PAIR — Função 7
 ═══════════════════════════════════════ */
 let _npGen = 0;
+let _ntGen = 0;  // P3 naked triples/quads
+let _nhGen = 0;  // P4 hidden singles
 
 /**
  * Retorna todos os naked pairs que contêm o número n.
@@ -2561,7 +2684,249 @@ function _processNpQueue(gen, num, sourceEl, queue) {
       renderHighlights();
     },
     onDone: () => {
-      if (rest.length) setTimeout(() => _processNpQueue(gen, num, fromEl, rest), 280);
+      if (rest.length) {
+        setTimeout(() => _processNpQueue(gen, num, fromEl, rest), 280);
+      } else {
+        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        renderHighlights(); renderNumpad();
+      }
+    },
+  });
+}
+
+/* ═══════════════════════════════════════
+   NAKED TRIPLE/QUAD — P3
+═══════════════════════════════════════ */
+
+/** Returns naked triple/quad entries containing num as target candidates */
+function getNakedTriplesForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const results = [];
+  const checkUnit = (cells) => {
+    const bi = cells.filter(([r,c]) =>
+      STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size >= 2 && STATE.notes[r][c].size <= 3);
+    for (let i=0;i<bi.length-2;i++)
+    for (let j=i+1;j<bi.length-1;j++)
+    for (let k=j+1;k<bi.length;k++) {
+      const trio = [bi[i],bi[j],bi[k]];
+      const union = new Set(trio.flatMap(([r,c]) => [...STATE.notes[r][c]]));
+      if (union.size !== 3 || !union.has(n)) continue;
+      const targets = cells.filter(([r,c]) =>
+        !trio.some(([tr,tc]) => tr===r&&tc===c) &&
+        STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
+      if (targets.length) results.push({ sourceCells: trio, nums: [...union], targets });
+    }
+  };
+  for (let i=0;i<9;i++) {
+    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
+    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
+    const br=Math.floor(i/3)*3, bc=(i%3)*3;
+    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+  }
+  const seen = new Set();
+  return results.filter(({sourceCells,targets}) => {
+    const key = sourceCells.map(([r,c])=>r+','+c).sort().join('|')+'>'+targets.map(([r,c])=>r+','+c).sort().join('|');
+    if (seen.has(key)) return false; seen.add(key); return true;
+  });
+}
+
+function getNakedQuadsForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const results = [];
+  const checkUnit = (cells) => {
+    const bi = cells.filter(([r,c]) =>
+      STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size >= 2 && STATE.notes[r][c].size <= 4);
+    for (let i=0;i<bi.length-3;i++)
+    for (let j=i+1;j<bi.length-2;j++)
+    for (let k=j+1;k<bi.length-1;k++)
+    for (let l=k+1;l<bi.length;l++) {
+      const quad = [bi[i],bi[j],bi[k],bi[l]];
+      const union = new Set(quad.flatMap(([r,c]) => [...STATE.notes[r][c]]));
+      if (union.size !== 4 || !union.has(n)) continue;
+      const targets = cells.filter(([r,c]) =>
+        !quad.some(([qr,qc])=>qr===r&&qc===c) &&
+        STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
+      if (targets.length) results.push({ sourceCells: quad, nums: [...union], targets });
+    }
+  };
+  for (let i=0;i<9;i++) {
+    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
+    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
+    const br=Math.floor(i/3)*3, bc=(i%3)*3;
+    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+  }
+  const seen = new Set();
+  return results.filter(({sourceCells,targets}) => {
+    const key = sourceCells.map(([r,c])=>r+','+c).sort().join('|')+'>'+targets.map(([r,c])=>r+','+c).sort().join('|');
+    if (seen.has(key)) return false; seen.add(key); return true;
+  });
+}
+
+function triggerNakedGroupElim(num, fallbackEl) {
+  _ntGen++;
+  const gen = _ntGen;
+  const groups = [...getNakedTriplesForNum(num), ...getNakedQuadsForNum(num)];
+  if (!groups.length) return;
+  const [fr, fc] = groups[0].sourceCells[0];
+  const sourceEl = cellElements[fr][fc] || fallbackEl;
+  const seen = new Set();
+  const queue = [];
+  groups.forEach(({targets}) => {
+    targets.forEach(([r,c]) => {
+      const key = r+','+c;
+      if (!seen.has(key)) { seen.add(key); queue.push([r,c]); }
+    });
+  });
+  if (!queue.length) return;
+  setTimeout(() => _processNtQueue(gen, num, sourceEl, queue), 320);
+}
+
+function _processNtQueue(gen, num, sourceEl, queue) {
+  if (gen !== _ntGen || (STATE.settings.p3Mode || 0) < 2 || !queue.length || STATE.gameOver) return;
+
+  const idx = queue.findIndex(([r,c]) =>
+    STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
+  if (idx === -1) {
+    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    renderHighlights(); renderNumpad();
+    return;
+  }
+
+  const [tr, tc] = queue[idx];
+  const rest = queue.filter((_,i) => i !== idx);
+  const dial = _numBtnEl(num);
+  const fromEl = cellElements[tr][tc];
+
+  animateCellTravel(fromEl, dial || sourceEl, {
+    color: '#FB923C',
+    guard: () => gen === _ntGen && (STATE.settings.p3Mode || 0) >= 2 && !STATE.gameOver,
+    onArrive: () => {
+      STATE.notes[tr][tc].delete(num);
+      updateCellContent(tr, tc);
+      renderHighlights();
+    },
+    onDone: () => {
+      if (rest.length) {
+        setTimeout(() => _processNtQueue(gen, num, fromEl, rest), 280);
+      } else {
+        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        renderHighlights(); renderNumpad();
+      }
+    },
+  });
+}
+
+/* ═══════════════════════════════════════
+   HIDDEN SINGLE — P4
+═══════════════════════════════════════ */
+
+/** Returns cells where n is a hidden single (only candidate in a unit) */
+function getHiddenSinglesForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const found = new Set();
+  const checkGroup = (cells) => {
+    const cands = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
+    if (cands.length === 1) {
+      const [r, c] = cands[0];
+      found.add(r+','+c);
+    }
+  };
+  for (let i=0;i<9;i++) {
+    checkGroup(Array.from({length:9},(_,j)=>[i,j]));
+    checkGroup(Array.from({length:9},(_,j)=>[j,i]));
+    const br=Math.floor(i/3)*3, bc=(i%3)*3;
+    checkGroup(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+  }
+  return [...found].map(k => k.split(',').map(Number));
+}
+
+function triggerHiddenSingleFill(num, sourceEl) {
+  _nhGen++;
+  const gen = _nhGen;
+  const cells = getHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
+  if (!cells.length) return;
+  setTimeout(() => _processNhQueue(gen, num, sourceEl, cells), 320);
+}
+
+function _processNhQueue(gen, num, sourceEl, queue) {
+  if (gen !== _nhGen || (STATE.settings.p4Mode || 0) < 2 || !queue.length || STATE.gameOver) return;
+
+  const idx = queue.findIndex(([r,c]) => {
+    if (STATE.puzzle[r][c] !== 0) return false;
+    if (!STATE.notes[r][c].has(num)) return false;
+    /* re-validate hidden single in at least one unit */
+    const isHS = (cells) => {
+      const cands = cells.filter(([cr,cc]) => STATE.puzzle[cr][cc] === 0 && STATE.notes[cr][cc].has(num));
+      return cands.length === 1 && cands[0][0] === r && cands[0][1] === c;
+    };
+    const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+    return isHS(Array.from({length:9},(_,j)=>[r,j])) ||
+           isHS(Array.from({length:9},(_,j)=>[j,c])) ||
+           isHS(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+  });
+  if (idx === -1) {
+    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    renderHighlights(); renderNumpad();
+    return;
+  }
+
+  const [tr, tc] = queue[idx];
+  const rest = queue.filter((_,i) => i !== idx);
+  const toEl = cellElements[tr][tc];
+
+  animateCellTravel(sourceEl, toEl, {
+    color: '#C084FC',
+    guard: () => gen === _nhGen && (STATE.settings.p4Mode || 0) >= 2 && !STATE.gameOver,
+    onArrive: () => {
+      if (STATE.notes) _animOwnNotesOnFill(tr, tc, 460, 200);
+      pushUndo();
+      STATE.puzzle[tr][tc] = num;
+      STATE.score += calculateCellPoints();
+      updateScoreDisplay();
+      STATE.streakCount++;
+      const prevCombo = STATE.comboMultiplier;
+      STATE.comboMultiplier = Math.floor(STATE.streakCount / 10) + 1;
+      if (STATE.comboMultiplier > prevCombo) {
+        const fill = document.getElementById('energy-bar-fill');
+        if (fill) {
+          fill.classList.add('streak-leveling');
+          setTimeout(() => { fill.classList.remove('streak-leveling'); updateEnergyBar(); }, 350);
+        }
+        _showMultiplierPopup(STATE.comboMultiplier);
+      } else {
+        updateEnergyBar();
+      }
+      const energyTable = ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil;
+      awardEnergy(energyTable.cell);
+      if ((STATE.settings.p0Mode || 0) >= 2 && STATE.notes && STATE.settings.autoRemoveNotes) {
+        const targets = getP0Targets(tr, tc);
+        if (targets.length) {
+          _p0Gen++;
+          const g = _p0Gen;
+          setTimeout(() => _processP0Wave(g, num, cellElements[tr][tc], targets), 60);
+        }
+      } else if (STATE.settings.autoRemoveNotes) {
+        if (STATE.notes) _animRemoveNoteWave(tr, tc, num);
+        removeRelatedNotes(tr, tc, num);
+      }
+      updateCellContent(tr, tc);
+      renderNumpad();
+      updateProgressBar();
+      renderHighlights();
+    },
+    onDone: () => {
+      setTimeout(() => checkCompletions(tr, tc), 80);
+      setTimeout(() => _checkCompletedUnits(tr, tc), 80);
+      let count = 0;
+      for (let rr=0;rr<9;rr++) for (let cc=0;cc<9;cc++) if (STATE.puzzle[rr][cc] === num) count++;
+      if (count === 9) setTimeout(() => celebrateDigit(num), 80);
+      checkWin();
+      if (rest.length) {
+        setTimeout(() => _processNhQueue(gen, num, toEl, rest), 280);
+      } else {
+        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        renderHighlights(); renderNumpad();
+      }
     },
   });
 }
@@ -5478,6 +5843,22 @@ function syncSettingsUI() {
   if (npToggle) {
     const v = s.nakedPairMode || 0;
     npToggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
+
+  /* P3 tri-toggle */
+  const p3Toggle = document.getElementById('cfg-p3Mode');
+  if (p3Toggle) {
+    const v = s.p3Mode || 0;
+    p3Toggle.querySelectorAll('.tri-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.val === v));
+  }
+
+  /* P4 tri-toggle */
+  const p4Toggle = document.getElementById('cfg-p4Mode');
+  if (p4Toggle) {
+    const v = s.p4Mode || 0;
+    p4Toggle.querySelectorAll('.tri-btn').forEach(b =>
       b.classList.toggle('active', +b.dataset.val === v));
   }
 
