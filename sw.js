@@ -1,5 +1,5 @@
-/* Service Worker — network-first para HTML, cache-first para assets — build:20250331-01 */
-const CACHE = 'sudoku-v82';
+/* Service Worker — network-first para HTML, cache-first para assets — build:20250331-02 */
+const CACHE = 'sudoku-v83';
 const ASSETS = [
   './index.html',
   './style.css',
