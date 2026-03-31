@@ -1399,32 +1399,34 @@ html, body {
 .cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
 .cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
 /* ── Note-removal powers: source/target/pulse ── */
-.cell.p2-source { background: #EDE9FE; }   /* P2 — Naked Pair    — violeta claro */
-.cell.p3-source { background: #DDD6FE; }   /* P3 — Naked Triple  — violeta médio */
-.cell.p4-source { background: #C4B5FD; }   /* P4 — Naked Quad    — violeta forte */
+.cell.p2-source { background: #DCFCE7; }   /* P2 — Naked Pair    — verde claro */
+.cell.p3-source { background: #BBF7D0; }   /* P3 — Naked Triple  — verde médio */
+.cell.p4-source { background: #86EFAC; }   /* P4 — Naked Quad    — verde forte */
 
-/* Target cells (uniform for all removal powers) */
-.cell.p-elim-target { background: #FEF2F2; }
-/* Only the specific note being eliminated gets red (set via p-elim-note class on the digit) */
-.note-digit.p-elim-note { color: #EF4444 !important; font-weight: 700; }
+/* Target cells (uniform for all removal powers) — fundo vermelho, sem dígito colorido */
+.cell.p-elim-target { background: #FEE2E2; }
 
 /* Source glow/pulse before animation */
 @keyframes p-source-pulse {
   0%   { box-shadow: none; }
-  40%  { box-shadow: inset 0 0 0 3px var(--p-glow, #F87171), 0 0 10px var(--p-glow, #F87171); }
+  40%  { box-shadow: inset 0 0 0 3px var(--p-glow, #4ADE80), 0 0 10px var(--p-glow, #4ADE80); }
   100% { box-shadow: none; }
 }
 .cell.p-source-glow { animation: p-source-pulse 0.55s ease-out forwards; }
 
 /* Target flash while note is leaving */
 @keyframes p-target-flash {
-  0%, 100% { background: #FEF2F2; }
-  50%       { background: #FECACA; }
+  0%, 100% { background: #FEE2E2; }
+  50%       { background: #FCA5A5; }
 }
 .cell.p-target-flash { animation: p-target-flash 0.45s ease-in-out; }
 
-/* ── P5 — Hidden Single ── */
-.cell.p5-single { background: #F5F3FF; box-shadow: inset 0 0 0 2px #C084FC; }  /* violeta claro */
+/* ── P5 — Hidden Single — pulso de fundo, sem borda ── */
+@keyframes p5-pulse {
+  0%, 100% { background: #F3E8FF; }
+  50%       { background: #E9D5FF; }
+}
+.cell.p5-single { animation: p5-pulse 1.1s ease-in-out infinite; }
 
 /* ── Animação genérica de viagem entre células ── */
 .cell-travel-particle {
