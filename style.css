@@ -1429,6 +1429,9 @@ html, body {
 }
 .feature-text { flex: 1; }
 
+/* ── F4 — zona das componentes do número ativo ── */
+.cell.zone-comp { background: #DCFCE7; }
+
 /* ── P0 — eliminar notas proibidas ── */
 .cell.p0-target { background: #CFFAFE; }  /* ciano claro */
 

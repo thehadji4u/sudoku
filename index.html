@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.91</span>
+      <span class="app-version">v1.92</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -333,6 +333,20 @@
         <div class="setting-info">
           <span class="feature-badge">4</span>
           <div class="feature-text">
+            <div class="setting-label">Indicar componentes do número</div>
+            <div class="setting-desc">Realça em verde as linhas, colunas e quadrantes onde o número selecionado já ocorre</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-showZoneComp">
+          <label class="toggle-track" for="cfg-showZoneComp"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge">5</span>
+          <div class="feature-text">
             <div class="setting-label">Remover anotações automaticamente</div>
             <div class="setting-desc">Apaga rascunhos nas componentes ao preencher uma célula</div>
           </div>
@@ -345,7 +359,7 @@
 
       <div class="setting-row">
         <div class="setting-info">
-          <span class="feature-badge">5</span>
+          <span class="feature-badge">6</span>
           <div class="feature-text">
             <div class="setting-label">Fixar número do dial (toque longo)</div>
             <div class="setting-desc">Segure um número no teclado para fixá-lo e destacar suas posições</div>
@@ -359,7 +373,7 @@
 
       <div class="setting-row">
         <div class="setting-info">
-          <span class="feature-badge">6</span>
+          <span class="feature-badge">7</span>
           <div class="feature-text">
             <div class="setting-label">Iniciar com todas as anotações</div>
             <div class="setting-desc">Preenche células vazias com 1–9; use P0 para eliminar as proibidas</div>
@@ -407,8 +421,23 @@
         <div class="setting-info">
           <span class="feature-badge power">P2</span>
           <div class="feature-text">
+            <div class="setting-label">Hidden Single</div>
+            <div class="setting-desc">Indica e/ou preenche células onde o número só cabe em uma posição da unidade. Executa após P1</div>
+          </div>
+        </div>
+        <div class="tri-toggle" id="cfg-p5Mode">
+          <button class="tri-btn active" data-val="0">Off</button>
+          <button class="tri-btn" data-val="1">Nv1</button>
+          <button class="tri-btn" data-val="2">Nv2</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge power">P3</span>
+          <div class="feature-text">
             <div class="setting-label">Naked Pair</div>
-            <div class="setting-desc">Indica e/ou elimina candidatos de pares nus. Executa após P1 não ter mais ações</div>
+            <div class="setting-desc">Indica e/ou elimina candidatos de pares nus. Executa após P2</div>
           </div>
         </div>
         <div class="tri-toggle" id="cfg-nakedPairMode">
@@ -420,10 +449,10 @@
 
       <div class="setting-row">
         <div class="setting-info">
-          <span class="feature-badge power">P3</span>
+          <span class="feature-badge power">P4</span>
           <div class="feature-text">
             <div class="setting-label">Naked Triple</div>
-            <div class="setting-desc">Indica e/ou elimina candidatos de triplos nus. Executa após P2</div>
+            <div class="setting-desc">Indica e/ou elimina candidatos de triplos nus. Executa após P3</div>
           </div>
         </div>
         <div class="tri-toggle" id="cfg-p3Mode">
@@ -435,28 +464,13 @@
 
       <div class="setting-row">
         <div class="setting-info">
-          <span class="feature-badge power">P4</span>
+          <span class="feature-badge power">P5</span>
           <div class="feature-text">
             <div class="setting-label">Naked Quad</div>
-            <div class="setting-desc">Indica e/ou elimina candidatos de quádruplos nus. Executa após P3</div>
+            <div class="setting-desc">Indica e/ou elimina candidatos de quádruplos nus. Executa após P4</div>
           </div>
         </div>
         <div class="tri-toggle" id="cfg-p4Mode">
-          <button class="tri-btn active" data-val="0">Off</button>
-          <button class="tri-btn" data-val="1">Nv1</button>
-          <button class="tri-btn" data-val="2">Nv2</button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="feature-badge power">P5</span>
-          <div class="feature-text">
-            <div class="setting-label">Hidden Single</div>
-            <div class="setting-desc">Indica e/ou preenche hidden singles. Executa após P4</div>
-          </div>
-        </div>
-        <div class="tri-toggle" id="cfg-p5Mode">
           <button class="tri-btn active" data-val="0">Off</button>
           <button class="tri-btn" data-val="1">Nv1</button>
           <button class="tri-btn" data-val="2">Nv2</button>

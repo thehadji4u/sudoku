@@ -18,6 +18,7 @@ const STATE = {
   notesDragAction: null,  // null|'add'|'remove' — direction for current drag
   fillNotes:   false,
   pinnedNum:   0,
+  selectedNum: 0,   // número selecionado no dial para preenchimento
 
   difficulty: '',
   errors:     0,
@@ -141,6 +142,7 @@ const STATE = {
     showSelZone:         true,
     showNoteMatch:       true,
     enableDialPin:       true,
+    showZoneComp:        false, // F4 — indica zonas do número nas componentes
     nakedSingleMode:     0,
     nakedPairMode:       0,
     p0Mode:              0,
@@ -417,12 +419,23 @@ function attachEvents() {
     handleCellClick(+cell.dataset.row, +cell.dataset.col);
   });
 
-  /* Numpad (delegação) — clique normal; long-press é tratado em attachNumpadLongPress */
+  /* Numpad — clique seleciona número para preenchimento; re-clique deseleciona */
   document.getElementById('numpad').addEventListener('click', e => {
     const btn = e.target.closest('[data-num]');
     if (!btn) return;
     if (_numpadLongPressed) { _numpadLongPressed = false; return; }
-    handleNumberInput(+btn.dataset.num);
+    const n = +btn.dataset.num;
+    if (n === 0) { handleNumberInput(0); return; }
+    if (btn.classList.contains('done')) return;
+    if (STATE.selectedNum === n) {
+      STATE.selectedNum = 0;  /* re-clique no mesmo → deseleciona */
+    } else {
+      STATE.selectedNum = n;
+    }
+    renderHighlights();
+    renderNumpad();
+    if (STATE.selectedNum > 0)
+      triggerPowerFunctions(STATE.selectedNum, btn);
   });
   attachNumpadLongPress();
 
@@ -982,7 +995,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'p2-source', 'p-elim-target', 'p0-target', 'p3-source', 'p4-source', 'p5-single', 'notes-drag-selected'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'p2-source', 'p-elim-target', 'p0-target', 'p3-source', 'p4-source', 'p5-single', 'notes-drag-selected', 'zone-comp'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -1058,9 +1071,26 @@ function renderHighlights() {
   /* ── Destaques de análise ── */
   renderAnalysisHighlights();
 
-  /* ── Poderes: P0 > P1 > P2 — só mostra o poder de menor índice com trabalho ── */
+  /* ── F4 — zonas do número ativo nas componentes ── */
+  /* ── Poderes: P0 > P1 > P2(hidden) > P3(pair) > P4(triple) > P5(quad) ── */
   const activeNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
+                  : STATE.selectedNum > 0 ? STATE.selectedNum
                   : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+
+  if (settings.showZoneComp && activeNum > 0) {
+    const zr = new Set(), zc = new Set(), zb = new Set();
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++)
+      if (puzzle[r][c] === activeNum) {
+        zr.add(r); zc.add(c); zb.add(Math.floor(r/3)*3+Math.floor(c/3));
+      }
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      if (puzzle[r][c] !== 0) continue;
+      const el = cellElements[r][c];
+      if (el.classList.contains('selected') || el.classList.contains('same-num')) continue;
+      if (zr.has(r) || zc.has(c) || zb.has(Math.floor(r/3)*3+Math.floor(c/3)))
+        el.classList.add('zone-comp');
+    }
+  }
 
   /* P0 — eliminar notas proibidas nas componentes da célula selecionada */
   const p0Targets = ((settings.p0Mode || 0) >= 1 && sr >= 0 && sc >= 0 && puzzle[sr][sc] > 0)
@@ -1091,11 +1121,23 @@ function renderHighlights() {
     });
   }
 
-  /* P2 — naked pair */
+  /* P2 — hidden single (nova posição: fill antes de eliminação) */
   const p1Active = !p0Active && nsMode >= 1 && activeNum > 0 &&
                    (getNakedSinglesForNum(activeNum).length > 0 || getNoteNakedsForNum(activeNum).length > 0);
+  const hsMode = settings.p5Mode || 0;  // hidden single usa p5Mode key
+  if (!p0Active && !p1Active && hsMode >= 1 && STATE.puzzle && activeNum > 0) {
+    getHiddenSinglesForNum(activeNum).forEach(([r, c]) => {
+      const el = cellElements[r][c];
+      if (!el.classList.contains('selected'))
+        el.classList.add('p5-single');  /* mantém visual pulse violeta */
+    });
+  }
+
+  /* P3 — naked pair */
+  const p2Active = !p0Active && !p1Active && hsMode >= 1 && activeNum > 0 &&
+                   getHiddenSinglesForNum(activeNum).length > 0;
   const npMode = settings.nakedPairMode || 0;
-  if (!p0Active && !p1Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
+  if (!p0Active && !p1Active && !p2Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
     getNakedPairsForNum(activeNum).forEach(({pair, targets}) => {
       if (!targets.length) return;
       pair.forEach(([r, c]) => {
@@ -1111,11 +1153,11 @@ function renderHighlights() {
     });
   }
 
-  /* P3 — naked triple */
-  const p2Active = !p0Active && !p1Active && npMode >= 1 && activeNum > 0 &&
+  /* P4 — naked triple */
+  const p3Active = !p0Active && !p1Active && !p2Active && npMode >= 1 && activeNum > 0 &&
                    getNakedPairsForNum(activeNum).some(({targets}) => targets.length > 0);
-  const p3Mode = settings.p3Mode || 0;
-  if (!p0Active && !p1Active && !p2Active && p3Mode >= 1 && STATE.puzzle && activeNum > 0) {
+  const ntMode = settings.p3Mode || 0;
+  if (!p0Active && !p1Active && !p2Active && !p3Active && ntMode >= 1 && STATE.puzzle && activeNum > 0) {
     getNakedTriplesForNum(activeNum).forEach(({sourceCells, targets}) => {
       sourceCells.forEach(([r,c]) => {
         const el = cellElements[r][c];
@@ -1129,11 +1171,11 @@ function renderHighlights() {
     });
   }
 
-  /* P4 — naked quad */
-  const p3Active = !p0Active && !p1Active && !p2Active && p3Mode >= 1 && activeNum > 0 &&
+  /* P5 — naked quad */
+  const p4Active = !p0Active && !p1Active && !p2Active && !p3Active && ntMode >= 1 && activeNum > 0 &&
                    getNakedTriplesForNum(activeNum).length > 0;
-  const p4Mode = settings.p4Mode || 0;
-  if (!p0Active && !p1Active && !p2Active && !p3Active && p4Mode >= 1 && STATE.puzzle && activeNum > 0) {
+  const nqMode = settings.p4Mode || 0;
+  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && nqMode >= 1 && STATE.puzzle && activeNum > 0) {
     getNakedQuadsForNum(activeNum).forEach(({sourceCells, targets}) => {
       sourceCells.forEach(([r,c]) => {
         const el = cellElements[r][c];
@@ -1144,18 +1186,6 @@ function renderHighlights() {
         if (!el.classList.contains('selected') && !el.classList.contains('p4-source'))
           el.classList.add('p-elim-target');
       });
-    });
-  }
-
-  /* P5 — hidden single */
-  const p4Active = !p0Active && !p1Active && !p2Active && !p3Active && p4Mode >= 1 && activeNum > 0 &&
-                   getNakedQuadsForNum(activeNum).length > 0;
-  const p5Mode = settings.p5Mode || 0;
-  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && p5Mode >= 1 && STATE.puzzle && activeNum > 0) {
-    getHiddenSinglesForNum(activeNum).forEach(([r, c]) => {
-      const el = cellElements[r][c];
-      if (!el.classList.contains('selected'))
-        el.classList.add('p5-single');
     });
   }
 
@@ -1194,7 +1224,8 @@ function renderNumpad() {
     if (digitEl) digitEl.textContent = done ? '✓' : n;
     else btn.textContent = done ? '✓' : n;
     btn.classList.toggle('done', done);
-    btn.classList.toggle('selected-num', n === selVal && selVal > 0 && !done);
+    const activeDisplayNum = STATE.selectedNum > 0 ? STATE.selectedNum : selVal;
+    btn.classList.toggle('selected-num', n === activeDisplayNum && activeDisplayNum > 0 && !done);
     btn.classList.toggle('pinned', n === STATE.pinnedNum && STATE.pinnedNum > 0 && !done);
     const poolEl = btn.querySelector('.num-bar-pool');
     _updateDialBar(btn.querySelector('.num-bar-power'), count[n] / 9 * 100);
@@ -1220,14 +1251,31 @@ function _updateDialBar(el, pct) {
 ═══════════════════════════════════════ */
 function handleCellClick(r, c) {
   if (STATE.paused) return;
+
+  /* Modo preenchimento: número selecionado no dial → clique aplica na célula */
+  if (STATE.selectedNum > 0 && STATE.puzzle) {
+    STATE.selectedRow = r;
+    STATE.selectedCol = c;
+    const n = STATE.selectedNum;
+    if (STATE.notesMode) {
+      doToggleNote(r, c, n);
+    } else if (!STATE.givens.has(`${r},${c}`) &&
+               (STATE.puzzle[r][c] === 0 ||
+                STATE.simulator.active ||
+                STATE.puzzle[r][c] !== STATE.solution[r][c])) {
+      handleNumberInput(n);
+    }
+    return;
+  }
+
+  /* Modo navegação: sem número selecionado → clique seleciona célula para visualização */
   if (STATE.selectedRow === r && STATE.selectedCol === c) {
-    /* Clique na mesma célula: deseleciona */
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
   } else {
     STATE.selectedRow = r;
     STATE.selectedCol = c;
-    /* Simulator pin-click: auto-fill if cell has pinned number as note */
+    /* Simulator pin-click */
     if (STATE.simulator.active && STATE.pinnedNum > 0 &&
         STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(STATE.pinnedNum)) {
       handleNumberInput(STATE.pinnedNum);
@@ -1236,7 +1284,6 @@ function handleCellClick(r, c) {
   }
   renderHighlights();
   renderNumpad();
-  /* Poderes P1/P2 — seleção de célula */
   if (STATE.selectedRow === r && STATE.selectedCol === c) {
     const pNum = STATE.puzzle[r][c] > 0 ? STATE.puzzle[r][c] : STATE.pinnedNum;
     if (pNum > 0) triggerPowerFunctions(pNum, cellElements[r][c]);
@@ -2432,10 +2479,10 @@ function triggerPowerFunctions(num, sourceEl) {
   if (!STATE.puzzle || !num || STATE.gameOver) return;
   const p0 = STATE.settings.p0Mode          || 0;
   const p1 = STATE.settings.nakedSingleMode || 0;
-  const p2 = STATE.settings.nakedPairMode   || 0;
-  const p3 = STATE.settings.p3Mode          || 0;
-  const p4 = STATE.settings.p4Mode          || 0;
-  const p5 = STATE.settings.p5Mode          || 0;
+  const p2 = STATE.settings.p5Mode          || 0;  // P2 = hidden single
+  const p3 = STATE.settings.nakedPairMode   || 0;  // P3 = naked pair
+  const p4 = STATE.settings.p3Mode          || 0;  // P4 = naked triple
+  const p5 = STATE.settings.p4Mode          || 0;  // P5 = naked quad
 
   /* P0: requer célula selecionada com esse número preenchido */
   if (p0 >= 2 && STATE.settings.autoRemoveNotes) {
@@ -2444,22 +2491,27 @@ function triggerPowerFunctions(num, sourceEl) {
       if (getP0Targets(sr, sc).length) { triggerP0Elim(sr, sc, sourceEl); return; }
     }
   }
+  /* P1 — naked single */
   if (p1 >= 2) {
     const hasWork = getNakedSinglesForNum(num).length > 0 ||
                     getNoteNakedsForNum(num).length  > 0;
     if (hasWork) { triggerNakedSingleFill(num, sourceEl); return; }
   }
+  /* P2 — hidden single (fill before elimination powers) */
   if (p2 >= 2) {
+    if (getHiddenSinglesForNum(num).length > 0) { triggerHiddenSingleFill(num, sourceEl); return; }
+  }
+  /* P3 — naked pair */
+  if (p3 >= 2) {
     if (getNakedPairsForNum(num).length > 0) { triggerNakedPairElim(num, sourceEl); return; }
   }
-  if (p3 >= 2) {
+  /* P4 — naked triple */
+  if (p4 >= 2) {
     if (getNakedTriplesForNum(num).length > 0) { triggerNakedTripleElim(num, sourceEl); return; }
   }
-  if (p4 >= 2) {
-    if (getNakedQuadsForNum(num).length > 0) { triggerNakedQuadElim(num, sourceEl); return; }
-  }
+  /* P5 — naked quad */
   if (p5 >= 2) {
-    if (getHiddenSinglesForNum(num).length > 0) { triggerHiddenSingleFill(num, sourceEl); return; }
+    if (getNakedQuadsForNum(num).length > 0) { triggerNakedQuadElim(num, sourceEl); return; }
   }
 }
 
@@ -2573,7 +2625,6 @@ function _isOnlyNSCandidate(r, c, n) {
 function triggerNakedSingleFill(num, sourceEl) {
   _nsGen++;
   const gen = _nsGen;
-  STATE.pinnedNum = num;  // mantém activeNum = num durante toda a animação
   /* board-logic nakeds (amber) + note-based nakeds não duplicados (laranja) */
   const boardSet = new Set(getNakedSinglesForNum(num).map(([r,c]) => r+','+c));
   const boardCells = getNakedSinglesForNum(num).map(([r,c]) => [r,c,'#F59E0B']);
@@ -3004,16 +3055,24 @@ function _processNqQueue(gen, num, sourceEl, queue) {
    HIDDEN SINGLE — P5
 ═══════════════════════════════════════ */
 
-/** Returns cells where n is a hidden single (only candidate in a unit) */
+/** True se n pode ser colocado em (r,c) pela lógica do tabuleiro (sem usar notas) */
+function _isBoardCandidate(r, c, n) {
+  if (!STATE.puzzle || STATE.puzzle[r][c] !== 0) return false;
+  for (let j = 0; j < 9; j++) if (j !== c && STATE.puzzle[r][j] === n) return false;
+  for (let i = 0; i < 9; i++) if (i !== r && STATE.puzzle[i][c] === n) return false;
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let i = br; i < br+3; i++) for (let j = bc; j < bc+3; j++)
+    if ((i !== r || j !== c) && STATE.puzzle[i][j] === n) return false;
+  return true;
+}
+
+/** Returns cells where n is a hidden single (only board-logic candidate in a unit) */
 function getHiddenSinglesForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
+  if (!STATE.puzzle) return [];
   const found = new Set();
   const checkGroup = (cells) => {
-    const cands = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
-    if (cands.length === 1) {
-      const [r, c] = cands[0];
-      found.add(r+','+c);
-    }
+    const cands = cells.filter(([r,c]) => _isBoardCandidate(r, c, n));
+    if (cands.length === 1) found.add(cands[0][0]+','+cands[0][1]);
   };
   for (let i=0;i<9;i++) {
     checkGroup(Array.from({length:9},(_,j)=>[i,j]));
@@ -3027,7 +3086,6 @@ function getHiddenSinglesForNum(n) {
 function triggerHiddenSingleFill(num, sourceEl) {
   _nhGen++;
   const gen = _nhGen;
-  STATE.pinnedNum = num;  // mantém activeNum = num durante toda a animação
   const cells = getHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
   if (!cells.length) return;
   setTimeout(() => _processNhQueue(gen, num, sourceEl, cells), 320);
@@ -3037,11 +3095,10 @@ function _processNhQueue(gen, num, sourceEl, queue) {
   if (gen !== _nhGen || (STATE.settings.p5Mode || 0) < 2 || !queue.length || STATE.gameOver) return;
 
   const idx = queue.findIndex(([r,c]) => {
-    if (STATE.puzzle[r][c] !== 0) return false;
-    if (!STATE.notes[r][c].has(num)) return false;
-    /* re-validate hidden single in at least one unit */
+    if (!_isBoardCandidate(r, c, num)) return false;
+    /* re-valida: único candidato board-logic na unidade */
     const isHS = (cells) => {
-      const cands = cells.filter(([cr,cc]) => STATE.puzzle[cr][cc] === 0 && STATE.notes[cr][cc].has(num));
+      const cands = cells.filter(([cr,cc]) => _isBoardCandidate(cr, cc, num));
       return cands.length === 1 && cands[0][0] === r && cands[0][1] === c;
     };
     const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
