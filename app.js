@@ -1177,15 +1177,13 @@ function renderNumpad() {
       for (let c = 0; c < 9; c++)
         if (STATE.puzzle[r][c]) count[STATE.puzzle[r][c]]++;
 
-  /* Pool: células preenchidas + células com anotação, por número (0-81) */
-  const poolUsed = new Array(10).fill(0);
+  /* Pool: apenas células anotadas com o número (escala 0-72) */
+  const noteCount = new Array(10).fill(0);
   if (STATE.puzzle && STATE.notes)
     for (let r = 0; r < 9; r++)
-      for (let c = 0; c < 9; c++) {
-        const v = STATE.puzzle[r][c];
-        if (v > 0) poolUsed[v]++;
-        else STATE.notes[r][c].forEach(n => poolUsed[n]++);
-      }
+      for (let c = 0; c < 9; c++)
+        if (STATE.puzzle[r][c] === 0)
+          STATE.notes[r][c].forEach(n => noteCount[n]++);
 
   const selVal = (STATE.selectedRow >= 0) ? STATE.puzzle[STATE.selectedRow][STATE.selectedCol] : 0;
 
@@ -1198,8 +1196,10 @@ function renderNumpad() {
     btn.classList.toggle('done', done);
     btn.classList.toggle('selected-num', n === selVal && selVal > 0 && !done);
     btn.classList.toggle('pinned', n === STATE.pinnedNum && STATE.pinnedNum > 0 && !done);
+    const poolEl = btn.querySelector('.num-bar-pool');
     _updateDialBar(btn.querySelector('.num-bar-power'), count[n] / 9 * 100);
-    _updateDialBar(btn.querySelector('.num-bar-pool'),  poolUsed[n] / 81 * 100);
+    _updateDialBar(poolEl, noteCount[n] / 72 * 100);
+    if (poolEl) poolEl.classList.toggle('bar-overload', noteCount[n] > 72);
   });
 }
 
