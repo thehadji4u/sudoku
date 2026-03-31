@@ -1198,7 +1198,7 @@ function renderNumpad() {
     btn.classList.toggle('pinned', n === STATE.pinnedNum && STATE.pinnedNum > 0 && !done);
     const poolEl = btn.querySelector('.num-bar-pool');
     _updateDialBar(btn.querySelector('.num-bar-power'), count[n] / 9 * 100);
-    _updateDialBar(poolEl, noteCount[n] / 72 * 100);
+    _updateDialBar(poolEl, (72 - noteCount[n]) / 72 * 100);
     if (poolEl) poolEl.classList.toggle('bar-overload', noteCount[n] > 72);
   });
 }
