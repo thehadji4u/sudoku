@@ -314,7 +314,12 @@ function buildNumpad() {
     const btn = document.createElement('button');
     btn.className = 'num-btn';
     btn.dataset.num = n;
-    btn.textContent = n;
+    btn.innerHTML =
+      `<span class="num-digit">${n}</span>` +
+      `<div class="num-bars">` +
+        `<div class="num-bar-wrap"><div class="num-bar-fill num-bar-power" style="width:0%"></div></div>` +
+        `<div class="num-bar-wrap"><div class="num-bar-fill num-bar-pool"  style="width:0%"></div></div>` +
+      `</div>`;
     pad.appendChild(btn);
   }
 }
@@ -1167,20 +1172,47 @@ function renderHighlights() {
 function renderNumpad() {
   /* Conta quantas vezes cada dígito aparece no puzzle */
   const count = new Array(10).fill(0);
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (STATE.puzzle[r][c]) count[STATE.puzzle[r][c]]++;
+  if (STATE.puzzle)
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (STATE.puzzle[r][c]) count[STATE.puzzle[r][c]]++;
+
+  /* Pool: células preenchidas + células com anotação, por número (0-81) */
+  const poolUsed = new Array(10).fill(0);
+  if (STATE.puzzle && STATE.notes)
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++) {
+        const v = STATE.puzzle[r][c];
+        if (v > 0) poolUsed[v]++;
+        else STATE.notes[r][c].forEach(n => poolUsed[n]++);
+      }
 
   const selVal = (STATE.selectedRow >= 0) ? STATE.puzzle[STATE.selectedRow][STATE.selectedCol] : 0;
 
   document.querySelectorAll('.num-btn').forEach(btn => {
     const n = +btn.dataset.num;
     const done = count[n] >= 9;
-    btn.textContent = done ? '✓' : n;
+    const digitEl = btn.querySelector('.num-digit');
+    if (digitEl) digitEl.textContent = done ? '✓' : n;
+    else btn.textContent = done ? '✓' : n;
     btn.classList.toggle('done', done);
     btn.classList.toggle('selected-num', n === selVal && selVal > 0 && !done);
     btn.classList.toggle('pinned', n === STATE.pinnedNum && STATE.pinnedNum > 0 && !done);
+    _updateDialBar(btn.querySelector('.num-bar-power'), count[n] / 9 * 100);
+    _updateDialBar(btn.querySelector('.num-bar-pool'),  poolUsed[n] / 81 * 100);
   });
+}
+
+function _updateDialBar(el, pct) {
+  if (!el) return;
+  const next = Math.min(Math.round(pct * 10) / 10, 100);
+  const prev = parseFloat(el.dataset.pct || '-1');
+  if (Math.abs(prev - next) < 0.1) return;
+  el.dataset.pct = next;
+  el.style.width = next + '%';
+  el.classList.remove('bar-pulse');
+  void el.offsetWidth; /* força reflow para re-disparar animação */
+  el.classList.add('bar-pulse');
 }
 
 /* ═══════════════════════════════════════
@@ -1247,6 +1279,7 @@ function handleNumberInput(num) {
         updateCellContent(dr, dc);
       });
       renderHighlights();
+      renderNumpad();
     } else {
       doToggleNote(r, c, num);
     }
@@ -1429,7 +1462,8 @@ function doToggleNote(r, c, num, skipAnim) {
   if (willAdd) { notes.add(num); if (!skipAnim) _animNoteAdd(r, c, num); }
   else         { notes.delete(num); if (!skipAnim) _animNoteRemove(r, c, num); }
   updateCellContent(r, c);
-  renderHighlights(); /* re-aplica classes de seleção/destaque na célula */
+  renderHighlights();
+  renderNumpad();
 }
 
 function handleUndo() {
