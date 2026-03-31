@@ -1399,13 +1399,14 @@ html, body {
 .cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
 .cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
 /* ── Note-removal powers: source/target/pulse ── */
-.cell.p2-source { background: #FFF1F2; }   /* P2 — Naked Pair    (intensidade 1) */
-.cell.p3-source { background: #FEE2E2; }   /* P3 — Naked Triple  (intensidade 2) */
-.cell.p4-source { background: #FECACA; }   /* P4 — Naked Quad    (intensidade 3) */
+.cell.p2-source { background: #EDE9FE; }   /* P2 — Naked Pair    — violeta claro */
+.cell.p3-source { background: #DDD6FE; }   /* P3 — Naked Triple  — violeta médio */
+.cell.p4-source { background: #C4B5FD; }   /* P4 — Naked Quad    — violeta forte */
 
 /* Target cells (uniform for all removal powers) */
 .cell.p-elim-target { background: #FEF2F2; }
-.cell.p-elim-target .note-digit.active { color: #EF4444 !important; }
+/* Only the specific note being eliminated gets red (set via p-elim-note class on the digit) */
+.note-digit.p-elim-note { color: #EF4444 !important; font-weight: 700; }
 
 /* Source glow/pulse before animation */
 @keyframes p-source-pulse {

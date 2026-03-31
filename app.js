@@ -980,6 +980,7 @@ function renderHighlights() {
         'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'p2-source', 'p-elim-target', 'p0-target', 'p3-source', 'p4-source', 'p5-single', 'notes-drag-selected'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
+  document.querySelectorAll('.note-digit.p-elim-note').forEach(s => s.classList.remove('p-elim-note'));
 
   /* Aplica destaques do número fixado por long-press (sempre, mesmo sem seleção) */
   if (STATE.pinnedNum > 0) {
@@ -1100,8 +1101,11 @@ function renderHighlights() {
       });
       targets.forEach(([r, c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('p2-source'))
+        if (!el.classList.contains('selected') && !el.classList.contains('p2-source')) {
           el.classList.add('p-elim-target');
+          const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+          if (noteEl) noteEl.classList.add('p-elim-note');
+        }
       });
     });
   }
@@ -1118,8 +1122,11 @@ function renderHighlights() {
       });
       targets.forEach(([r,c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('p3-source'))
+        if (!el.classList.contains('selected') && !el.classList.contains('p3-source')) {
           el.classList.add('p-elim-target');
+          const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+          if (noteEl) noteEl.classList.add('p-elim-note');
+        }
       });
     });
   }
@@ -1136,8 +1143,11 @@ function renderHighlights() {
       });
       targets.forEach(([r,c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('p4-source'))
+        if (!el.classList.contains('selected') && !el.classList.contains('p4-source')) {
           el.classList.add('p-elim-target');
+          const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+          if (noteEl) noteEl.classList.add('p-elim-note');
+        }
       });
     });
   }
@@ -2659,7 +2669,7 @@ function getNakedPairsForNum(n) {
           const targets = cells.filter(([r,c]) =>
             (r !== r1 || c !== c1) && (r !== r2 || c !== c2) &&
             STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
-          results.push({ pair: [[r1,c1],[r2,c2]], targets });
+          if (targets.length) results.push({ pair: [[r1,c1],[r2,c2]], targets });
         }
       }
     }
@@ -2697,7 +2707,7 @@ function triggerNakedPairElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p2-source');
-    el.style.setProperty('--p-glow', '#FCA5A5');
+    el.style.setProperty('--p-glow', '#A78BFA');
     el.classList.add('p-source-glow');
   });
 
@@ -2707,7 +2717,13 @@ function triggerNakedPairElim(num, fallbackEl) {
   pairs.forEach(({targets}) => {
     targets.forEach(([r,c]) => {
       const key = r+','+c;
-      if (!seen.has(key)) { seen.add(key); queue.push([r,c]); cellElements[r][c].classList.add('p-elim-target'); }
+      if (!seen.has(key)) {
+        seen.add(key); queue.push([r,c]);
+        const tEl = cellElements[r][c];
+        tEl.classList.add('p-elim-target');
+        const noteEl = tEl.querySelector(`.note-digit[data-note="${num}"]`);
+        if (noteEl) noteEl.classList.add('p-elim-note');
+      }
     });
   });
   if (!queue.length) return;
@@ -2736,7 +2752,7 @@ function _processNpQueue(gen, num, sourceEl, queue) {
   fromEl.classList.add('p-target-flash');
 
   animateCellTravel(fromEl, dial || sourceEl, {
-    color: '#FCA5A5',
+    color: '#A78BFA',
     guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
@@ -2834,7 +2850,7 @@ function triggerNakedTripleElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p3-source');
-    el.style.setProperty('--p-glow', '#F87171');
+    el.style.setProperty('--p-glow', '#8B5CF6');
     el.classList.add('p-source-glow');
   });
 
@@ -2843,7 +2859,13 @@ function triggerNakedTripleElim(num, fallbackEl) {
   triples.forEach(({targets}) => {
     targets.forEach(([r,c]) => {
       const key = r+','+c;
-      if (!seen.has(key)) { seen.add(key); queue.push([r,c]); cellElements[r][c].classList.add('p-elim-target'); }
+      if (!seen.has(key)) {
+        seen.add(key); queue.push([r,c]);
+        const tEl = cellElements[r][c];
+        tEl.classList.add('p-elim-target');
+        const noteEl = tEl.querySelector(`.note-digit[data-note="${num}"]`);
+        if (noteEl) noteEl.classList.add('p-elim-note');
+      }
     });
   });
   if (!queue.length) return;
@@ -2872,7 +2894,7 @@ function _processNtQueue(gen, num, sourceEl, queue) {
   fromEl.classList.add('p-target-flash');
 
   animateCellTravel(fromEl, dial || sourceEl, {
-    color: '#F87171',
+    color: '#8B5CF6',
     guard: () => gen === _ntGen && (STATE.settings.p3Mode || 0) >= 2 && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
@@ -2902,7 +2924,7 @@ function triggerNakedQuadElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p4-source');
-    el.style.setProperty('--p-glow', '#EF4444');
+    el.style.setProperty('--p-glow', '#7C3AED');
     el.classList.add('p-source-glow');
   });
 
@@ -2911,7 +2933,13 @@ function triggerNakedQuadElim(num, fallbackEl) {
   quads.forEach(({targets}) => {
     targets.forEach(([r,c]) => {
       const key = r+','+c;
-      if (!seen.has(key)) { seen.add(key); queue.push([r,c]); cellElements[r][c].classList.add('p-elim-target'); }
+      if (!seen.has(key)) {
+        seen.add(key); queue.push([r,c]);
+        const tEl = cellElements[r][c];
+        tEl.classList.add('p-elim-target');
+        const noteEl = tEl.querySelector(`.note-digit[data-note="${num}"]`);
+        if (noteEl) noteEl.classList.add('p-elim-note');
+      }
     });
   });
   if (!queue.length) return;
@@ -2940,7 +2968,7 @@ function _processNqQueue(gen, num, sourceEl, queue) {
   fromEl.classList.add('p-target-flash');
 
   animateCellTravel(fromEl, dial || sourceEl, {
-    color: '#EF4444',
+    color: '#7C3AED',
     guard: () => gen === _nqGen && (STATE.settings.p4Mode || 0) >= 2 && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
