@@ -2539,7 +2539,7 @@ function _isOnlyNSCandidate(r, c, n) {
 function triggerNakedSingleFill(num, sourceEl) {
   _nsGen++;
   const gen = _nsGen;
-  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+  STATE.pinnedNum = num;  // mantém activeNum = num durante toda a animação
   /* board-logic nakeds (amber) + note-based nakeds não duplicados (laranja) */
   const boardSet = new Set(getNakedSinglesForNum(num).map(([r,c]) => r+','+c));
   const boardCells = getNakedSinglesForNum(num).map(([r,c]) => [r,c,'#F59E0B']);
@@ -2623,7 +2623,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pinnedNum = 0;  // limpa pin, mas mantém célula selecionada
         renderHighlights(); renderNumpad();
       }
     },
@@ -2993,7 +2993,7 @@ function getHiddenSinglesForNum(n) {
 function triggerHiddenSingleFill(num, sourceEl) {
   _nhGen++;
   const gen = _nhGen;
-  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+  STATE.pinnedNum = num;  // mantém activeNum = num durante toda a animação
   const cells = getHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
   if (!cells.length) return;
   setTimeout(() => _processNhQueue(gen, num, sourceEl, cells), 320);
@@ -3016,7 +3016,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
            isHS(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
   });
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pinnedNum = 0;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3075,7 +3075,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNhQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pinnedNum = 0;  // limpa pin, mantém célula selecionada
         renderHighlights(); renderNumpad();
       }
     },
