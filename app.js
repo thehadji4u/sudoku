@@ -2623,7 +2623,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0;  // limpa pin, mas mantém célula selecionada
+        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3016,7 +3016,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
            isHS(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
   });
   if (idx === -1) {
-    STATE.pinnedNum = 0;
+    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3075,7 +3075,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNhQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0;  // limpa pin, mantém célula selecionada
+        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
         renderHighlights(); renderNumpad();
       }
     },
