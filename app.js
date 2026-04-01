@@ -1135,6 +1135,8 @@ function renderHighlights() {
   if (activeNum === 0 && sr < 0) return;
 
   if (STATE.pnHighlightsPaused) {
+    const indicatorEl = document.getElementById('active-pn-indicator');
+    if (indicatorEl) indicatorEl.textContent = '';
     const execBtn = document.getElementById('btn-power-exec');
     if (execBtn) { execBtn.classList.add('hidden'); execBtn._execFn = null; }
   } else {
@@ -1190,8 +1192,9 @@ function renderHighlights() {
                    (getHiddenSinglesForNum(activeNum).length > 0 || getNoteHiddenSinglesForNum(activeNum).length > 0);
   const npMode = settings.nakedPairMode || 0;
   if (!p0Active && !p1Active && !p2Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
-    getNakedPairsForNum(activeNum).forEach(({pair, targets}) => {
-      if (!targets.length) return;
+    const pairs = getNakedPairsForNum(activeNum).filter(p => p.targets.length > 0);
+    if (pairs.length > 0) {
+      const {pair, targets} = pairs[0];
       pair.forEach(([r, c]) => {
         const el = cellElements[r][c];
         if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
@@ -1202,7 +1205,7 @@ function renderHighlights() {
         if (!el.classList.contains('selected') && !el.classList.contains('p2-source'))
           el.classList.add('p-elim-target');
       });
-    });
+    }
   }
 
   /* P4 — naked triple */
@@ -1210,7 +1213,9 @@ function renderHighlights() {
                    getNakedPairsForNum(activeNum).some(({targets}) => targets.length > 0);
   const ntMode = settings.p3Mode || 0;
   if (!p0Active && !p1Active && !p2Active && !p3Active && ntMode >= 1 && STATE.puzzle && activeNum > 0) {
-    getNakedTriplesForNum(activeNum).forEach(({sourceCells, targets}) => {
+    const triples = getNakedTriplesForNum(activeNum).filter(t => t.targets.length > 0);
+    if (triples.length > 0) {
+      const {sourceCells, targets} = triples[0];
       sourceCells.forEach(([r,c]) => {
         const el = cellElements[r][c];
         if (!el.classList.contains('selected')) el.classList.add('p3-source');
@@ -1220,15 +1225,17 @@ function renderHighlights() {
         if (!el.classList.contains('selected') && !el.classList.contains('p3-source'))
           el.classList.add('p-elim-target');
       });
-    });
+    }
   }
 
   /* P5 — naked quad */
   const p4Active = !p0Active && !p1Active && !p2Active && !p3Active && ntMode >= 1 && activeNum > 0 &&
-                   getNakedTriplesForNum(activeNum).length > 0;
+                   getNakedTriplesForNum(activeNum).some(({targets}) => targets.length > 0);
   const nqMode = settings.p4Mode || 0;
   if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && nqMode >= 1 && STATE.puzzle && activeNum > 0) {
-    getNakedQuadsForNum(activeNum).forEach(({sourceCells, targets}) => {
+    const quads = getNakedQuadsForNum(activeNum).filter(q => q.targets.length > 0);
+    if (quads.length > 0) {
+      const {sourceCells, targets} = quads[0];
       sourceCells.forEach(([r,c]) => {
         const el = cellElements[r][c];
         if (!el.classList.contains('selected')) el.classList.add('p4-source');
@@ -1238,36 +1245,62 @@ function renderHighlights() {
         if (!el.classList.contains('selected') && !el.classList.contains('p4-source'))
           el.classList.add('p-elim-target');
       });
-    });
+    }
   }
 
-  /* Botão "Executar" — aparece quando Pn está no nível 1 e tem trabalho visível */
+  /* Indicadores e botão Executar */
   {
+    let pnLabel = '';
+    const p5Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active &&
+                     nqMode >= 1 && activeNum > 0 &&
+                     getNakedQuadsForNum(activeNum).some(({targets}) => targets.length > 0);
+    
+    if (activeNum > 0 && !STATE.gameOver) {
+      if (p0Active) {
+        const q = p0Targets.length;
+        if (q > 0) pnLabel = q > 1 ? `${q} x Auto-Remoção` : `Auto-Remoção`;
+      } else if (p1Active) {
+        const q = getNakedSinglesForNum(activeNum).length + getNoteNakedsForNum(activeNum).length;
+        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Single` : `Naked Single`;
+      } else if (p2Active) {
+        const q = getHiddenSinglesForNum(activeNum).length + getNoteHiddenSinglesForNum(activeNum).length;
+        if (q > 0) pnLabel = q > 1 ? `${q} x Hidden Single` : `Hidden Single`;
+      } else if (p3Active) {
+        const q = getNakedPairsForNum(activeNum).filter(p => p.targets.length > 0).length;
+        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Pair` : `Naked Pair`;
+      } else if (p4Active) {
+        const q = getNakedTriplesForNum(activeNum).filter(t => t.targets.length > 0).length;
+        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Triple` : `Naked Triple`;
+      } else if (p5Active) {
+        const q = getNakedQuadsForNum(activeNum).filter(qd => qd.targets.length > 0).length;
+        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Quad` : `Naked Quad`;
+      }
+    }
+    const indicatorEl = document.getElementById('active-pn-indicator');
+    if (indicatorEl) indicatorEl.textContent = pnLabel;
+
     const execBtn = document.getElementById('btn-power-exec');
     if (execBtn) {
-      const p5Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active &&
-                       nqMode >= 1 && activeNum > 0 &&
-                       getNakedQuadsForNum(activeNum).some(({targets}) => targets.length > 0);
-      let execFn = null, execLabel = null;
+      let execFn = null, execLabelText = null;
       if (activeNum > 0 && !STATE.gameOver) {
         const nbtn = document.querySelector(`[data-num="${activeNum}"]`);
         if (p0Active && (settings.p0Mode || 0) === 1) {
           const _sr = STATE.selectedRow, _sc = STATE.selectedCol;
-          execLabel = 'P0'; execFn = () => triggerP0Elim(_sr, _sc, nbtn);
+          execLabelText = 'P0'; execFn = () => triggerP0Elim(_sr, _sc, nbtn);
         } else if (p1Active && (settings.nakedSingleMode || 0) === 1) {
-          execLabel = 'P1'; execFn = () => triggerNakedSingleFill(activeNum, nbtn);
+          execLabelText = 'P1'; execFn = () => triggerNakedSingleFill(activeNum, nbtn);
         } else if (p2Active && (settings.p5Mode || 0) === 1) {
-          execLabel = 'P2'; execFn = () => triggerHiddenSingleFill(activeNum, nbtn);
+          execLabelText = 'P2'; execFn = () => triggerHiddenSingleFill(activeNum, nbtn);
         } else if (p3Active && (settings.nakedPairMode || 0) === 1) {
-          execLabel = 'P3'; execFn = () => triggerNakedPairElim(activeNum, nbtn);
+          execLabelText = 'P3'; execFn = () => triggerNakedPairElim(activeNum, nbtn);
         } else if (p4Active && (settings.p3Mode || 0) === 1) {
-          execLabel = 'P4'; execFn = () => triggerNakedTripleElim(activeNum, nbtn);
+          execLabelText = 'P4'; execFn = () => triggerNakedTripleElim(activeNum, nbtn);
         } else if (p5Active && (settings.p4Mode || 0) === 1) {
-          execLabel = 'P5'; execFn = () => triggerNakedQuadElim(activeNum, nbtn);
+          execLabelText = 'P5'; execFn = () => triggerNakedQuadElim(activeNum, nbtn);
         }
       }
       if (execFn) {
-        execBtn.textContent = `⚡ Executar ${execLabel}`;
+        execBtn.textContent = `⚡ Executar ${execLabelText}`;
         execBtn.classList.remove('hidden');
         execBtn._execFn = execFn;
       } else {
@@ -2358,10 +2391,9 @@ function handleErase() {
   const r = STATE.selectedRow, c = STATE.selectedCol;
   if (r < 0 || !STATE.puzzle) return;
   if (STATE.givens.has(`${r},${c}`)) return;
-  if (STATE.puzzle[r][c] === 0) return;
-  if (!STATE.simulator.active && STATE.puzzle[r][c] === STATE.solution[r][c]) return;
+  if (STATE.puzzle[r][c] === 0 && (!STATE.notes || !STATE.notes[r][c] || STATE.notes[r][c].size === 0)) return;
 
-  if (!STATE.simulator.active) {
+  if (!STATE.simulator.active && STATE.puzzle[r][c] !== 0) {
     const base = (ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil).cell;
     const cost = (base + STATE.undoCount) * 2;
     STATE.energyPoints = Math.max(0, STATE.energyPoints - cost);
