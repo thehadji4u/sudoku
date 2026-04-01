@@ -1362,8 +1362,8 @@ function handleNumberInput(num) {
   if (r < 0) return;
   if (STATE.givens.has(`${r},${c}`)) return;
 
-  /* Célula já correta não pode ser editada (só desfazer pode reverter) */
-  if (!STATE.simulator.active &&
+  /* Célula já correta não pode ser editada, EXCETO se estiver apagando (num === 0) */
+  if (!STATE.simulator.active && num !== 0 &&
       STATE.puzzle[r][c] !== 0 &&
       STATE.puzzle[r][c] === STATE.solution[r][c]) return;
 
@@ -1404,6 +1404,9 @@ function handleNumberInput(num) {
 function doPlaceNumber(r, c, num) {
   pushUndo();
   STATE.puzzle[r][c] = num;
+  if (num === 0 && STATE.notes && STATE.notes[r][c]) {
+    STATE.notes[r][c].clear();
+  }
 
   const boardEl = document.getElementById('board');
   if (boardEl && num !== 0) {
