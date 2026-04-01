@@ -143,6 +143,7 @@ const STATE = {
     showNoteMatch:       true,
     enableDialPin:       true,
     enableNotes:         true,  // F8 — permite fazer anotações
+    enableErase:         true,  // habilita o botão Apagar na barra de controles
     showZoneComp:        false, // F4 — indica zonas do número nas componentes
     nakedSingleMode:     0,
     nakedPairMode:       0,
@@ -511,7 +512,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp', 'enableNotes'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp', 'enableNotes', 'enableErase'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -552,6 +553,10 @@ function setupSettingsEvents() {
           STATE.notesDragCells.clear();
           updateNotesBtn();
         }
+      }
+      if (key === 'enableErase') {
+        const eraseBtn = document.getElementById('btn-erase');
+        if (eraseBtn) eraseBtn.classList.toggle('erase-disabled', !el.checked);
       }
       if (key === 'autoAnnotations' && el.checked && STATE.puzzle) {
         applyAutoAnnotations();
@@ -1300,6 +1305,10 @@ function renderNumpad() {
     _updateDialBar(poolEl, (72 - noteCount[n]) / 72 * 100);
     if (poolEl) poolEl.classList.toggle('bar-overload', noteCount[n] > 72);
   });
+
+  /* Board border: blue when a dial number is selected (edit mode) */
+  const boardEl = document.getElementById('board');
+  if (boardEl) boardEl.classList.toggle('edit-active', STATE.selectedNum > 0);
 }
 
 function _updateDialBar(el, pct) {
@@ -2332,6 +2341,24 @@ function renderSimConflicts() {
 }
 
 function handleErase() {
+  if (!STATE.settings.enableErase) return;
+  const r = STATE.selectedRow, c = STATE.selectedCol;
+  if (r < 0 || !STATE.puzzle) return;
+  if (STATE.givens.has(`${r},${c}`)) return;
+  if (STATE.puzzle[r][c] === 0) return;
+  if (!STATE.simulator.active && STATE.puzzle[r][c] === STATE.solution[r][c]) return;
+
+  if (!STATE.simulator.active) {
+    const base = (ENERGY_TABLE[STATE.difficulty] || ENERGY_TABLE.facil).cell;
+    const cost = (base + STATE.undoCount) * 2;
+    STATE.energyPoints = Math.max(0, STATE.energyPoints - cost);
+    localStorage.setItem('sudoku-energy', STATE.energyPoints);
+    _flashEnergyLoss();
+    updateEnergyBar();
+    STATE.streakCount = 0;
+    STATE.comboMultiplier = 1;
+    STATE.undoCount++;
+  }
   handleNumberInput(0);
 }
 
@@ -6136,9 +6163,13 @@ function syncSettingsUI() {
 
   toggle('cfg-fillAllNotes', s.fillAllNotes);
   toggle('cfg-enableNotes',  s.enableNotes);
+  toggle('cfg-enableErase',  s.enableErase !== false);
 
   const notesBtn = document.getElementById('btn-notes');
   if (notesBtn) notesBtn.classList.toggle('notes-disabled', !s.enableNotes);
+
+  const eraseBtn2 = document.getElementById('btn-erase');
+  if (eraseBtn2) eraseBtn2.classList.toggle('erase-disabled', s.enableErase === false);
 
   /* P0 tri-toggle */
   const p0Toggle = document.getElementById('cfg-p0Mode');
