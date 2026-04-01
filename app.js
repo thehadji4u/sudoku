@@ -1328,9 +1328,7 @@ function handleCellClick(r, c) {
     if (STATE.notesMode) {
       doToggleNote(r, c, n);
     } else if (!STATE.givens.has(`${r},${c}`) &&
-               (STATE.puzzle[r][c] === 0 ||
-                STATE.simulator.active ||
-                STATE.puzzle[r][c] !== STATE.solution[r][c])) {
+               (STATE.puzzle[r][c] === 0 || STATE.simulator.active)) {
       handleNumberInput(n);
     }
     return;
@@ -2042,6 +2040,8 @@ function updateNotesBtn() {
     btn.classList.toggle('active-mode', STATE.notesMode);
     tag.textContent = STATE.notesMode ? 'ON' : 'OFF';
   }
+  const board = document.getElementById('board');
+  if (board) board.classList.toggle('notes-active', STATE.notesMode);
 }
 
 function updateScoreDisplay() {
@@ -2294,10 +2294,11 @@ function updateControlsForSimMode() {
   const simBtn   = document.getElementById('btn-sim');
   if (!eraseBtn || !simBtn) return;
   if (STATE.settings.simulatorMode) {
-    eraseBtn.classList.add('hidden');
+    /* erase hidden only while simulator is active (sim has its own context) */
+    eraseBtn.classList.toggle('hidden', STATE.simulator.active);
     simBtn.classList.remove('hidden');
   } else {
-    eraseBtn.classList.add('hidden');  // also hidden when simulator disabled
+    eraseBtn.classList.remove('hidden');
     simBtn.classList.add('hidden');
     if (STATE.simulator.active) deactivateSimulator();
   }
