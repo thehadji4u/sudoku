@@ -1505,9 +1505,9 @@ html, body {
 .cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
 .cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
 /* ── Note-removal powers: source/target/pulse ── */
-.cell.p2-source { background: #FDBA74; }   /* laranja bem claro (tipo 100) FFF7ED */
-.cell.p3-source { background: #FDBA74; }   /* laranja médio (tipo 300) FED7AA */
-.cell.p4-source { background: #FDBA74; }   /* laranja forte (tipo 500) FB923C */
+.cell.p2-source { background: #86EFAC; }   /* laranja bem claro (tipo 100) FFF7ED */
+.cell.p3-source { background: #86EFAC; }   /* laranja médio (tipo 300) FED7AA */
+.cell.p4-source { background: #86EFAC; }   /* laranja forte (tipo 500) FB923C */
 
 /* Target cells (uniform for all removal powers) — fundo vermelho, sem dígito colorido */
 .cell.p-elim-target { background: #FEE2E2; }
