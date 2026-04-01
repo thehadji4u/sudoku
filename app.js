@@ -425,6 +425,7 @@ function attachEvents() {
 
   /* Numpad — clique tradicional: seleciona a célula primeiro; dial preenche, ou seleciona número do dial se vazio */
   document.getElementById('numpad').addEventListener('click', e => {
+    STATE.pnHighlightsPaused = false;
     const btn = e.target.closest('[data-num]');
     if (!btn) return;
     if (_numpadLongPressed) { _numpadLongPressed = false; return; }
@@ -1133,6 +1134,10 @@ function renderHighlights() {
   /* Sem número ativo nem célula selecionada: encerra aqui */
   if (activeNum === 0 && sr < 0) return;
 
+  if (STATE.pnHighlightsPaused) {
+    const execBtn = document.getElementById('btn-power-exec');
+    if (execBtn) { execBtn.classList.add('hidden'); execBtn._execFn = null; }
+  } else {
   /* ── Poderes: P0 > P1 > P2(hidden) > P3(pair) > P4(triple) > P5(quad) ── */
 
   /* P0 — eliminar notas proibidas nas componentes da célula selecionada */
@@ -1271,6 +1276,7 @@ function renderHighlights() {
       }
     }
   }
+  } // ends else block for pnHighlightsPaused
 
   /* Multi-cell note drag selection */
   if (STATE.notesMode && STATE.notesDragCells.size > 1) {
@@ -1338,6 +1344,7 @@ function _updateDialBar(el, pct) {
 ═══════════════════════════════════════ */
 function handleCellClick(r, c) {
   if (STATE.paused) return;
+  STATE.pnHighlightsPaused = false;
 
   if (STATE.selectedRow === r && STATE.selectedCol === c) {
     STATE.selectedRow = -1;
@@ -2403,6 +2410,7 @@ function attachNumpadLongPress() {
 
 function handleNumpadPin(num) {
   /* Substituido para usar a nova abordagem: executa nivel 2 (auto-fill) */
+  STATE.pnHighlightsPaused = false;
   STATE.selectedNum = num;
   STATE.selectedRow = -1;
   STATE.selectedCol = -1;
@@ -2444,7 +2452,7 @@ function triggerP0Elim(r, c, fallbackEl) {
   const targets = getP0Targets(r, c);
   if (!targets.length) return;
   const sourceEl = cellElements[r][c] || fallbackEl;
-  STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+  STATE.pnHighlightsPaused = true;
   renderHighlights();
   setTimeout(() => _processP0Wave(gen, num, sourceEl, targets), 80);
 }
@@ -2805,7 +2813,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pnHighlightsPaused = true;
         renderHighlights(); renderNumpad();
       }
     },
@@ -2908,7 +2916,7 @@ function _processNpQueue(gen, num, sourceEl, queue) {
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pnHighlightsPaused = true;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -2931,7 +2939,7 @@ function _processNpQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNpQueue(gen, num, fromEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pnHighlightsPaused = true;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3047,7 +3055,7 @@ function _processNtQueue(gen, num, sourceEl, queue) {
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pnHighlightsPaused = true;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3070,7 +3078,7 @@ function _processNtQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNtQueue(gen, num, fromEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pnHighlightsPaused = true;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3118,7 +3126,7 @@ function _processNqQueue(gen, num, sourceEl, queue) {
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pnHighlightsPaused = true;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3141,7 +3149,7 @@ function _processNqQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNqQueue(gen, num, fromEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pnHighlightsPaused = true;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3241,7 +3249,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
     return isValid;
   });
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pnHighlightsPaused = true;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3300,7 +3308,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNhQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pnHighlightsPaused = true;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3516,6 +3524,7 @@ function attachBoardLongPress() {
 
 function handleCellLongPress(r, c) {
   if (STATE.paused) return;
+  STATE.pnHighlightsPaused = false;
   STATE.selectedRow = r;
   STATE.selectedCol = c;
   renderHighlights();
