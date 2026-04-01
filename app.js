@@ -1059,44 +1059,32 @@ function renderHighlights() {
                        : STATE.selectedNum > 0 ? STATE.selectedNum
                        : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
 
-  /* Se nenhuma célula selecionada, aplica F4 e encerra */
-  if (sr < 0) {
-    if (STATE.simulator.active) renderSimConflicts();
-    renderAnalysisHighlights();
-    /* F4 — quando só pinnedNum/selectedNum ativo, sem célula selecionada */
-    if (settings.showZoneComp && activeNumEarly > 0) _applyZoneComp(puzzle, activeNumEarly, cellElements);
-    const eb0 = document.getElementById('btn-power-exec');
-    if (eb0) eb0.classList.add('hidden');
-    return;
-  }
+  /* ── Destaques de seleção de célula (só quando sr >= 0) ── */
+  if (sr >= 0) {
+    const selVal  = puzzle[sr][sc];
+    const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
 
-  const selVal  = puzzle[sr][sc];
-  const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
-
-  /* ── Seleção de célula ──
-     Função 1 (showSelZone):    verde nas células com o mesmo número
-     Função 1.1 (enhancedHighlight): azul na zona (linha/coluna/quadrante) — prioridade sobre verde */
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const el     = cellElements[r][c];
-      const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-
-      if (r === sr && c === sc) {
-        el.classList.add('selected');
-      } else if (settings.enhancedHighlight && (r === sr || c === sc || boxIdx === selBox)) {
-        el.classList.remove('highlight-match');
-        el.classList.remove('same-num');
-        el.classList.add('highlight-sel');
-      } else if (settings.showSelZone && selVal > 0 && puzzle[r][c] === selVal) {
-        el.classList.add('same-num');
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const el     = cellElements[r][c];
+        const boxIdx = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+        if (r === sr && c === sc) {
+          el.classList.add('selected');
+        } else if (settings.enhancedHighlight && (r === sr || c === sc || boxIdx === selBox)) {
+          el.classList.remove('highlight-match');
+          el.classList.remove('same-num');
+          el.classList.add('highlight-sel');
+        } else if (settings.showSelZone && selVal > 0 && puzzle[r][c] === selVal) {
+          el.classList.add('same-num');
+        }
       }
     }
-  }
 
-  /* ── Feature 2: Destaca dígitos de anotação que coincidem com o número selecionado ── */
-  if (settings.showNoteMatch && selVal > 0) {
-    document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
-      .forEach(s => s.classList.add('note-match'));
+    /* Destaca dígitos de anotação que coincidem com o número selecionado */
+    if (settings.showNoteMatch && selVal > 0) {
+      document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
+        .forEach(s => s.classList.add('note-match'));
+    }
   }
 
   /* ── Conflitos no modo simulador ── */
@@ -1108,6 +1096,9 @@ function renderHighlights() {
   /* ── F4 — zonas do número ativo (após highlights de seleção — azul tem prioridade) ── */
   const activeNum = activeNumEarly;
   if (settings.showZoneComp && activeNum > 0) _applyZoneComp(puzzle, activeNum, cellElements);
+
+  /* Sem número ativo nem célula selecionada: encerra aqui */
+  if (activeNum === 0 && sr < 0) return;
 
   /* ── Poderes: P0 > P1 > P2(hidden) > P3(pair) > P4(triple) > P5(quad) ── */
 
