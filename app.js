@@ -142,6 +142,7 @@ const STATE = {
     showSelZone:         true,
     showNoteMatch:       true,
     enableDialPin:       true,
+    enableNotes:         true,  // F8 — permite fazer anotações
     showZoneComp:        false, // F4 — indica zonas do número nas componentes
     nakedSingleMode:     0,
     nakedPairMode:       0,
@@ -503,7 +504,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp', 'enableNotes'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -534,6 +535,16 @@ function setupSettingsEvents() {
       if (key === 'enableDialPin' && !el.checked) {
         STATE.pinnedNum = 0;
         if (STATE.puzzle) { renderNumpad(); renderHighlights(); }
+      }
+      if (key === 'enableNotes') {
+        const notesBtn = document.getElementById('btn-notes');
+        if (notesBtn) notesBtn.classList.toggle('notes-disabled', !el.checked);
+        if (!el.checked && STATE.notesMode) {
+          STATE.notesMode = false;
+          STATE.notesSwipeMode = null;
+          STATE.notesDragCells.clear();
+          updateNotesBtn();
+        }
       }
       if (key === 'autoAnnotations' && el.checked && STATE.puzzle) {
         applyAutoAnnotations();
@@ -1000,7 +1011,8 @@ function _applyZoneComp(puzzle, n, cellElements) {
     if (puzzle[r][c] === n) continue;
     const el = cellElements[r][c];
     if (el.classList.contains('selected') || el.classList.contains('highlight-sel') ||
-        el.classList.contains('highlight-match') || el.classList.contains('same-num')) continue;
+        el.classList.contains('highlight-match') || el.classList.contains('same-num') ||
+        el.classList.contains('error')) continue;
     if (zr.has(r) || zc.has(c) || zb.has(Math.floor(r/3)*3+Math.floor(c/3)))
       el.classList.add('zone-comp');
   }
@@ -1976,6 +1988,7 @@ function renderRankingTable(diff) {
    UI — CONTROLES
 ═══════════════════════════════════════ */
 function toggleNotesMode() {
+  if (!STATE.settings.enableNotes) return;
   if (STATE.notesSwipeMode) {
     /* Click while in swipe mode: toggle active/paused */
     STATE.notesMode = !STATE.notesMode;
@@ -1988,6 +2001,7 @@ function toggleNotesMode() {
 }
 
 function setNotesSwipeMode(mode) {
+  if (!STATE.settings.enableNotes) return;
   /* mode: 'add'|'remove' — double-call same mode clears it */
   if (STATE.notesSwipeMode === mode) {
     STATE.notesSwipeMode = null;
@@ -3299,6 +3313,7 @@ function _attachNotesBtnSwipe() {
   let startX = null;
 
   btn.addEventListener('pointerdown', e => {
+    if (!STATE.settings.enableNotes) return;
     startX = e.clientX;
     btn.setPointerCapture(e.pointerId);
   });
@@ -6109,6 +6124,10 @@ function syncSettingsUI() {
   toggle('cfg-enableAIC',            s.enableAIC);
 
   toggle('cfg-fillAllNotes', s.fillAllNotes);
+  toggle('cfg-enableNotes',  s.enableNotes);
+
+  const notesBtn = document.getElementById('btn-notes');
+  if (notesBtn) notesBtn.classList.toggle('notes-disabled', !s.enableNotes);
 
   /* P0 tri-toggle */
   const p0Toggle = document.getElementById('cfg-p0Mode');

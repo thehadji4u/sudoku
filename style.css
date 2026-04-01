@@ -695,6 +695,13 @@ html, body {
   padding-bottom: 6px;
   -webkit-tap-highlight-color: transparent;
 }
+/* ── Dígito do dial — flex:1 mantém barras fixas independente do tamanho do ✓ ── */
+.num-btn .num-digit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 /* ── Barras de progresso do dial ── */
 .num-bars {
   width: 80%;
@@ -752,6 +759,7 @@ html, body {
   color: #DC2626;
 }
 .num-btn.erase:active { background: #FEF2F2; }
+.ctrl-btn.notes-disabled { opacity: 0.35; pointer-events: none; }
 
 /* ── Botão Executar (Pn nível 1) ── */
 #btn-power-exec {
@@ -1456,7 +1464,7 @@ html, body {
 .feature-text { flex: 1; }
 
 /* ── F4 — zona das componentes do número ativo ── */
-.cell.zone-comp { background: #DCFCE7; }
+.cell.zone-comp { background: #DCFCE7 !important; }
 
 /* ── P0 — eliminar notas proibidas ── */
 .cell.p0-target { background: #CFFAFE; }  /* ciano claro */
