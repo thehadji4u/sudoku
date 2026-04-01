@@ -423,7 +423,7 @@ function attachEvents() {
     handleCellClick(+cell.dataset.row, +cell.dataset.col);
   });
 
-  /* Numpad — clique seleciona número para preenchimento; re-clique deseleciona */
+  /* Numpad — clique tradicional: seleciona a célula primeiro; dial preenche, ou seleciona número do dial se vazio */
   document.getElementById('numpad').addEventListener('click', e => {
     const btn = e.target.closest('[data-num]');
     if (!btn) return;
@@ -431,15 +431,20 @@ function attachEvents() {
     const n = +btn.dataset.num;
     if (n === 0) { handleNumberInput(0); return; }
     if (btn.classList.contains('done')) return;
-    if (STATE.selectedNum === n) {
-      STATE.selectedNum = 0;  /* re-clique no mesmo → deseleciona */
+    
+    // Forma tradicional: se uma celula está selecionada, insere
+    if (STATE.selectedRow >= 0 && STATE.selectedCol >= 0) {
+      handleNumberInput(n);
     } else {
-      STATE.selectedNum = n;
+      // Se não, só seleciona o número no dial para highlights (Pn nivel 1)
+      if (STATE.selectedNum === n) {
+        STATE.selectedNum = 0;  /* re-clique no mesmo → deseleciona */
+      } else {
+        STATE.selectedNum = n;
+      }
+      renderHighlights();
+      renderNumpad();
     }
-    renderHighlights();
-    renderNumpad();
-    if (STATE.selectedNum > 0)
-      triggerPowerFunctions(STATE.selectedNum, btn);
   });
   attachNumpadLongPress();
 
@@ -1334,21 +1339,6 @@ function _updateDialBar(el, pct) {
 function handleCellClick(r, c) {
   if (STATE.paused) return;
 
-  /* Modo preenchimento: número selecionado no dial → clique aplica na célula */
-  if (STATE.selectedNum > 0 && STATE.puzzle) {
-    STATE.selectedRow = r;
-    STATE.selectedCol = c;
-    const n = STATE.selectedNum;
-    if (STATE.notesMode) {
-      doToggleNote(r, c, n);
-    } else if (!STATE.givens.has(`${r},${c}`) &&
-               (STATE.puzzle[r][c] === 0 || STATE.simulator.active)) {
-      handleNumberInput(n);
-    }
-    return;
-  }
-
-  /* Modo navegação: sem número selecionado → clique seleciona célula para visualização */
   if (STATE.selectedRow === r && STATE.selectedCol === c) {
     STATE.selectedRow = -1;
     STATE.selectedCol = -1;
@@ -1364,10 +1354,6 @@ function handleCellClick(r, c) {
   }
   renderHighlights();
   renderNumpad();
-  if (STATE.selectedRow === r && STATE.selectedCol === c) {
-    const pNum = STATE.puzzle[r][c] > 0 ? STATE.puzzle[r][c] : STATE.pinnedNum;
-    if (pNum > 0) triggerPowerFunctions(pNum, cellElements[r][c]);
-  }
 }
 
 function handleNumberInput(num) {
@@ -1418,6 +1404,16 @@ function handleNumberInput(num) {
 function doPlaceNumber(r, c, num) {
   pushUndo();
   STATE.puzzle[r][c] = num;
+
+  const boardEl = document.getElementById('board');
+  if (boardEl && num !== 0) {
+    const isError = STATE.settings.markErrors && num !== STATE.solution[r][c];
+    boardEl.classList.remove('pulse-blue', 'pulse-red');
+    void boardEl.offsetWidth; // force reflow
+    boardEl.classList.add(isError ? 'pulse-red' : 'pulse-blue');
+    setTimeout(() => boardEl.classList.remove('pulse-blue', 'pulse-red'), 400);
+  }
+
   const key = `${r},${c}`;
 
   /* Deseleciona o tabuleiro ao colocar um número (apagar com 0 mantém seleção) */
@@ -2403,25 +2399,13 @@ function attachNumpadLongPress() {
 }
 
 function handleNumpadPin(num) {
-  if (!STATE.settings.enableDialPin) return;
-  if (STATE.pinnedNum !== num) {
-    if (STATE.energyPoints < 1) {
-      _flashEnergyLoss();
-      return;
-    }
-    STATE.energyPoints -= 1;
-    localStorage.setItem('sudoku-energy', STATE.energyPoints);
-    updateEnergyBar();
-    _flashEnergyDrain();
-  }
-  STATE.pinnedNum = (STATE.pinnedNum === num) ? 0 : num;
-  /* Ao fixar um número no dial, limpa a seleção de célula no tabuleiro */
+  /* Substituido para usar a nova abordagem: executa nivel 2 (auto-fill) */
+  STATE.selectedNum = num;
   STATE.selectedRow = -1;
   STATE.selectedCol = -1;
   renderNumpad();
   renderHighlights();
-  /* Poderes P1/P2 — pin de número */
-  if (STATE.pinnedNum > 0) triggerPowerFunctions(STATE.pinnedNum, null);
+  triggerPowerFunctions(num, document.querySelector(`.num-btn[data-num="${num}"]`), true);
 }
 
 /* ═══════════════════════════════════════
@@ -2580,7 +2564,7 @@ function _triggerGameStartP0() {
  * Só executa o poder de menor índice que tiver trabalho a fazer.
  * Usado em: seleção de célula, pin de número, após preencher célula.
  */
-function triggerPowerFunctions(num, sourceEl) {
+function triggerPowerFunctions(num, sourceEl, isLongPress = false) {
   if (!STATE.puzzle || !num || STATE.gameOver) return;
   const p0 = STATE.settings.p0Mode          || 0;
   const p1 = STATE.settings.nakedSingleMode || 0;
@@ -2588,6 +2572,9 @@ function triggerPowerFunctions(num, sourceEl) {
   const p3 = STATE.settings.nakedPairMode   || 0;  // P3 = naked pair
   const p4 = STATE.settings.p3Mode          || 0;  // P4 = naked triple
   const p5 = STATE.settings.p4Mode          || 0;  // P5 = naked quad
+
+  /* Pn nível 2 (autofill) só é executado no Long Press */
+  if (!isLongPress) return;
 
   /* P0: requer célula selecionada com esse número preenchido */
   if (p0 >= 2 && STATE.settings.autoRemoveNotes) {
@@ -3525,8 +3512,13 @@ function attachBoardLongPress() {
 }
 
 function handleCellLongPress(r, c) {
-  /* Long-press on cells is no longer used for manual selection.
-     Naked Pairs and Pointing Pairs now use auto-detect buttons. */
+  if (STATE.paused) return;
+  STATE.selectedRow = r;
+  STATE.selectedCol = c;
+  renderHighlights();
+  renderNumpad();
+  const pNum = STATE.puzzle[r][c] > 0 ? STATE.puzzle[r][c] : STATE.selectedNum;
+  if (pNum > 0) triggerPowerFunctions(pNum, cellElements[r][c], true);
 }
 
 function setsEqual(a, b) {

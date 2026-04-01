@@ -510,6 +510,25 @@ html, body {
   animation-name: notes-pulse;
 }
 
+@keyframes board-pulse-blue {
+  0%   { box-shadow: var(--shadow), 0 0 0 3px #3B82F6; }
+  50%  { box-shadow: var(--shadow), 0 0 0 8px rgba(59,130,246,0.35); }
+  100% { box-shadow: var(--shadow), 0 0 0 0px rgba(59,130,246,0); }
+}
+@keyframes board-pulse-red {
+  0%   { box-shadow: var(--shadow), 0 0 0 3px #EF4444; }
+  50%  { box-shadow: var(--shadow), 0 0 0 8px rgba(239,68,68,0.35); }
+  100% { box-shadow: var(--shadow), 0 0 0 0px rgba(239,68,68,0); }
+}
+#board.pulse-blue {
+  animation: board-pulse-blue 0.4s ease-out;
+  outline-color: #3B82F6;
+}
+#board.pulse-red {
+  animation: board-pulse-red 0.4s ease-out;
+  outline-color: #EF4444;
+}
+
 /* ── Overlay de Pausa ── */
 #pause-overlay {
   position: absolute;
