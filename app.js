@@ -1164,16 +1164,20 @@ function renderHighlights() {
                    (getNakedSinglesForNum(activeNum).length > 0 || getNoteNakedsForNum(activeNum).length > 0);
   const hsMode = settings.p5Mode || 0;  // hidden single usa p5Mode key
   if (!p0Active && !p1Active && hsMode >= 1 && STATE.puzzle && activeNum > 0) {
-    getHiddenSinglesForNum(activeNum).forEach(([r, c]) => {
+    const boardHS = getHiddenSinglesForNum(activeNum);
+    const noteHS = getNoteHiddenSinglesForNum(activeNum);
+    const allHSKeys = new Set([...boardHS, ...noteHS].map(([r,c]) => `${r},${c}`));
+    allHSKeys.forEach(key => {
+      const [r, c] = key.split(',').map(Number);
       const el = cellElements[r][c];
-      if (!el.classList.contains('selected'))
+      if (el && !el.classList.contains('selected'))
         el.classList.add('p5-single');  /* mantém visual pulse violeta */
     });
   }
 
   /* P3 — naked pair */
   const p2Active = !p0Active && !p1Active && hsMode >= 1 && activeNum > 0 &&
-                   getHiddenSinglesForNum(activeNum).length > 0;
+                   (getHiddenSinglesForNum(activeNum).length > 0 || getNoteHiddenSinglesForNum(activeNum).length > 0);
   const npMode = settings.nakedPairMode || 0;
   if (!p0Active && !p1Active && !p2Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
     getNakedPairsForNum(activeNum).forEach(({pair, targets}) => {
@@ -3173,6 +3177,23 @@ function getHiddenSinglesForNum(n) {
   const found = new Set();
   const checkGroup = (cells) => {
     const cands = cells.filter(([r,c]) => _isBoardCandidate(r, c, n));
+    if (cands.length === 1) found.add(cands[0][0]+','+cands[0][1]);
+  };
+  for (let i=0;i<9;i++) {
+    checkGroup(Array.from({length:9},(_,j)=>[i,j]));
+    checkGroup(Array.from({length:9},(_,j)=>[j,i]));
+    const br=Math.floor(i/3)*3, bc=(i%3)*3;
+    checkGroup(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+  }
+  return [...found].map(k => k.split(',').map(Number));
+}
+
+/** Returns cells where n is a hidden single based on user notes (only cell with n in notes within a unit) */
+function getNoteHiddenSinglesForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const found = new Set();
+  const checkGroup = (cells) => {
+    const cands = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
     if (cands.length === 1) found.add(cands[0][0]+','+cands[0][1]);
   };
   for (let i=0;i<9;i++) {
@@ -6137,6 +6158,7 @@ function syncSettingsUI() {
   };
   toggle('cfg-showSelZone',       s.showSelZone);
   toggle('cfg-showNoteMatch',     s.showNoteMatch);
+  toggle('cfg-showZoneComp',      s.showZoneComp);
   toggle('cfg-enableDialPin',     s.enableDialPin);
   toggle('cfg-markErrors',        s.markErrors);
   toggle('cfg-failOnErrors',      s.failOnErrors);
