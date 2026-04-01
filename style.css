@@ -779,7 +779,7 @@ html, body {
   transition: transform .12s, box-shadow .12s, opacity .15s;
 }
 #btn-power-exec:active { transform: scale(0.96); box-shadow: 0 1px 4px rgba(99,102,241,0.25); }
-#btn-power-exec.hidden { display: none; }
+#btn-power-exec.hidden { visibility: hidden; pointer-events: none; }
 
 /* ── Controles ── */
 #controls {

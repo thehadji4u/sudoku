@@ -158,6 +158,7 @@ const STATE = {
 let cellElements = [];  // [9][9]
 let _numpadPressTimer  = null;
 let _numpadLongPressed = false;
+let _powerExecForce    = false;  /* true enquanto botão Executar aciona Pn em nível 1 */
 let _toolLongPressTimer     = null;
 let _toolLongPressTriggered = false;
 
@@ -481,7 +482,13 @@ function attachEvents() {
 
   /* Botão "Executar" (Pn nível 1) */
   const execBtn = document.getElementById('btn-power-exec');
-  if (execBtn) execBtn.addEventListener('click', () => { if (execBtn._execFn) execBtn._execFn(); });
+  if (execBtn) execBtn.addEventListener('click', () => {
+    if (!execBtn._execFn) return;
+    _powerExecForce = true;
+    execBtn._execFn();
+    /* Reseta o flag após tempo suficiente para cobrir toda a cadeia de animação */
+    setTimeout(() => { _powerExecForce = false; }, 12000);
+  });
 
   /* Settings close button */
   const scBtn = document.getElementById('btn-settings-close');
@@ -1036,18 +1043,35 @@ function renderHighlights() {
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
-  /* Aplica destaques do número fixado por long-press (sempre, mesmo sem seleção) */
-  if (STATE.pinnedNum > 0) {
-    const pn = STATE.pinnedNum;
+  /* activeNum = número em foco: pin > dial > célula selecionada */
+  const activeNumEarly = STATE.pinnedNum > 0 ? STATE.pinnedNum
+                       : STATE.selectedNum > 0 ? STATE.selectedNum
+                       : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+
+  /* ── F1/F2/F3 baseadas no número em foco (pin, dial ou célula) ──
+     Ativa para qualquer activeNum > 0, independente de ter célula selecionada */
+  if (activeNumEarly > 0) {
+    const pn = activeNumEarly;
     const pinRows = new Set(), pinCols = new Set(), pinBoxes = new Set();
-    for (let r = 0; r < 9; r++)
-      for (let c = 0; c < 9; c++)
-        if (puzzle[r][c] === pn) {
-          cellElements[r][c].classList.add('same-num');
-          pinRows.add(r); pinCols.add(c);
-          pinBoxes.add(Math.floor(r / 3) * 3 + Math.floor(c / 3));
-        }
-    /* Zona da seleção aprimorada para número fixado */
+    /* F2 — marca ocorrências do número (same-num) */
+    if (settings.showSelZone) {
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++)
+          if (puzzle[r][c] === pn) {
+            cellElements[r][c].classList.add('same-num');
+            pinRows.add(r); pinCols.add(c);
+            pinBoxes.add(Math.floor(r / 3) * 3 + Math.floor(c / 3));
+          }
+    } else {
+      /* Ainda coleta zonas para F1 mesmo sem F2 */
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++)
+          if (puzzle[r][c] === pn) {
+            pinRows.add(r); pinCols.add(c);
+            pinBoxes.add(Math.floor(r / 3) * 3 + Math.floor(c / 3));
+          }
+    }
+    /* F1 — zona em verde ao redor de cada ocorrência (highlight-match) */
     if (settings.enhancedHighlight && (pinRows.size || pinCols.size || pinBoxes.size)) {
       for (let r = 0; r < 9; r++)
         for (let c = 0; c < 9; c++) {
@@ -1059,23 +1083,16 @@ function renderHighlights() {
             el.classList.add('highlight-match');
         }
     }
-    /* Função 4 destaca rascunhos apenas se Função 2 (showNoteMatch) estiver ativa */
+    /* F3 — notas que coincidem com o número ativo */
     if (settings.showNoteMatch) {
       document.querySelectorAll(`.note-digit[data-note="${pn}"].active`)
         .forEach(s => s.classList.add('note-match'));
     }
   }
 
-  /* activeNum calculado aqui para uso no F4 e nos poderes */
-  const activeNumEarly = STATE.pinnedNum > 0 ? STATE.pinnedNum
-                       : STATE.selectedNum > 0 ? STATE.selectedNum
-                       : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
-
-  /* ── Destaques de seleção de célula (só quando sr >= 0) ── */
+  /* ── Destaques de posição (célula selecionada) — só quando sr >= 0 ── */
   if (sr >= 0) {
-    const selVal  = puzzle[sr][sc];
-    const selBox  = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
-
+    const selBox = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         const el     = cellElements[r][c];
@@ -1083,19 +1100,12 @@ function renderHighlights() {
         if (r === sr && c === sc) {
           el.classList.add('selected');
         } else if (settings.enhancedHighlight && (r === sr || c === sc || boxIdx === selBox)) {
+          /* F1: zona da célula selecionada fica azul (prioridade sobre verde) */
           el.classList.remove('highlight-match');
           el.classList.remove('same-num');
           el.classList.add('highlight-sel');
-        } else if (settings.showSelZone && selVal > 0 && puzzle[r][c] === selVal) {
-          el.classList.add('same-num');
         }
       }
-    }
-
-    /* Destaca dígitos de anotação que coincidem com o número selecionado */
-    if (settings.showNoteMatch && selVal > 0) {
-      document.querySelectorAll(`.note-digit[data-note="${selVal}"].active`)
-        .forEach(s => s.classList.add('note-match'));
     }
   }
 
@@ -2419,7 +2429,7 @@ function triggerP0Elim(r, c, fallbackEl) {
 
 /* Onda expansiva — nota num voa de cada célula componente para o dial[num] */
 function _processP0Wave(gen, num, sourceEl, targets) {
-  if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
+  if (gen !== _p0Gen || STATE.settings.p0Mode < 2 && !_powerExecForce || STATE.gameOver) return;
   const valid = targets.filter(([r, c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
   if (!valid.length) return;
@@ -2437,7 +2447,7 @@ function _processP0Wave(gen, num, sourceEl, targets) {
   const dial = _numBtnEl(num);
   valid.forEach(([tr, tc], i) => {
     setTimeout(() => {
-      if (gen !== _p0Gen || STATE.settings.p0Mode < 2 || STATE.gameOver) return;
+      if (gen !== _p0Gen || STATE.settings.p0Mode < 2 && !_powerExecForce || STATE.gameOver) return;
       if (!STATE.notes[tr][tc] || !STATE.notes[tr][tc].has(num)) return;
       animateCellTravel(cellElements[tr][tc], dial || sourceEl, {
         color: '#22D3EE', duration: 180, splashMs: 120,
@@ -2697,7 +2707,7 @@ function triggerNakedSingleFill(num, sourceEl) {
 }
 
 function _processNsQueue(gen, num, sourceEl, queue) {
-  if (gen !== _nsGen || STATE.settings.nakedSingleMode < 2 || !queue.length || STATE.gameOver) return;
+  if (gen !== _nsGen || STATE.settings.nakedSingleMode < 2 && !_powerExecForce || !queue.length || STATE.gameOver) return;
 
   const idx = queue.findIndex(([r, c, clr]) => {
     if (STATE.puzzle[r][c] !== 0) return false;
@@ -2714,7 +2724,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
 
   animateCellTravel(sourceEl, toEl, {
     color,
-    guard: () => gen === _nsGen && STATE.settings.nakedSingleMode >= 2 && !STATE.gameOver,
+    guard: () => gen === _nsGen && STATE.settings.nakedSingleMode >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       /* Devolve anotações da célula ao dial antes de preencher */
       if (STATE.notes) _animOwnNotesOnFill(tr, tc, 460, 200);
@@ -2866,7 +2876,7 @@ function triggerNakedPairElim(num, fallbackEl) {
 }
 
 function _processNpQueue(gen, num, sourceEl, queue) {
-  if (gen !== _npGen || STATE.settings.nakedPairMode < 2 || !queue.length || STATE.gameOver) return;
+  if (gen !== _npGen || STATE.settings.nakedPairMode < 2 && !_powerExecForce || !queue.length || STATE.gameOver) return;
 
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
@@ -2885,7 +2895,7 @@ function _processNpQueue(gen, num, sourceEl, queue) {
 
   animateCellTravel(fromEl, dial || sourceEl, {
     color: '#4ADE80',
-    guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 && !STATE.gameOver,
+    guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
       updateCellContent(tr, tc);
@@ -3005,7 +3015,7 @@ function triggerNakedTripleElim(num, fallbackEl) {
 }
 
 function _processNtQueue(gen, num, sourceEl, queue) {
-  if (gen !== _ntGen || (STATE.settings.p3Mode || 0) < 2 || !queue.length || STATE.gameOver) return;
+  if (gen !== _ntGen || (STATE.settings.p3Mode || 0) < 2 && !_powerExecForce || !queue.length || STATE.gameOver) return;
 
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
@@ -3024,7 +3034,7 @@ function _processNtQueue(gen, num, sourceEl, queue) {
 
   animateCellTravel(fromEl, dial || sourceEl, {
     color: '#22C55E',
-    guard: () => gen === _ntGen && (STATE.settings.p3Mode || 0) >= 2 && !STATE.gameOver,
+    guard: () => gen === _ntGen && (STATE.settings.p3Mode || 0) >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
       updateCellContent(tr, tc);
@@ -3076,7 +3086,7 @@ function triggerNakedQuadElim(num, fallbackEl) {
 }
 
 function _processNqQueue(gen, num, sourceEl, queue) {
-  if (gen !== _nqGen || (STATE.settings.p4Mode || 0) < 2 || !queue.length || STATE.gameOver) return;
+  if (gen !== _nqGen || (STATE.settings.p4Mode || 0) < 2 && !_powerExecForce || !queue.length || STATE.gameOver) return;
 
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
@@ -3095,7 +3105,7 @@ function _processNqQueue(gen, num, sourceEl, queue) {
 
   animateCellTravel(fromEl, dial || sourceEl, {
     color: '#16A34A',
-    guard: () => gen === _nqGen && (STATE.settings.p4Mode || 0) >= 2 && !STATE.gameOver,
+    guard: () => gen === _nqGen && (STATE.settings.p4Mode || 0) >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
       updateCellContent(tr, tc);
@@ -3152,7 +3162,7 @@ function triggerHiddenSingleFill(num, sourceEl) {
 }
 
 function _processNhQueue(gen, num, sourceEl, queue) {
-  if (gen !== _nhGen || (STATE.settings.p5Mode || 0) < 2 || !queue.length || STATE.gameOver) return;
+  if (gen !== _nhGen || (STATE.settings.p5Mode || 0) < 2 && !_powerExecForce || !queue.length || STATE.gameOver) return;
 
   const idx = queue.findIndex(([r,c]) => {
     if (!_isBoardCandidate(r, c, num)) return false;
@@ -3178,7 +3188,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
 
   animateCellTravel(sourceEl, toEl, {
     color: '#C084FC',
-    guard: () => gen === _nhGen && (STATE.settings.p5Mode || 0) >= 2 && !STATE.gameOver,
+    guard: () => gen === _nhGen && (STATE.settings.p5Mode || 0) >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       if (STATE.notes) _animOwnNotesOnFill(tr, tc, 460, 200);
       pushUndo();
