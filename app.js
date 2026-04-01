@@ -990,6 +990,22 @@ function buildNotesHTML(noteSet) {
   return html;
 }
 
+/* Aplica zone-comp (F4) às células que não podem ter o número n.
+   Respeita hierarquia: selected > highlight-sel > highlight-match > same-num > zone-comp */
+function _applyZoneComp(puzzle, n, cellElements) {
+  const zr = new Set(), zc = new Set(), zb = new Set();
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++)
+    if (puzzle[r][c] === n) { zr.add(r); zc.add(c); zb.add(Math.floor(r/3)*3+Math.floor(c/3)); }
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+    if (puzzle[r][c] === n) continue;
+    const el = cellElements[r][c];
+    if (el.classList.contains('selected') || el.classList.contains('highlight-sel') ||
+        el.classList.contains('highlight-match') || el.classList.contains('same-num')) continue;
+    if (zr.has(r) || zc.has(c) || zb.has(Math.floor(r/3)*3+Math.floor(c/3)))
+      el.classList.add('zone-comp');
+  }
+}
+
 function renderHighlights() {
   /* Guard: tabuleiro não renderizado ou puzzle não iniciado */
   if (!cellElements.length || !cellElements[0] || !STATE.puzzle) {
@@ -1038,10 +1054,17 @@ function renderHighlights() {
     }
   }
 
-  /* Se nenhuma célula selecionada, encerra após pinned e análise */
+  /* activeNum calculado aqui para uso no F4 e nos poderes */
+  const activeNumEarly = STATE.pinnedNum > 0 ? STATE.pinnedNum
+                       : STATE.selectedNum > 0 ? STATE.selectedNum
+                       : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+
+  /* Se nenhuma célula selecionada, aplica F4 e encerra */
   if (sr < 0) {
     if (STATE.simulator.active) renderSimConflicts();
-    renderAnalysisHighlights();   /* garante que análises ativas continuam visíveis */
+    renderAnalysisHighlights();
+    /* F4 — quando só pinnedNum/selectedNum ativo, sem célula selecionada */
+    if (settings.showZoneComp && activeNumEarly > 0) _applyZoneComp(puzzle, activeNumEarly, cellElements);
     const eb0 = document.getElementById('btn-power-exec');
     if (eb0) eb0.classList.add('hidden');
     return;
@@ -1082,26 +1105,11 @@ function renderHighlights() {
   /* ── Destaques de análise ── */
   renderAnalysisHighlights();
 
-  /* ── F4 — zonas do número ativo nas componentes ── */
-  /* ── Poderes: P0 > P1 > P2(hidden) > P3(pair) > P4(triple) > P5(quad) ── */
-  const activeNum = STATE.pinnedNum > 0 ? STATE.pinnedNum
-                  : STATE.selectedNum > 0 ? STATE.selectedNum
-                  : (sr >= 0 && puzzle[sr][sc] > 0 ? puzzle[sr][sc] : 0);
+  /* ── F4 — zonas do número ativo (após highlights de seleção — azul tem prioridade) ── */
+  const activeNum = activeNumEarly;
+  if (settings.showZoneComp && activeNum > 0) _applyZoneComp(puzzle, activeNum, cellElements);
 
-  if (settings.showZoneComp && activeNum > 0) {
-    const zr = new Set(), zc = new Set(), zb = new Set();
-    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++)
-      if (puzzle[r][c] === activeNum) {
-        zr.add(r); zc.add(c); zb.add(Math.floor(r/3)*3+Math.floor(c/3));
-      }
-    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
-      if (puzzle[r][c] !== 0) continue;
-      const el = cellElements[r][c];
-      if (el.classList.contains('selected') || el.classList.contains('same-num')) continue;
-      if (zr.has(r) || zc.has(c) || zb.has(Math.floor(r/3)*3+Math.floor(c/3)))
-        el.classList.add('zone-comp');
-    }
-  }
+  /* ── Poderes: P0 > P1 > P2(hidden) > P3(pair) > P4(triple) > P5(quad) ── */
 
   /* P0 — eliminar notas proibidas nas componentes da célula selecionada */
   const p0Targets = ((settings.p0Mode || 0) >= 1 && sr >= 0 && sc >= 0 && puzzle[sr][sc] > 0)
