@@ -2604,7 +2604,9 @@ function triggerPowerFunctions(num, sourceEl) {
   }
   /* P2 — hidden single (fill before elimination powers) */
   if (p2 >= 2) {
-    if (getHiddenSinglesForNum(num).length > 0) { triggerHiddenSingleFill(num, sourceEl); return; }
+    const hasWork = getHiddenSinglesForNum(num).length > 0 ||
+                    getNoteHiddenSinglesForNum(num).length > 0;
+    if (hasWork) { triggerHiddenSingleFill(num, sourceEl); return; }
   }
   /* P3 — naked pair */
   if (p3 >= 2) {
@@ -3208,7 +3210,11 @@ function getNoteHiddenSinglesForNum(n) {
 function triggerHiddenSingleFill(num, sourceEl) {
   _nhGen++;
   const gen = _nhGen;
-  const cells = getHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
+  const boardCells = getHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
+  const noteCells  = getNoteHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
+  const cellsMap = new Map();
+  [...boardCells, ...noteCells].forEach(item => cellsMap.set(item[0]+','+item[1], item));
+  const cells = Array.from(cellsMap.values());
   if (!cells.length) return;
   setTimeout(() => _processNhQueue(gen, num, sourceEl, cells), 320);
 }
@@ -3217,16 +3223,32 @@ function _processNhQueue(gen, num, sourceEl, queue) {
   if (gen !== _nhGen || (STATE.settings.p5Mode || 0) < 2 && !_powerExecForce || !queue.length || STATE.gameOver) return;
 
   const idx = queue.findIndex(([r,c]) => {
-    if (!_isBoardCandidate(r, c, num)) return false;
-    /* re-valida: único candidato board-logic na unidade */
-    const isHS = (cells) => {
-      const cands = cells.filter(([cr,cc]) => _isBoardCandidate(cr, cc, num));
-      return cands.length === 1 && cands[0][0] === r && cands[0][1] === c;
-    };
-    const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
-    return isHS(Array.from({length:9},(_,j)=>[r,j])) ||
-           isHS(Array.from({length:9},(_,j)=>[j,c])) ||
-           isHS(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+    if (STATE.puzzle[r][c] !== 0) return false;
+    
+    let isValid = false;
+    // board-logic validation
+    if (_isBoardCandidate(r, c, num)) {
+      const isHS = (cells) => {
+        const cands = cells.filter(([cr,cc]) => _isBoardCandidate(cr, cc, num));
+        return cands.length === 1 && cands[0][0] === r && cands[0][1] === c;
+      };
+      const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+      isValid = isHS(Array.from({length:9},(_,j)=>[r,j])) ||
+                isHS(Array.from({length:9},(_,j)=>[j,c])) ||
+                isHS(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+    }
+    // notes logic validation
+    if (!isValid && STATE.notes && STATE.notes[r][c].has(num)) {
+      const isNoteHS = (cells) => {
+        const cands = cells.filter(([cr,cc]) => STATE.puzzle[cr][cc] === 0 && STATE.notes[cr][cc].has(num));
+        return cands.length === 1 && cands[0][0] === r && cands[0][1] === c;
+      };
+      const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+      isValid = isNoteHS(Array.from({length:9},(_,j)=>[r,j])) ||
+                isNoteHS(Array.from({length:9},(_,j)=>[j,c])) ||
+                isNoteHS(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+    }
+    return isValid;
   });
   if (idx === -1) {
     STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
