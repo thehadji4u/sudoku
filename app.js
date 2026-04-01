@@ -1071,8 +1071,8 @@ function renderHighlights() {
             pinBoxes.add(Math.floor(r / 3) * 3 + Math.floor(c / 3));
           }
     }
-    /* F1 — zona em verde ao redor de cada ocorrência (highlight-match) */
-    if (settings.enhancedHighlight && (pinRows.size || pinCols.size || pinBoxes.size)) {
+    /* F1 — zona em verde ao redor de cada ocorrência (highlight-match) — só se F4 ativo */
+    if (settings.enhancedHighlight && settings.showZoneComp && (pinRows.size || pinCols.size || pinBoxes.size)) {
       for (let r = 0; r < 9; r++)
         for (let c = 0; c < 9; c++) {
           if (puzzle[r][c] === pn) continue;
