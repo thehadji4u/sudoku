@@ -2441,7 +2441,7 @@ function triggerP0Elim(r, c, fallbackEl) {
   const targets = getP0Targets(r, c);
   if (!targets.length) return;
   const sourceEl = cellElements[r][c] || fallbackEl;
-  STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+  STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
   renderHighlights();
   setTimeout(() => _processP0Wave(gen, num, sourceEl, targets), 80);
 }
@@ -2802,7 +2802,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
         renderHighlights(); renderNumpad();
       }
     },
@@ -2905,7 +2905,7 @@ function _processNpQueue(gen, num, sourceEl, queue) {
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num));
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -2928,7 +2928,7 @@ function _processNpQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNpQueue(gen, num, fromEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3044,7 +3044,7 @@ function _processNtQueue(gen, num, sourceEl, queue) {
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3067,7 +3067,7 @@ function _processNtQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNtQueue(gen, num, fromEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3115,7 +3115,7 @@ function _processNqQueue(gen, num, sourceEl, queue) {
   const idx = queue.findIndex(([r,c]) =>
     STATE.puzzle[r][c] === 0 && STATE.notes[r][c] && STATE.notes[r][c].has(num));
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3138,7 +3138,7 @@ function _processNqQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNqQueue(gen, num, fromEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3238,7 +3238,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
     return isValid;
   });
   if (idx === -1) {
-    STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+    STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
     renderHighlights(); renderNumpad();
     return;
   }
@@ -3297,7 +3297,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
       if (rest.length) {
         setTimeout(() => _processNhQueue(gen, num, toEl, rest), 280);
       } else {
-        STATE.pinnedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
+        STATE.pinnedNum = 0; STATE.selectedNum = 0; STATE.selectedRow = -1; STATE.selectedCol = -1;
         renderHighlights(); renderNumpad();
       }
     },
@@ -3950,6 +3950,12 @@ function updateHiddensBtn() {
 /* ─── Botão de ação (action bar) ─── */
 function handleActionConfirm() {
   STATE.multiplierDisabled = true;
+  // Limpa a seleção para garantir que o próximo Highlight não seja acionado automaticamente
+  STATE.selectedNum = 0;
+  STATE.pinnedNum = 0;
+  STATE.selectedRow = -1;
+  STATE.selectedCol = -1;
+
   const an = STATE.analysis;
   if (an.singlesActive           && an.singles.length)        { executeFillSingles();       return; }
   if (an.hiddenActive            && an.hiddens.length)        { executeFillHiddenSingles(); return; }
