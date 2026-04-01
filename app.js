@@ -850,6 +850,7 @@ function startGame(difficulty) {
     STATE.notesDragAction = null;
     STATE.fillNotes  = false;
     STATE.pinnedNum  = 0;
+    STATE.selectedNum = 0;
     STATE.simulator  = {
       active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
       savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
@@ -1843,6 +1844,7 @@ function resumeSession() {
   STATE.paused       = false;
   STATE.fillNotes    = false;
   STATE.pinnedNum    = 0;
+  STATE.selectedNum  = 0;
   STATE.simulator    = {
     active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
     savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
@@ -6094,12 +6096,11 @@ function correctPop(r, c) {
 }
 
 function celebrateDigit(num) {
-  /* Auto-despinnar se este número estava fixado */
-  if (STATE.pinnedNum === num) {
-    STATE.pinnedNum = 0;
-    renderNumpad();
-    renderHighlights();
-  }
+  /* Auto-despinnar/desselecionar se este número estava fixado ou selecionado no dial */
+  let changed = false;
+  if (STATE.pinnedNum === num)   { STATE.pinnedNum = 0;   changed = true; }
+  if (STATE.selectedNum === num) { STATE.selectedNum = 0; changed = true; }
+  if (changed) { renderNumpad(); renderHighlights(); }
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       if (STATE.puzzle[r][c] === num) {
