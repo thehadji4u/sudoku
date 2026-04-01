@@ -2211,10 +2211,11 @@ function updateToolsAffordability() {
 }
 
 function updateBestScore() {
+  const el = document.getElementById('best-score-val');
+  if (!el) return;
   const all = loadRanking().filter(e => e.difficulty === STATE.difficulty);
   const best = all.length ? Math.max(...all.map(e => e.score)) : 0;
-  document.getElementById('best-score-val').textContent =
-    best.toLocaleString('pt-BR');
+  el.textContent = best.toLocaleString('pt-BR');
 }
 
 function updateErrorDisplay() {
