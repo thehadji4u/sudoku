@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.109</span>
+      <span class="app-version">v1.110</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -249,6 +249,13 @@
         </span>
         <span>Anotações</span>
       </button>
+      <button class="ctrl-btn hidden" id="btn-paint">
+        <span class="ctrl-icon-wrap" id="paint-btn-inner">
+          <span class="ctrl-icon" id="paint-btn-icon">🎨</span>
+          <span class="ctrl-mode-tag" id="paint-mode-tag">OFF</span>
+        </span>
+        <span>Colorir</span>
+      </button>
       <button class="ctrl-btn" id="btn-fill">
         <span class="ctrl-icon">💡</span>
         <span>Preencher</span>
@@ -397,6 +404,20 @@
         <div class="toggle-wrap">
           <input type="checkbox" class="toggle-input" id="cfg-enableErase">
           <label class="toggle-track" for="cfg-enableErase"></label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge">F9</span>
+          <div class="feature-text">
+            <div class="setting-label">Modo Colorir habilitado</div>
+            <div class="setting-desc">Exibe o botão Colorir nos controles. Permite pintar o fundo de anotações em verde ou vermelho sem alterar o jogo</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="cfg-enablePaint">
+          <label class="toggle-track" for="cfg-enablePaint"></label>
         </div>
       </div>
 

@@ -142,8 +142,9 @@ const STATE = {
     showSelZone:         true,
     showNoteMatch:       true,
     enableDialPin:       true,
-    enableNotes:         true,  // F8 — permite fazer anotações
-    enableErase:         true,  // habilita o botão Apagar na barra de controles
+    enableNotes:         true,  // F7 — permite fazer anotações
+    enableErase:         true,  // F8 — habilita o botão Apagar
+    enablePaint:         false, // F9 — modo colorir anotações
     showZoneComp:        false, // F4 — indica zonas do número nas componentes
     nakedSingleMode:     0,
     nakedPairMode:       0,
@@ -159,9 +160,23 @@ const STATE = {
 let cellElements = [];  // [9][9]
 let _numpadPressTimer  = null;
 let _numpadLongPressed = false;
-let _powerExecForce    = false;  /* true enquanto botão Executar aciona Pn em nível 1 */
+let _powerExecForce    = false;
 let _toolLongPressTimer     = null;
 let _toolLongPressTriggered = false;
+
+/* Modo Colorir */
+const PAINT_STATE = {
+  active: false,       // modo pintura ligado
+  color: 'green',      // 'green' | 'red'
+  marks: {},           // { 'r,c': Set<num> } pintados em verde
+  marksRed: {},        // { 'r,c': Set<num> } pintados em vermelho
+};
+function _getPaintSet(r, c, color) {
+  const map = color === 'red' ? PAINT_STATE.marksRed : PAINT_STATE.marks;
+  const key = `${r},${c}`;
+  if (!map[key]) map[key] = new Set();
+  return map[key];
+}
 
 /* ═══════════════════════════════════════
    CONSTANTES
@@ -505,10 +520,13 @@ function attachEvents() {
 
   /* Teclado */
   document.addEventListener('keydown', handleKeyboard);
+
+  /* Botão Colorir (F9) */
+  _setupPaintBtn();
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp', 'enableNotes', 'enableErase'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp', 'enableNotes', 'enableErase', 'enablePaint'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -553,6 +571,13 @@ function setupSettingsEvents() {
       if (key === 'enableErase') {
         const eraseBtn = document.getElementById('btn-erase');
         if (eraseBtn) eraseBtn.classList.toggle('erase-disabled', !el.checked);
+      }
+      if (key === 'enablePaint') {
+        const paintBtn = document.getElementById('btn-paint');
+        if (paintBtn) {
+          paintBtn.classList.toggle('hidden', !el.checked);
+          if (!el.checked) deactivatePaintMode();
+        }
       }
       if (key === 'autoAnnotations' && el.checked && STATE.puzzle) {
         applyAutoAnnotations();
@@ -994,17 +1019,25 @@ function updateCellContent(r, c) {
   if (val !== 0) {
     el.textContent = val;
   } else if (noteSet.size > 0) {
-    el.innerHTML = buildNotesHTML(noteSet);
+    el.innerHTML = buildNotesHTML(noteSet, r, c);
   } else {
     el.textContent = '';
   }
 }
 
-function buildNotesHTML(noteSet) {
+function buildNotesHTML(noteSet, r, c) {
   let html = '<div class="notes-grid">';
+  const gSet = PAINT_STATE.marks[`${r},${c}`] || new Set();
+  const rSet = PAINT_STATE.marksRed[`${r},${c}`] || new Set();
   for (let n = 1; n <= 9; n++) {
     const active = noteSet.has(n);
-    html += `<span class="note-digit${active ? ' active' : ''}" data-note="${n}">${active ? n : ''}</span>`;
+    let cls = 'note-digit';
+    if (active) {
+      cls += ' active';
+      if (rSet.has(n)) cls += ' paint-red';
+      else if (gSet.has(n)) cls += ' paint-green';
+    }
+    html += `<span class="${cls}" data-note="${n}">${active ? n : ''}</span>`;
   }
   html += '</div>';
   return html;
@@ -1040,7 +1073,7 @@ function renderHighlights() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       cellElements[r][c].classList.remove(
-        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'p2-source', 'p-elim-target', 'p0-target', 'p3-source', 'p4-source', 'p5-single', 'notes-drag-selected', 'zone-comp'
+        'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'p1-target', 'p2-source', 'p-elim-target', 'p0-target', 'p3-source', 'p4-source', 'p5-single', 'notes-drag-selected', 'zone-comp'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
 
@@ -1170,7 +1203,7 @@ function renderHighlights() {
       const [r, c] = key.split(',').map(Number);
       const el = cellElements[r][c];
       if (el && !el.classList.contains('selected'))
-        el.classList.add('p5-single');  /* mantém visual pulse violeta */
+        el.classList.add('p1-target');  /* âmbar — células alvo do hidden single */
     });
   }
 
@@ -1245,22 +1278,22 @@ function renderHighlights() {
     if (activeNum > 0 && !STATE.gameOver) {
       if (p0Active) {
         const q = p0Targets.length;
-        if (q > 0) pnLabel = q > 1 ? `${q} x Auto-Remoção` : `Auto-Remoção`;
+        if (q > 0) pnLabel = 'Auto-Remoção';
       } else if (p1Active) {
         const q = getNakedSinglesForNum(activeNum).length + getNoteNakedsForNum(activeNum).length;
-        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Single` : `Naked Single`;
+        if (q > 0) pnLabel = 'Naked Single';
       } else if (p2Active) {
         const q = getHiddenSinglesForNum(activeNum).length + getNoteHiddenSinglesForNum(activeNum).length;
-        if (q > 0) pnLabel = q > 1 ? `${q} x Hidden Single` : `Hidden Single`;
+        if (q > 0) pnLabel = 'Hidden Single';
       } else if (p3Active) {
         const q = getNakedPairsForNum(activeNum).filter(p => p.targets.length > 0).length;
-        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Pair` : `Naked Pair`;
+        if (q > 0) pnLabel = 'Naked Pair';
       } else if (p4Active) {
         const q = getNakedTriplesForNum(activeNum).filter(t => t.targets.length > 0).length;
-        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Triple` : `Naked Triple`;
+        if (q > 0) pnLabel = 'Naked Triple';
       } else if (p5Active) {
         const q = getNakedQuadsForNum(activeNum).filter(qd => qd.targets.length > 0).length;
-        if (q > 0) pnLabel = q > 1 ? `${q} x Naked Quad` : `Naked Quad`;
+        if (q > 0) pnLabel = 'Naked Quad';
       }
     }
     const indicatorEl = document.getElementById('active-pn-indicator');
@@ -1358,6 +1391,24 @@ function handleNumberInput(num) {
   if (STATE.paused) return;
   const { selectedRow: r, selectedCol: c } = STATE;
   if (r < 0) return;
+
+  /* Modo Colorir: apenas pinta anotações, nada de preenchimento */
+  if (PAINT_STATE.active && num > 0) {
+    if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num)) {
+      const color = PAINT_STATE.color;
+      const thisSet = _getPaintSet(r, c, color);
+      const otherSet = _getPaintSet(r, c, color === 'green' ? 'red' : 'green');
+      if (thisSet.has(num)) {
+        thisSet.delete(num); // toggle off
+      } else {
+        otherSet.delete(num); // remove cor oposta
+        thisSet.add(num);
+      }
+      updateCellContent(r, c);
+    }
+    return;
+  }
+
   if (STATE.givens.has(`${r},${c}`)) return;
 
   /* Célula já correta não pode ser editada, EXCETO se estiver apagando (num === 0) */
@@ -2054,6 +2105,98 @@ function updateNotesBtn() {
   }
   const board = document.getElementById('board');
   if (board) board.classList.toggle('notes-active', STATE.notesMode);
+}
+
+/* ── Modo Colorir (F9) ── */
+function _setupPaintBtn() {
+  const btn = document.getElementById('btn-paint');
+  if (!btn) return;
+
+  /* Injeta os dois halvos internos */
+  btn.innerHTML = `
+    <span class="ctrl-icon-wrap" id="paint-btn-inner">
+      <span class="ctrl-icon">🎨</span>
+      <span class="ctrl-mode-tag" id="paint-mode-tag">OFF</span>
+    </span>
+    <span class="paint-label-text">Colorir</span>
+    <div id="paint-half-off">
+      <span class="paint-half-icon">❌</span>
+      <span class="paint-half-label">OFF</span>
+    </div>
+    <div id="paint-half-color" class="color-green">
+      <span class="paint-half-icon" id="paint-half-icon">🟢</span>
+      <span class="paint-half-label" id="paint-half-label">Verde</span>
+    </div>`;
+
+  /* Clique no botão principal (modo OFF): ativa pintura verde */
+  btn.addEventListener('click', (e) => {
+    if (PAINT_STATE.active) return; /* halves handle clicks when active */
+    activatePaintMode('green');
+  });
+
+  /* Clique no halvo esquerdo (OFF) */
+  document.getElementById('paint-half-off').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deactivatePaintMode();
+  });
+
+  /* Clique no halvo direito (Cor) */
+  document.getElementById('paint-half-color').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const next = PAINT_STATE.color === 'green' ? 'red' : 'green';
+    PAINT_STATE.color = next;
+    updatePaintBtn();
+    renderNumpad();
+  });
+}
+
+function activatePaintMode(color) {
+  PAINT_STATE.active = true;
+  PAINT_STATE.color = color || 'green';
+  /* Desativa notes mode se estiver ativo */
+  if (STATE.notesMode) {
+    STATE.notesMode = false;
+    updateNotesBtn();
+  }
+  updatePaintBtn();
+  renderNumpad();
+}
+
+function deactivatePaintMode() {
+  PAINT_STATE.active = false;
+  /* Limpa todas as marcas visuais */
+  PAINT_STATE.marks = {};
+  PAINT_STATE.marksRed = {};
+  updatePaintBtn();
+  renderNumpad();
+  /* Redesenha todas as células para remover pinturas */
+  if (STATE.puzzle) {
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        updateCellContent(r, c);
+  }
+}
+
+function updatePaintBtn() {
+  const btn = document.getElementById('btn-paint');
+  if (!btn) return;
+  const halfColor = document.getElementById('paint-half-color');
+  const halfIcon  = document.getElementById('paint-half-icon');
+  const halfLabel = document.getElementById('paint-half-label');
+
+  if (PAINT_STATE.active) {
+    btn.classList.add('paint-active', 'active-mode');
+    if (halfColor) {
+      halfColor.className = `color-${PAINT_STATE.color}`;
+      if (halfIcon)  halfIcon.textContent  = PAINT_STATE.color === 'green' ? '🟢' : '🔴';
+      if (halfLabel) halfLabel.textContent = PAINT_STATE.color === 'green' ? 'Verde' : 'Verm.';
+    }
+    document.body.classList.toggle('paint-mode-green', PAINT_STATE.color === 'green');
+    document.body.classList.toggle('paint-mode-red',   PAINT_STATE.color === 'red');
+  } else {
+    btn.classList.remove('paint-active', 'active-mode');
+    document.body.classList.remove('paint-mode-green', 'paint-mode-red');
+  }
 }
 
 function updateScoreDisplay() {
@@ -6210,12 +6353,16 @@ function syncSettingsUI() {
   toggle('cfg-fillAllNotes', s.fillAllNotes);
   toggle('cfg-enableNotes',  s.enableNotes);
   toggle('cfg-enableErase',  s.enableErase !== false);
+  toggle('cfg-enablePaint',  s.enablePaint || false);
 
   const notesBtn = document.getElementById('btn-notes');
   if (notesBtn) notesBtn.classList.toggle('notes-disabled', !s.enableNotes);
 
   const eraseBtn2 = document.getElementById('btn-erase');
   if (eraseBtn2) eraseBtn2.classList.toggle('erase-disabled', s.enableErase === false);
+
+  const paintBtn = document.getElementById('btn-paint');
+  if (paintBtn) paintBtn.classList.toggle('hidden', !s.enablePaint);
 
   /* P0 tri-toggle */
   const p0Toggle = document.getElementById('cfg-p0Mode');

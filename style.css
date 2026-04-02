@@ -1500,36 +1500,40 @@ html, body {
 /* ── P0 — eliminar notas proibidas ── */
 .cell.p0-target { background: #CFFAFE; }  /* ciano claro */
 
-/* ── Naked Single (Função 6) ── */
+/* ── Naked Single (Poder 1) ── */
 .cell.naked-single      { background: #FEF3C7; }  /* amber claro — board logic */
 .cell.naked-single-note { background: #FED7AA; }  /* laranja claro — baseado em notas */
-/* ── Note-removal powers: source/target/pulse ── */
-.cell.p2-source { background: #86EFAC; }   /* laranja bem claro (tipo 100) FFF7ED */
-.cell.p3-source { background: #86EFAC; }   /* laranja médio (tipo 300) FED7AA */
-.cell.p4-source { background: #86EFAC; }   /* laranja forte (tipo 500) FB923C */
 
-/* Target cells (uniform for all removal powers) — fundo vermelho, sem dígito colorido */
-.cell.p-elim-target { background: #FEE2E2; }
+/* ── P1/P2 (fill): target em âmbar vibrante ── */
+.cell.p1-target { background: #FDE68A; }  /* âmbar médio — alvo de naked/hidden single */
+
+/* ── P3/P4/P5 (elim): source=violeta, target=vermelho vibrante ── */
+.cell.p2-source { background: #EDE9FE; }   /* violeta claro — naked pair source */
+.cell.p3-source { background: #DDD6FE; }   /* violeta médio — naked triple source */
+.cell.p4-source { background: #C4B5FD; }   /* violeta forte — naked quad source */
+
+/* Target cells (eliminação) — vermelho vibrante */
+.cell.p-elim-target { background: #FECACA; }
 
 /* Source glow/pulse before animation */
 @keyframes p-source-pulse {
   0%   { box-shadow: none; }
-  40%  { box-shadow: inset 0 0 0 3px var(--p-glow, #4ADE80), 0 0 10px var(--p-glow, #4ADE80); }
+  40%  { box-shadow: inset 0 0 0 3px var(--p-glow, #7C3AED), 0 0 10px var(--p-glow, #7C3AED); }
   100% { box-shadow: none; }
 }
 .cell.p-source-glow { animation: p-source-pulse 0.55s ease-out forwards; }
 
 /* Target flash while note is leaving */
 @keyframes p-target-flash {
-  0%, 100% { background: #FEE2E2; }
-  50%       { background: #FCA5A5; }
+  0%, 100% { background: #FECACA; }
+  50%       { background: #F87171; }
 }
 .cell.p-target-flash { animation: p-target-flash 0.45s ease-in-out; }
 
-/* ── P5 — Hidden Single — pulso de fundo, sem borda ── */
+/* ── P2 — Hidden Single — pulso de fundo âmbar ── */
 @keyframes p5-pulse {
-  0%, 100% { background: #F3E8FF; }
-  50%       { background: #E9D5FF; }
+  0%, 100% { background: #FDE68A; }
+  50%       { background: #FCD34D; }
 }
 .cell.p5-single { animation: p5-pulse 1.1s ease-in-out infinite; }
 
@@ -1985,3 +1989,90 @@ html, body {
   opacity: 0;
   pointer-events: none;
 }
+
+/* ═══════════════════════════════════════════
+   MODO COLORIR (F9)
+   ═══════════════════════════════════════════ */
+
+/* Botão Colorir — estado OFF (aparência normal) */
+#btn-paint { position: relative; overflow: hidden; }
+
+/* Quando modo colorir está ativo: botão dividido em 2 halvos */
+#btn-paint.paint-active {
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+#btn-paint.paint-active .ctrl-icon-wrap {
+  display: none; /* esconde layout padrão */
+}
+#paint-half-off, #paint-half-color {
+  display: none;
+}
+#btn-paint.paint-active #paint-half-off,
+#btn-paint.paint-active #paint-half-color {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  gap: 2px;
+  border: none;
+  background: none;
+}
+#btn-paint.paint-active #paint-half-off {
+  background: #F1F5F9;
+  color: #64748B;
+  border-radius: 12px 0 0 12px;
+  border-right: 1px solid rgba(0,0,0,0.08);
+}
+#btn-paint.paint-active #paint-half-off:active { background: #E2E8F0; }
+#btn-paint.paint-active #paint-half-color.color-green {
+  background: linear-gradient(135deg, #16A34A, #22C55E);
+  color: #fff;
+  border-radius: 0 12px 12px 0;
+  box-shadow: inset 0 0 8px rgba(34,197,94,0.4);
+}
+#btn-paint.paint-active #paint-half-color.color-red {
+  background: linear-gradient(135deg, #DC2626, #EF4444);
+  color: #fff;
+  border-radius: 0 12px 12px 0;
+  box-shadow: inset 0 0 8px rgba(239,68,68,0.4);
+}
+#btn-paint.paint-active #paint-half-color:active { opacity: 0.85; }
+.paint-half-icon { font-size: 14px; line-height: 1; }
+.paint-half-label { font-size: 9px; font-weight: 700; }
+
+/* Dial em modo pintura — verde glow ou vermelho glow */
+body.paint-mode-green .num-btn:not(.done) {
+  color: #16A34A !important;
+  text-shadow: 0 0 8px #4ADE80, 0 0 16px #86EFAC;
+}
+body.paint-mode-red .num-btn:not(.done) {
+  color: #DC2626 !important;
+  text-shadow: 0 0 8px #EF4444, 0 0 16px #FCA5A5;
+}
+body.paint-mode-green .num-bar-power { background: #4ADE80 !important; }
+body.paint-mode-red   .num-bar-power { background: #EF4444 !important; }
+
+/* Anotações pintadas — fundo colorido no dígito */
+.note-digit.paint-green {
+  background: #16A34A !important;
+  color: #fff !important;
+  border-radius: 2px;
+}
+.note-digit.paint-red {
+  background: #DC2626 !important;
+  color: #fff !important;
+  border-radius: 2px;
+}
+
