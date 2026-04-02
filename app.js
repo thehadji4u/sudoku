@@ -1355,9 +1355,9 @@ function renderNumpad() {
     if (poolEl) poolEl.classList.toggle('bar-overload', noteCount[n] > 72);
   });
 
-  /* Board border: blue when a dial number is selected (edit mode) */
+  /* Board border: blue when a cell is selected */
   const boardEl = document.getElementById('board');
-  if (boardEl) boardEl.classList.toggle('edit-active', STATE.selectedNum > 0);
+  if (boardEl) boardEl.classList.toggle('edit-active', STATE.selectedRow >= 0);
 }
 
 function _updateDialBar(el, pct) {
@@ -2909,7 +2909,7 @@ function triggerNakedPairElim(num, fallbackEl) {
   _npGen++;
   const gen = _npGen;
 
-  const pairs = getNakedPairsForNum(num);
+  const pairs = getNakedPairsForNum(num).filter(p => p.targets.length > 0).slice(0, 1);
   if (!pairs.length) return;
 
   /* Apply source highlights + pulse */
@@ -3050,7 +3050,7 @@ function triggerNakedTripleElim(num, fallbackEl) {
   _ntGen++;
   const gen = _ntGen;
 
-  const triples = getNakedTriplesForNum(num);
+  const triples = getNakedTriplesForNum(num).filter(t => t.targets.length > 0).slice(0, 1);
   if (!triples.length) return;
 
   const sourceSet = new Set();
@@ -3121,7 +3121,7 @@ function triggerNakedQuadElim(num, fallbackEl) {
   _nqGen++;
   const gen = _nqGen;
 
-  const quads = getNakedQuadsForNum(num);
+  const quads = getNakedQuadsForNum(num).filter(q => q.targets.length > 0).slice(0, 1);
   if (!quads.length) return;
 
   const sourceSet = new Set();
