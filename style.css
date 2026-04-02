@@ -21,7 +21,7 @@
   --error-bg:         #FEE2E2;
   --error-text:       #DC2626;
   --success:          #16A34A;
-  --cell-size:        clamp(28px, min(calc((100vw - 29px) / 9), calc((100dvh - 290px) / 9)), 56px);
+  --cell-size:        clamp(28px, min(calc((100vw - 29px) / 9), calc((100dvh - 330px) / 9)), 56px);
   --font-cell:        clamp(15px, calc(var(--cell-size) * 0.55), 34px);
   --font-note:        clamp(8px, calc(var(--cell-size) * 0.25), 13px);
   --radius:           12px;
@@ -806,26 +806,6 @@ html, body {
 .num-btn.erase:active { background: #FEF2F2; }
 .ctrl-btn.notes-disabled { display: none !important; }
 .ctrl-btn.erase-disabled { display: none !important; }
-
-/* ── Botão Executar (Pn nível 1) ── */
-#btn-power-exec {
-  display: block;
-  width: calc(100% - 24px);
-  margin: 4px 12px 2px;
-  padding: 10px 0;
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.40);
-  transition: transform .12s, box-shadow .12s, opacity .15s;
-}
-#btn-power-exec:active { transform: scale(0.96); box-shadow: 0 1px 4px rgba(99,102,241,0.25); }
-#btn-power-exec.hidden { visibility: hidden; pointer-events: none; }
 
 /* ── Controles ── */
 #controls {

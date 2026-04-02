@@ -487,16 +487,6 @@ function attachEvents() {
   /* Gênio da Lâmpada — 3 cliques rápidos no placar */
   _attachGenioTrigger();
 
-  /* Botão "Executar" (Pn nível 1) */
-  const execBtn = document.getElementById('btn-power-exec');
-  if (execBtn) execBtn.addEventListener('click', () => {
-    if (!execBtn._execFn) return;
-    _powerExecForce = true;
-    execBtn._execFn();
-    /* Reseta o flag após tempo suficiente para cobrir toda a cadeia de animação */
-    setTimeout(() => { _powerExecForce = false; }, 12000);
-  });
-
   /* Settings close button */
   const scBtn = document.getElementById('btn-settings-close');
   if (scBtn) scBtn.addEventListener('click', closeAllModals);
@@ -1040,8 +1030,7 @@ function _applyZoneComp(puzzle, n, cellElements) {
 function renderHighlights() {
   /* Guard: tabuleiro não renderizado ou puzzle não iniciado */
   if (!cellElements.length || !cellElements[0] || !STATE.puzzle) {
-    const eb = document.getElementById('btn-power-exec');
-    if (eb) eb.classList.add('hidden');
+
     return;
   }
 
@@ -1137,8 +1126,6 @@ function renderHighlights() {
   if (STATE.pnHighlightsPaused) {
     const indicatorEl = document.getElementById('active-pn-indicator');
     if (indicatorEl) indicatorEl.textContent = '';
-    const execBtn = document.getElementById('btn-power-exec');
-    if (execBtn) { execBtn.classList.add('hidden'); execBtn._execFn = null; }
   } else {
   /* ── Poderes: P0 > P1 > P2(hidden) > P3(pair) > P4(triple) > P5(quad) ── */
 
@@ -1279,35 +1266,6 @@ function renderHighlights() {
     const indicatorEl = document.getElementById('active-pn-indicator');
     if (indicatorEl) indicatorEl.textContent = pnLabel;
 
-    const execBtn = document.getElementById('btn-power-exec');
-    if (execBtn) {
-      let execFn = null, execLabelText = null;
-      if (activeNum > 0 && !STATE.gameOver) {
-        const nbtn = document.querySelector(`[data-num="${activeNum}"]`);
-        if (p0Active && (settings.p0Mode || 0) === 1) {
-          const _sr = STATE.selectedRow, _sc = STATE.selectedCol;
-          execLabelText = 'P0'; execFn = () => triggerP0Elim(_sr, _sc, nbtn);
-        } else if (p1Active && (settings.nakedSingleMode || 0) === 1) {
-          execLabelText = 'P1'; execFn = () => triggerNakedSingleFill(activeNum, nbtn);
-        } else if (p2Active && (settings.p5Mode || 0) === 1) {
-          execLabelText = 'P2'; execFn = () => triggerHiddenSingleFill(activeNum, nbtn);
-        } else if (p3Active && (settings.nakedPairMode || 0) === 1) {
-          execLabelText = 'P3'; execFn = () => triggerNakedPairElim(activeNum, nbtn);
-        } else if (p4Active && (settings.p3Mode || 0) === 1) {
-          execLabelText = 'P4'; execFn = () => triggerNakedTripleElim(activeNum, nbtn);
-        } else if (p5Active && (settings.p4Mode || 0) === 1) {
-          execLabelText = 'P5'; execFn = () => triggerNakedQuadElim(activeNum, nbtn);
-        }
-      }
-      if (execFn) {
-        execBtn.textContent = `⚡ Executar ${execLabelText}`;
-        execBtn.classList.remove('hidden');
-        execBtn._execFn = execFn;
-      } else {
-        execBtn.classList.add('hidden');
-        execBtn._execFn = null;
-      }
-    }
   }
   } // ends else block for pnHighlightsPaused
 
