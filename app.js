@@ -3020,7 +3020,7 @@ function triggerNakedPairElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p2-source');
-    el.style.setProperty('--p-glow', '#4ADE80');
+    el.style.setProperty('--p-glow', '#7C3AED');
     el.classList.add('p-source-glow');
   });
 
@@ -3062,7 +3062,7 @@ function _processNpQueue(gen, num, sourceEl, queue) {
   fromEl.classList.add('p-target-flash');
 
   animateCellTravel(fromEl, dial || sourceEl, {
-    color: '#4ADE80',
+    color: '#EF4444',
     guard: () => gen === _npGen && STATE.settings.nakedPairMode >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
@@ -3160,7 +3160,7 @@ function triggerNakedTripleElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p3-source');
-    el.style.setProperty('--p-glow', '#22C55E');
+    el.style.setProperty('--p-glow', '#7C3AED');
     el.classList.add('p-source-glow');
   });
 
@@ -3201,7 +3201,7 @@ function _processNtQueue(gen, num, sourceEl, queue) {
   fromEl.classList.add('p-target-flash');
 
   animateCellTravel(fromEl, dial || sourceEl, {
-    color: '#22C55E',
+    color: '#EF4444',
     guard: () => gen === _ntGen && (STATE.settings.p3Mode || 0) >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
@@ -3231,7 +3231,7 @@ function triggerNakedQuadElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p4-source');
-    el.style.setProperty('--p-glow', '#16A34A');
+    el.style.setProperty('--p-glow', '#7C3AED');
     el.classList.add('p-source-glow');
   });
 
@@ -3272,7 +3272,7 @@ function _processNqQueue(gen, num, sourceEl, queue) {
   fromEl.classList.add('p-target-flash');
 
   animateCellTravel(fromEl, dial || sourceEl, {
-    color: '#16A34A',
+    color: '#EF4444',
     guard: () => gen === _nqGen && (STATE.settings.p4Mode || 0) >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       STATE.notes[tr][tc].delete(num);
@@ -3392,7 +3392,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
   const toEl = cellElements[tr][tc];
 
   animateCellTravel(sourceEl, toEl, {
-    color: '#C084FC',
+    color: '#F59E0B',
     guard: () => gen === _nhGen && (STATE.settings.p5Mode || 0) >= 2 || _powerExecForce && !STATE.gameOver,
     onArrive: () => {
       if (STATE.notes) _animOwnNotesOnFill(tr, tc, 460, 200);
