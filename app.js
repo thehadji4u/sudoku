@@ -2863,8 +2863,6 @@ function _isOnlyNSCandidate(r, c, n) {
 function triggerNakedSingleFill(num, sourceEl) {
   _nsGen++;
   const gen = _nsGen;
-  STATE.pnHighlightsPaused = true;
-  renderHighlights();
   /* board-logic nakeds (amber) + note-based nakeds não duplicados (laranja) */
   const boardSet = new Set(getNakedSinglesForNum(num).map(([r,c]) => r+','+c));
   const boardCells = getNakedSinglesForNum(num).map(([r,c]) => [r,c,'#F59E0B']);
@@ -2933,6 +2931,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       updateCellContent(tr, tc);
       renderNumpad();
       updateProgressBar();
+      STATE.pnHighlightsPaused = true;
       renderHighlights();
     },
     onDone: () => {
@@ -3011,8 +3010,6 @@ function getNakedPairsForNum(n) {
 function triggerNakedPairElim(num, fallbackEl) {
   _npGen++;
   const gen = _npGen;
-  STATE.pnHighlightsPaused = true;
-  renderHighlights();
 
   const pairs = getNakedPairsForNum(num).filter(p => p.targets.length > 0).slice(0, 1);
   if (!pairs.length) return;
@@ -3154,8 +3151,6 @@ function getNakedQuadsForNum(n) {
 function triggerNakedTripleElim(num, fallbackEl) {
   _ntGen++;
   const gen = _ntGen;
-  STATE.pnHighlightsPaused = true;
-  renderHighlights();
 
   const triples = getNakedTriplesForNum(num).filter(t => t.targets.length > 0).slice(0, 1);
   if (!triples.length) return;
@@ -3227,8 +3222,6 @@ function _processNtQueue(gen, num, sourceEl, queue) {
 function triggerNakedQuadElim(num, fallbackEl) {
   _nqGen++;
   const gen = _nqGen;
-  STATE.pnHighlightsPaused = true;
-  renderHighlights();
 
   const quads = getNakedQuadsForNum(num).filter(q => q.targets.length > 0).slice(0, 1);
   if (!quads.length) return;
@@ -3349,8 +3342,6 @@ function getNoteHiddenSinglesForNum(n) {
 function triggerHiddenSingleFill(num, sourceEl) {
   _nhGen++;
   const gen = _nhGen;
-  STATE.pnHighlightsPaused = true;
-  renderHighlights();
   const boardCells = getHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
   const noteCells  = getNoteHiddenSinglesForNum(num).map(([r,c]) => [r,c,'#C084FC']);
   const cellsMap = new Map();
@@ -3439,6 +3430,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
       updateCellContent(tr, tc);
       renderNumpad();
       updateProgressBar();
+      STATE.pnHighlightsPaused = true;
       renderHighlights();
     },
     onDone: () => {
