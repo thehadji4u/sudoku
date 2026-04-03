@@ -2931,7 +2931,7 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       updateCellContent(tr, tc);
       renderNumpad();
       updateProgressBar();
-      STATE.pnHighlightsPaused = true;
+      if (!rest.length) STATE.pnHighlightsPaused = true;
       renderHighlights();
     },
     onDone: () => {
@@ -2945,8 +2945,6 @@ function _processNsQueue(gen, num, sourceEl, queue) {
       checkWin();
       /* Próxima célula — parte da última célula preenchida */
       if (rest.length) {
-        STATE.pnHighlightsPaused = false;
-        renderHighlights();
         setTimeout(() => _processNsQueue(gen, num, toEl, rest), 280);
       } else {
         STATE.pnHighlightsPaused = true;
@@ -3432,7 +3430,7 @@ function _processNhQueue(gen, num, sourceEl, queue) {
       updateCellContent(tr, tc);
       renderNumpad();
       updateProgressBar();
-      STATE.pnHighlightsPaused = true;
+      if (!rest.length) STATE.pnHighlightsPaused = true;
       renderHighlights();
     },
     onDone: () => {
@@ -3443,8 +3441,6 @@ function _processNhQueue(gen, num, sourceEl, queue) {
       if (count === 9) setTimeout(() => celebrateDigit(num), 80);
       checkWin();
       if (rest.length) {
-        STATE.pnHighlightsPaused = false;
-        renderHighlights();
         setTimeout(() => _processNhQueue(gen, num, toEl, rest), 280);
       } else {
         STATE.pnHighlightsPaused = true;
