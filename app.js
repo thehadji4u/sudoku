@@ -2596,7 +2596,7 @@ function _triggerGameStartP0() {
       });
     }, i * 18);
   });
-  setTimeout(() => { if (gen === _p0Gen) renderHighlights(); }, allParticles.length * 18 + 300);
+  setTimeout(() => { if (gen === _p0Gen && !STATE.pnHighlightsPaused) renderHighlights(); }, allParticles.length * 18 + 300);
 }
 
 /* ═══════════════════════════════════════
@@ -2941,7 +2941,7 @@ function triggerNakedPairElim(num, fallbackEl) {
 
   const [pr, pc] = [...sourceSet][0].split(',').map(Number);
   const sourceEl = cellElements[pr][pc] || fallbackEl;
-  setTimeout(() => _processNpQueue(gen, num, sourceEl, queue), 450);
+  setTimeout(() => _processNpQueue(gen, num, sourceEl, queue), 320);
 }
 
 function _processNpQueue(gen, num, sourceEl, queue) {
@@ -3080,7 +3080,7 @@ function triggerNakedTripleElim(num, fallbackEl) {
 
   const [fr, fc] = [...sourceSet][0].split(',').map(Number);
   const sourceEl = cellElements[fr][fc] || fallbackEl;
-  setTimeout(() => _processNtQueue(gen, num, sourceEl, queue), 450);
+  setTimeout(() => _processNtQueue(gen, num, sourceEl, queue), 320);
 }
 
 function _processNtQueue(gen, num, sourceEl, queue) {
@@ -3151,7 +3151,7 @@ function triggerNakedQuadElim(num, fallbackEl) {
 
   const [fr, fc] = [...sourceSet][0].split(',').map(Number);
   const sourceEl = cellElements[fr][fc] || fallbackEl;
-  setTimeout(() => _processNqQueue(gen, num, sourceEl, queue), 450);
+  setTimeout(() => _processNqQueue(gen, num, sourceEl, queue), 320);
 }
 
 function _processNqQueue(gen, num, sourceEl, queue) {

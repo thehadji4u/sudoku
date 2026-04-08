@@ -1505,19 +1505,22 @@ html, body {
 .cell.naked-single-note { background: #FDE68A; }
 .cell.p1-target         { background: #FDE68A; }
 
-/* ── Células fonte — violeta intermediário uniforme (P3 pair, P4 triple, P5 quad) ── */
-.cell.p2-source { background: #DDD6FE; }
-.cell.p3-source { background: #DDD6FE; }
-.cell.p4-source { background: #DDD6FE; }
+/* ── Células fonte — fundo normal + borda âmbar (P3 pair, P4 triple, P5 quad) ── */
+.cell.p2-source,
+.cell.p3-source,
+.cell.p4-source {
+  outline: 2px solid #F59E0B;
+  outline-offset: -2px;
+}
 
 /* ── Células alvo de eliminação — âmbar intermediário ── */
 .cell.p-elim-target { background: #FDE68A; }
 
 /* ── Destaques de notas individuais ── */
 .note-digit.note-pn-blue {
-  background: #BAE6FD;
+  background: #FDE68A;
   border-radius: 2px;
-  color: #0369A1 !important;
+  color: #92400E !important;
   font-weight: 800;
 }
 .note-digit.note-pn-green {
