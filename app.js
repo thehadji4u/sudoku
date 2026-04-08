@@ -5415,6 +5415,11 @@ function updateAICBtn() {
   const btn = document.getElementById('btn-aic');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.aicActive);
 }
+
+/* ═══════════════════════════════════════
+   i18n — Language
+═══════════════════════════════════════ */
+const I18N = {
   pt: {
     facil:'Fácil', medio:'Médio', dificil:'Difícil', especialista:'Especialista', mestre:'Mestre', extremo:'Extremo',
     chooseLevel:'Escolha a dificuldade',
