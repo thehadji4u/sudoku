@@ -2484,6 +2484,7 @@ function triggerP0Elim(r, c, fallbackEl) {
   const gen = _p0Gen;
   const targets = getP0Targets(r, c);
   if (!targets.length) return;
+  pushUndo();
   const sourceEl = cellElements[r][c] || fallbackEl;
   STATE.pnHighlightsPaused = true;
   renderHighlights();
@@ -2921,7 +2922,7 @@ function triggerNakedPairElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p2-source');
-    el.style.setProperty('--p-glow', '#7C3AED');
+    el.style.setProperty('--p-glow', '#F59E0B');
     el.classList.add('p-source-glow');
   });
 
@@ -2939,6 +2940,7 @@ function triggerNakedPairElim(num, fallbackEl) {
   });
   if (!queue.length) return;
 
+  pushUndo();
   const [pr, pc] = [...sourceSet][0].split(',').map(Number);
   const sourceEl = cellElements[pr][pc] || fallbackEl;
   setTimeout(() => _processNpQueue(gen, num, sourceEl, queue), 320);
@@ -3061,7 +3063,7 @@ function triggerNakedTripleElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p3-source');
-    el.style.setProperty('--p-glow', '#7C3AED');
+    el.style.setProperty('--p-glow', '#F59E0B');
     el.classList.add('p-source-glow');
   });
 
@@ -3078,6 +3080,7 @@ function triggerNakedTripleElim(num, fallbackEl) {
   });
   if (!queue.length) return;
 
+  pushUndo();
   const [fr, fc] = [...sourceSet][0].split(',').map(Number);
   const sourceEl = cellElements[fr][fc] || fallbackEl;
   setTimeout(() => _processNtQueue(gen, num, sourceEl, queue), 320);
@@ -3132,7 +3135,7 @@ function triggerNakedQuadElim(num, fallbackEl) {
     const [r,c] = k.split(',').map(Number);
     const el = cellElements[r][c];
     el.classList.add('p4-source');
-    el.style.setProperty('--p-glow', '#7C3AED');
+    el.style.setProperty('--p-glow', '#F59E0B');
     el.classList.add('p-source-glow');
   });
 
@@ -3149,6 +3152,7 @@ function triggerNakedQuadElim(num, fallbackEl) {
   });
   if (!queue.length) return;
 
+  pushUndo();
   const [fr, fc] = [...sourceSet][0].split(',').map(Number);
   const sourceEl = cellElements[fr][fc] || fallbackEl;
   setTimeout(() => _processNqQueue(gen, num, sourceEl, queue), 320);
