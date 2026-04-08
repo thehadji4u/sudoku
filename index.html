@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.121</span>
+      <span class="app-version">v1.122</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -471,8 +471,53 @@
         <div class="setting-info">
           <span class="feature-badge power">P3</span>
           <div class="feature-text">
+            <div class="setting-label">Hidden Pair</div>
+            <div class="setting-desc">Dois dígitos confinados a 2 células — elimina outros candidatos dessas células. Executa após P2</div>
+          </div>
+        </div>
+        <div class="tri-toggle" id="cfg-hiddenPairMode">
+          <button class="tri-btn active" data-val="0">Off</button>
+          <button class="tri-btn" data-val="1">Nv1</button>
+          <button class="tri-btn" data-val="2">Nv2</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge power">P4</span>
+          <div class="feature-text">
+            <div class="setting-label">Hidden Triple</div>
+            <div class="setting-desc">Três dígitos confinados a 3 células — elimina outros candidatos dessas células. Executa após P3</div>
+          </div>
+        </div>
+        <div class="tri-toggle" id="cfg-hiddenTripleMode">
+          <button class="tri-btn active" data-val="0">Off</button>
+          <button class="tri-btn" data-val="1">Nv1</button>
+          <button class="tri-btn" data-val="2">Nv2</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge power">P5</span>
+          <div class="feature-text">
+            <div class="setting-label">Hidden Quad</div>
+            <div class="setting-desc">Quatro dígitos confinados a 4 células — elimina outros candidatos dessas células. Executa após P4</div>
+          </div>
+        </div>
+        <div class="tri-toggle" id="cfg-hiddenQuadMode">
+          <button class="tri-btn active" data-val="0">Off</button>
+          <button class="tri-btn" data-val="1">Nv1</button>
+          <button class="tri-btn" data-val="2">Nv2</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="feature-badge power">P6</span>
+          <div class="feature-text">
             <div class="setting-label">Naked Pair</div>
-            <div class="setting-desc">Indica e/ou elimina candidatos de pares nus. Executa após P2</div>
+            <div class="setting-desc">Indica e/ou elimina candidatos de pares nus. Executa após P5</div>
           </div>
         </div>
         <div class="tri-toggle" id="cfg-nakedPairMode">
@@ -484,10 +529,10 @@
 
       <div class="setting-row">
         <div class="setting-info">
-          <span class="feature-badge power">P4</span>
+          <span class="feature-badge power">P7</span>
           <div class="feature-text">
             <div class="setting-label">Naked Triple</div>
-            <div class="setting-desc">Indica e/ou elimina candidatos de triplos nus. Executa após P3</div>
+            <div class="setting-desc">Indica e/ou elimina candidatos de triplos nus. Executa após P6</div>
           </div>
         </div>
         <div class="tri-toggle" id="cfg-p3Mode">
@@ -499,10 +544,10 @@
 
       <div class="setting-row">
         <div class="setting-info">
-          <span class="feature-badge power">P5</span>
+          <span class="feature-badge power">P8</span>
           <div class="feature-text">
             <div class="setting-label">Naked Quad</div>
-            <div class="setting-desc">Indica e/ou elimina candidatos de quádruplos nus. Executa após P4</div>
+            <div class="setting-desc">Indica e/ou elimina candidatos de quádruplos nus. Executa após P7</div>
           </div>
         </div>
         <div class="tri-toggle" id="cfg-p4Mode">
