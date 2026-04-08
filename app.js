@@ -56,9 +56,8 @@ const STATE = {
     singlesActive:      false,
     singles:            [],        // [{r, c, val}]
     singlesIndex:       0,
-    singlesBatch:       false,     // true = mostra todos de uma vez
 
-    /* Ocultas (Hidden Singles) — compartilha singlesBatch */
+    /* Ocultas (Hidden Singles) */
     hiddenActive:       false,
     hiddens:            [],        // [{r, c, val, unitType, unitIdx}]
     hiddensIndex:       0,
@@ -67,48 +66,43 @@ const STATE = {
     nakedPairsActive:   false,
     nakedPairs:         [],        // [{pairNums, pairCells:[{r,c}], affected:[{r,c,nums:Set}]}]
     nakedPairsIndex:    0,
-    nakedPairsBatch:    false,
 
     /* Par Apontador (Pointing Pairs) — auto-detect cycling */
     pointingActive:     false,
     pointings:          [],        // [{num, cells:[{r,c}], targets:[{r,c}]}]
     pointingIndex:      0,
-    pointingBatch:      false,
 
     /* X-Wing */
     xwingActive:        false,
     xwings:             [],
     xwingIndex:         0,
-    xwingBatch:         false,
 
     /* Y-Wing */
     ywingActive:        false,
     ywings:             [],
     ywingIndex:         0,
-    ywingBatch:         false,
 
     /* W-Wing */
     wwingActive:        false,
     wwings:             [],
     wwingIndex:         0,
-    wwingBatch:         false,
 
     /* Hidden Pairs */
-    hiddenpairsActive: false, hiddenpairs: [], hiddenpairsIndex: 0, hiddenpairsBatch: false,
+    hiddenpairsActive: false, hiddenpairs: [], hiddenpairsIndex: 0,
     /* Naked Triples */
-    nakedtriplesActive: false, nakedtriples: [], nakedtriplesIndex: 0, nakedtriplesBatch: false,
+    nakedtriplesActive: false, nakedtriples: [], nakedtriplesIndex: 0,
     /* Hidden Triples */
-    hiddentriplesActive: false, hiddentriples: [], hiddentriplesIndex: 0, hiddentriplesBatch: false,
+    hiddentriplesActive: false, hiddentriples: [], hiddentriplesIndex: 0,
     /* Swordfish */
-    swordfishActive: false, swordfishes: [], swordfishIndex: 0, swordfishBatch: false,
+    swordfishActive: false, swordfishes: [], swordfishIndex: 0,
     /* XY-Chain */
-    xychainActive: false, xychains: [], xychainIndex: 0, xychainBatch: false,
+    xychainActive: false, xychains: [], xychainIndex: 0,
     /* Coloring */
-    coloringActive: false, colorings: [], coloringIndex: 0, coloringBatch: false,
+    coloringActive: false, colorings: [], coloringIndex: 0,
     /* Forcing Chains */
-    forcingchainsActive: false, forcingchains: [], forcingchainsIndex: 0, forcingchainsBatch: false,
+    forcingchainsActive: false, forcingchains: [], forcingchainsIndex: 0,
     /* AIC */
-    aicActive: false, aics: [], aicIndex: 0, aicBatch: false,
+    aicActive: false, aics: [], aicIndex: 0,
   },
 
   settings: {
@@ -126,7 +120,6 @@ const STATE = {
     enableXWing:         true,
     enableYWing:         true,
     enableWWing:         true,
-    mentorMode:          false,
     filterByDifficulty:  false,
     language:            'pt',
     enableHiddenPairs:   true,
@@ -137,8 +130,6 @@ const STATE = {
     enableColoring:      true,
     enableForcingChains: true,
     enableAIC:           true,
-    helpLevel2:          true,
-    enableLongPressBatch:true,
     showSelZone:         true,
     showNoteMatch:       true,
     enableDialPin:       true,
@@ -302,9 +293,6 @@ function _attachLogoUnlock() {
 ═══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
-  if (STATE.settings.helpLevel2 === undefined) STATE.settings.helpLevel2 = true;
-  if (STATE.settings.enableLongPressBatch === undefined) STATE.settings.enableLongPressBatch = true;
-  document.body.classList.toggle('help-lvl1', !STATE.settings.helpLevel2);
   applyLanguage(STATE.settings.language || 'pt');
   buildNumpad();
   renderNumpad();
@@ -408,21 +396,21 @@ function attachEvents() {
     () => { if (STATE.simulator.active) commitSimulator(); else activateSimulator(); }
   );
 
-  attachToolBtn('btn-singles',       toggleSingles,       longPressSingles);
-  attachToolBtn('btn-hiddens',       toggleHiddens,       longPressHiddens);
-  attachToolBtn('btn-nakedpairs',    toggleNakedPairs,    longPressNakedPairs);
-  attachToolBtn('btn-hiddenpairs',   toggleHiddenPairs,   longPressHiddenPairs);
-  attachToolBtn('btn-pointing',      togglePointing,      longPressPointing);
-  attachToolBtn('btn-xwing',         toggleXWing,         longPressXWing);
-  attachToolBtn('btn-nakedtriples',  toggleNakedTriples,  longPressNakedTriples);
-  attachToolBtn('btn-hiddentriples', toggleHiddenTriples, longPressHiddenTriples);
-  attachToolBtn('btn-swordfish',     toggleSwordfish,     longPressSwordfish);
-  attachToolBtn('btn-ywing',         toggleYWing,         longPressYWing);
-  attachToolBtn('btn-wwing',         toggleWWing,         longPressWWing);
-  attachToolBtn('btn-xychain',       toggleXYChain,       longPressXYChain);
-  attachToolBtn('btn-coloring',      toggleColoring,      longPressColoring);
-  attachToolBtn('btn-forcingchains', toggleForcingChains, longPressForcingChains);
-  attachToolBtn('btn-aic',           toggleAIC,           longPressAIC);
+  attachToolBtn('btn-singles',       toggleSingles);
+  attachToolBtn('btn-hiddens',       toggleHiddens);
+  attachToolBtn('btn-nakedpairs',    toggleNakedPairs);
+  attachToolBtn('btn-hiddenpairs',   toggleHiddenPairs);
+  attachToolBtn('btn-pointing',      togglePointing);
+  attachToolBtn('btn-xwing',         toggleXWing);
+  attachToolBtn('btn-nakedtriples',  toggleNakedTriples);
+  attachToolBtn('btn-hiddentriples', toggleHiddenTriples);
+  attachToolBtn('btn-swordfish',     toggleSwordfish);
+  attachToolBtn('btn-ywing',         toggleYWing);
+  attachToolBtn('btn-wwing',         toggleWWing);
+  attachToolBtn('btn-xychain',       toggleXYChain);
+  attachToolBtn('btn-coloring',      toggleColoring);
+  attachToolBtn('btn-forcingchains', toggleForcingChains);
+  attachToolBtn('btn-aic',           toggleAIC);
 
   document.getElementById('btn-action-confirm').addEventListener('click', handleActionConfirm);
   document.getElementById('btn-action-cancel').addEventListener('click', handleActionCancel);
@@ -499,18 +487,11 @@ function attachEvents() {
     window.location.reload();
   });
 
-  /* Gênio da Lâmpada — 3 cliques rápidos no placar */
-  _attachGenioTrigger();
 
   /* Settings close button */
   const scBtn = document.getElementById('btn-settings-close');
   if (scBtn) scBtn.addEventListener('click', closeAllModals);
 
-  /* Mentor buttons */
-  const mentorInfoBtn = document.getElementById('btn-mentor-info');
-  if (mentorInfoBtn) mentorInfoBtn.addEventListener('click', showMentorForActiveAnalysis);
-  const mentorCloseBtn = document.getElementById('btn-mentor-close');
-  if (mentorCloseBtn) mentorCloseBtn.addEventListener('click', hideMentorPanel);
 
   /* Language buttons */
   const langPt = document.getElementById('lang-pt');
@@ -526,7 +507,7 @@ function attachEvents() {
 }
 
 function setupSettingsEvents() {
-  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'mentorMode', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'helpLevel2', 'enableLongPressBatch', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp', 'enableNotes', 'enableErase', 'enablePaint'];
+  const keys = ['markErrors', 'failOnErrors', 'autoRemoveNotes', 'enhancedHighlight', 'autoAnnotations', 'simulatorMode', 'enableNakedSingles', 'enableHiddenSingles', 'enableNakedPairs', 'enablePointingPairs', 'enableXWing', 'enableYWing', 'enableWWing', 'filterByDifficulty', 'enableHiddenPairs', 'enableNakedTriples', 'enableHiddenTriples', 'enableSwordfish', 'enableXYChain', 'enableColoring', 'enableForcingChains', 'enableAIC', 'showSelZone', 'showNoteMatch', 'enableDialPin', 'showZoneComp', 'enableNotes', 'enableErase', 'enablePaint'];
   keys.forEach(key => {
     const el = document.getElementById('cfg-' + key);
     if (!el) return;
@@ -585,16 +566,8 @@ function setupSettingsEvents() {
       if (key === 'simulatorMode') {
         updateControlsForSimMode();
       }
-      if (key === 'helpLevel2') {
-        document.body.classList.toggle('help-lvl1', !STATE.settings.helpLevel2);
-        updateEnergyBar();
-        updateActionBar();
-      }
       if (key === 'autoAnnotations') {
         updateFillBtnVisibility();
-      }
-      if (key === 'mentorMode') {
-        updateMentorButton();
       }
       if (key === 'filterByDifficulty') {
         updateAnalysisToolsVisibility();
@@ -722,113 +695,15 @@ function setupSettingsEvents() {
   });
 }
 
-/*
- * attachToolBtn — registra clique (tap) e long-press (500ms) num botão de análise.
- * Long-press executa a ação imediatamente; tap normal chama a função toggle/cycle.
- */
-function attachToolBtn(btnId, tapFn, longPressFn) {
+function attachToolBtn(btnId, tapFn) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
-
-  const startPress = () => {
-    _toolLongPressTimer = setTimeout(() => {
-      _toolLongPressTriggered = true;
-      _toolLongPressTimer = null;
-      if (!STATE.puzzle || STATE.paused) return;
-      if (STATE.settings.enableLongPressBatch) {
-        longPressFn();
-      } else {
-        tapFn();
-      }
-    }, 600);
-  };
-
-  const cancelTimer = () => {
-    if (_toolLongPressTimer) { clearTimeout(_toolLongPressTimer); _toolLongPressTimer = null; }
-  };
-
-  /* TOUCH: sem preventDefault — o browser gera o evento 'click' normalmente.
-     touchstart/touchend só gerenciam o timer de long-press.
-     O tap real é tratado apenas no 'click', que dispara UMA VEZ por interação. */
-  btn.addEventListener('touchstart', startPress, { passive: true });
-  btn.addEventListener('touchend',   cancelTimer);
-  btn.addEventListener('touchcancel', cancelTimer);
-
-  /* MOUSE/DESKTOP: mousedown inicia o timer; mouseup/leave cancelam. */
-  btn.addEventListener('mousedown',  startPress);
-  btn.addEventListener('mouseup',    cancelTimer);
-  btn.addEventListener('mouseleave', cancelTimer);
-
-  /* Único ponto de execução do tap — dispara para touch e mouse. */
   btn.addEventListener('click', () => {
-    if (_toolLongPressTriggered) { _toolLongPressTriggered = false; return; }
     if (!STATE.puzzle || STATE.paused) return;
     tapFn();
   });
 }
 
-/* Long-press — ativa modo lote (batch): mostra TODOS os achados de uma vez.
-   Se já estiver ativo: entra em lote. Se não estiver ativo: detecta e entra em lote. */
-function longPressSingles() {
-  const an = STATE.analysis;
-  if (!an.singlesActive) toggleSingles();
-  if (an.singlesActive && an.singles.length > 0 && !an.singlesBatch) {
-    const remain = an.singles.slice(an.singlesIndex);
-    if (remain.length > 1) {
-      an.singles = an.singles.slice(0, an.singlesIndex).concat(_applyBatchEnergy('singles', remain));
-    }
-    an.singlesBatch = true; STATE.pinnedNum = 0;
-    updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
-  }
-}
-function longPressHiddens() {
-  const an = STATE.analysis;
-  if (!an.hiddenActive) toggleHiddens();
-  if (an.hiddenActive && an.hiddens.length > 0 && !an.hiddensBatch) {
-    const remain = an.hiddens.slice(an.hiddensIndex);
-    if (remain.length > 1) {
-      an.hiddens = an.hiddens.slice(0, an.hiddensIndex).concat(_applyBatchEnergy('hiddens', remain));
-    }
-    an.hiddensBatch = true; STATE.pinnedNum = 0;
-    updateHiddensBtn(); updateActionBar(); renderHighlights(); renderNumpad();
-  }
-}
-function longPressNakedPairs() {
-  const an = STATE.analysis;
-  if (!an.nakedPairsActive) toggleNakedPairs();
-  if (an.nakedPairsActive && an.nakedPairs.length > 0 && !an.nakedPairsBatch) {
-    an.nakedPairs = _applyBatchEnergy('nakedpairs', an.nakedPairs);
-    an.nakedPairsBatch = true;
-    updateNakedPairsBtn(); updateActionBar(); renderHighlights();
-  }
-}
-function longPressPointing() {
-  const an = STATE.analysis;
-  if (!an.pointingActive) togglePointing();
-  if (an.pointingActive && an.pointings.length > 0 && !an.pointingBatch) {
-    an.pointings = _applyBatchEnergy('pointing', an.pointings);
-    an.pointingBatch = true;
-    updatePointingBtn(); updateActionBar(); renderHighlights();
-  }
-}
-function longPressXWing() {
-  const an = STATE.analysis;
-  if (!an.xwingActive) toggleXWing();
-  if (an.xwingActive && an.xwings.length > 0 && !an.xwingBatch) {
-    an.xwings = _applyBatchEnergy('xwing', an.xwings);
-    an.xwingBatch = true;
-    updateXWingBtn(); updateActionBar(); renderHighlights();
-  }
-}
-function longPressYWing() {
-  const an = STATE.analysis;
-  if (!an.ywingActive) toggleYWing();
-  if (an.ywingActive && an.ywings.length > 0 && !an.ywingBatch) {
-    an.ywings = _applyBatchEnergy('ywing', an.ywings);
-    an.ywingBatch = true;
-    updateYWingBtn(); updateActionBar(); renderHighlights();
-  }
-}
 
 /* ═══════════════════════════════════════
    CICLO DO JOGO
@@ -1076,6 +951,7 @@ function renderHighlights() {
         'selected', 'same-num', 'highlight-sel', 'highlight-match', 'sim-conflict', 'naked-single', 'naked-single-note', 'p1-target', 'p2-source', 'p-elim-target', 'p0-target', 'p3-source', 'p4-source', 'p5-single', 'notes-drag-selected', 'zone-comp'
       );
   document.querySelectorAll('.note-digit.note-match').forEach(s => s.classList.remove('note-match'));
+  document.querySelectorAll('.note-digit.note-pn-blue,.note-digit.note-pn-green,.note-digit.note-pn-red').forEach(s => s.classList.remove('note-pn-blue','note-pn-green','note-pn-red'));
 
   /* activeNum = número em foco: pin > dial > célula selecionada */
   const activeNumEarly = STATE.pinnedNum > 0 ? STATE.pinnedNum
@@ -1169,7 +1045,11 @@ function renderHighlights() {
   if (p0Active) {
     p0Targets.forEach(([r, c]) => {
       const el = cellElements[r][c];
-      if (!el.classList.contains('selected')) el.classList.add('p0-target');
+      if (!el.classList.contains('selected')) {
+        el.classList.add('p0-target');
+        const noteEl = el.querySelector(`.note-digit[data-note="${puzzle[sr][sc]}"]`);
+        if (noteEl) noteEl.classList.add('note-pn-red');
+      }
     });
   }
 
@@ -1179,15 +1059,21 @@ function renderHighlights() {
     const boardNS = new Set(getNakedSinglesForNum(activeNum).map(([r,c]) => r+','+c));
     getNakedSinglesForNum(activeNum).forEach(([r, c]) => {
       const el = cellElements[r][c];
-      if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+      if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel')) {
         el.classList.add('naked-single');
+        const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+        if (noteEl) noteEl.classList.add('note-pn-green');
+      }
     });
     getNoteNakedsForNum(activeNum).forEach(([r, c]) => {
       if (boardNS.has(r+','+c)) return;
       const el = cellElements[r][c];
       if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel') &&
-          !el.classList.contains('naked-single'))
+          !el.classList.contains('naked-single')) {
         el.classList.add('naked-single-note');
+        const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+        if (noteEl) noteEl.classList.add('note-pn-green');
+      }
     });
   }
 
@@ -1202,8 +1088,11 @@ function renderHighlights() {
     allHSKeys.forEach(key => {
       const [r, c] = key.split(',').map(Number);
       const el = cellElements[r][c];
-      if (el && !el.classList.contains('selected'))
-        el.classList.add('p1-target');  /* âmbar — células alvo do hidden single */
+      if (el && !el.classList.contains('selected')) {
+        el.classList.add('p1-target');
+        const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+        if (noteEl) noteEl.classList.add('note-pn-green');
+      }
     });
   }
 
@@ -1215,15 +1104,25 @@ function renderHighlights() {
     const pairs = getNakedPairsForNum(activeNum).filter(p => p.targets.length > 0);
     if (pairs.length > 0) {
       const {pair, targets} = pairs[0];
+      // Get the union nums of the pair
+      const pairNums = STATE.notes ? [...STATE.notes[pair[0][0]][pair[0][1]]] : [];
       pair.forEach(([r, c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel'))
+        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel')) {
           el.classList.add('p2-source');
+          pairNums.forEach(n => {
+            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-blue');
+          });
+        }
       });
       targets.forEach(([r, c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('p2-source'))
+        if (!el.classList.contains('selected') && !el.classList.contains('p2-source')) {
           el.classList.add('p-elim-target');
+          const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+          if (noteEl) noteEl.classList.add('note-pn-red');
+        }
       });
     }
   }
@@ -1235,15 +1134,24 @@ function renderHighlights() {
   if (!p0Active && !p1Active && !p2Active && !p3Active && ntMode >= 1 && STATE.puzzle && activeNum > 0) {
     const triples = getNakedTriplesForNum(activeNum).filter(t => t.targets.length > 0);
     if (triples.length > 0) {
-      const {sourceCells, targets} = triples[0];
+      const {sourceCells, nums, targets} = triples[0];
       sourceCells.forEach(([r,c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected')) el.classList.add('p3-source');
+        if (!el.classList.contains('selected')) {
+          el.classList.add('p3-source');
+          (nums || []).forEach(n => {
+            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-blue');
+          });
+        }
       });
       targets.forEach(([r,c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('p3-source'))
+        if (!el.classList.contains('selected') && !el.classList.contains('p3-source')) {
           el.classList.add('p-elim-target');
+          const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+          if (noteEl) noteEl.classList.add('note-pn-red');
+        }
       });
     }
   }
@@ -1255,15 +1163,24 @@ function renderHighlights() {
   if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && nqMode >= 1 && STATE.puzzle && activeNum > 0) {
     const quads = getNakedQuadsForNum(activeNum).filter(q => q.targets.length > 0);
     if (quads.length > 0) {
-      const {sourceCells, targets} = quads[0];
+      const {sourceCells, nums, targets} = quads[0];
       sourceCells.forEach(([r,c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected')) el.classList.add('p4-source');
+        if (!el.classList.contains('selected')) {
+          el.classList.add('p4-source');
+          (nums || []).forEach(n => {
+            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-blue');
+          });
+        }
       });
       targets.forEach(([r,c]) => {
         const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('p4-source'))
+        if (!el.classList.contains('selected') && !el.classList.contains('p4-source')) {
           el.classList.add('p-elim-target');
+          const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+          if (noteEl) noteEl.classList.add('note-pn-red');
+        }
       });
     }
   }
@@ -2285,7 +2202,7 @@ function updateEnergyBar() {
 
 function getToolCost(key) {
   const base = TOOL_ENERGY_COST[key] || 0;
-  return STATE.settings.helpLevel2 ? base : Math.floor(base / 2);
+  return base;
 }
 
 function canAffordTool(key) {
@@ -2327,24 +2244,6 @@ function _showNoEnergyFeedback(btnId) {
   setTimeout(() => btn.classList.remove('energy-blocked'), 700);
 }
 
-function _applyBatchEnergy(key, items) {
-  if (!items || items.length <= 1) return items;
-  const cost = getToolCost(key);
-  if (cost === 0) return items;
-  
-  const affordableExtra = Math.floor(STATE.energyPoints / cost);
-  const requestedExtra = items.length - 1;
-  const toBuy = Math.min(requestedExtra, affordableExtra);
-  
-  if (toBuy > 0) {
-    STATE.energyPoints -= (toBuy * cost);
-    localStorage.setItem('sudoku-energy', STATE.energyPoints);
-    updateEnergyBar();
-    _flashEnergyDrain();
-  }
-  
-  return items.slice(0, 1 + toBuy);
-}
 
 function updateToolsAffordability() {
   Object.entries(TOOL_ENERGY_COST).forEach(([key]) => {
@@ -3734,7 +3633,6 @@ function toggleNakedPairs() {
     an.nakedPairsIndex = 0;
     an.nakedPairsActive = true;
   } else {
-    if (an.nakedPairsBatch) { deactivateNakedPairs(); return; }
     if (an.nakedPairsIndex + 1 >= an.nakedPairs.length) {
       deactivateNakedPairs(); return;
     }
@@ -3748,13 +3646,13 @@ function toggleNakedPairs() {
 
 function deactivateNakedPairs() {
   const an = STATE.analysis;
-  an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0; an.nakedPairsBatch = false;
+  an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0;
   updateNakedPairsBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeNakedPairs() {
   const an = STATE.analysis;
-  const pairs = an.nakedPairsBatch ? an.nakedPairs : [an.nakedPairs[an.nakedPairsIndex]].filter(Boolean);
+  const pairs = [an.nakedPairs[an.nakedPairsIndex]].filter(Boolean);
   if (!pairs.length) { deactivateNakedPairs(); return; }
   pushUndo();
   pairs.forEach(np => np.affected.forEach(({ r, c, nums }) => {
@@ -3830,7 +3728,6 @@ function togglePointing() {
     an.pointingIndex  = 0;
     an.pointingActive = true;
   } else {
-    if (an.pointingBatch) { deactivatePointing(); return; }
     if (an.pointingIndex + 1 >= an.pointings.length) {
       deactivatePointing(); return;
     }
@@ -3844,13 +3741,13 @@ function togglePointing() {
 
 function deactivatePointing() {
   const an = STATE.analysis;
-  an.pointingActive = false; an.pointings = []; an.pointingIndex = 0; an.pointingBatch = false;
+  an.pointingActive = false; an.pointings = []; an.pointingIndex = 0;
   updatePointingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executePointing() {
   const an = STATE.analysis;
-  const pts = an.pointingBatch ? an.pointings : [an.pointings[an.pointingIndex]].filter(Boolean);
+  const pts = [an.pointings[an.pointingIndex]].filter(Boolean);
   if (!pts.length) { deactivatePointing(); return; }
   pushUndo();
   pts.forEach(pt => pt.targets.forEach(({ r, c }) => {
@@ -3870,28 +3767,28 @@ function updatePointingBtn() {
 function _cancelOtherAnalysis(except) {
   const an = STATE.analysis;
   if (except !== 'singles') {
-    an.singlesActive = false; an.singles = []; an.singlesIndex = 0; an.singlesBatch = false;
+    an.singlesActive = false; an.singles = []; an.singlesIndex = 0;
     if (except !== 'hiddens') STATE.pinnedNum = 0;
     updateSinglesBtn();
   }
   if (except !== 'hiddens') {
-    an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0; an.hiddensBatch = false;
+    an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0;
     if (except !== 'singles') STATE.pinnedNum = 0;
     updateHiddensBtn();
   }
-  if (except !== 'nakedpairs')    { an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0; an.nakedPairsBatch = false; updateNakedPairsBtn(); }
-  if (except !== 'hiddenpairs')   { an.hiddenpairsActive = false; an.hiddenpairs = []; an.hiddenpairsIndex = 0; an.hiddenpairsBatch = false; updateHiddenPairsBtn(); }
-  if (except !== 'pointing')      { an.pointingActive = false; an.pointings = []; an.pointingIndex = 0; an.pointingBatch = false; updatePointingBtn(); }
-  if (except !== 'xwing')         { an.xwingActive = false; an.xwings = []; an.xwingIndex = 0; an.xwingBatch = false; updateXWingBtn(); }
-  if (except !== 'nakedtriples')  { an.nakedtriplesActive = false; an.nakedtriples = []; an.nakedtriplesIndex = 0; an.nakedtriplesBatch = false; updateNakedTriplesBtn(); }
-  if (except !== 'hiddentriples') { an.hiddentriplesActive = false; an.hiddentriples = []; an.hiddentriplesIndex = 0; an.hiddentriplesBatch = false; updateHiddenTriplesBtn(); }
-  if (except !== 'swordfish')     { an.swordfishActive = false; an.swordfishes = []; an.swordfishIndex = 0; an.swordfishBatch = false; updateSwordfishBtn(); }
-  if (except !== 'ywing')         { an.ywingActive = false; an.ywings = []; an.ywingIndex = 0; an.ywingBatch = false; updateYWingBtn(); }
-  if (except !== 'wwing')         { an.wwingActive = false; an.wwings = []; an.wwingIndex = 0; an.wwingBatch = false; updateWWingBtn(); }
-  if (except !== 'xychain')       { an.xychainActive = false; an.xychains = []; an.xychainIndex = 0; an.xychainBatch = false; updateXYChainBtn(); }
-  if (except !== 'coloring')      { an.coloringActive = false; an.colorings = []; an.coloringIndex = 0; an.coloringBatch = false; updateColoringBtn(); }
-  if (except !== 'forcingchains') { an.forcingchainsActive = false; an.forcingchains = []; an.forcingchainsIndex = 0; an.forcingchainsBatch = false; updateForcingChainsBtn(); }
-  if (except !== 'aic')           { an.aicActive = false; an.aics = []; an.aicIndex = 0; an.aicBatch = false; updateAICBtn(); }
+  if (except !== 'nakedpairs')    { an.nakedPairsActive = false; an.nakedPairs = []; an.nakedPairsIndex = 0; updateNakedPairsBtn(); }
+  if (except !== 'hiddenpairs')   { an.hiddenpairsActive = false; an.hiddenpairs = []; an.hiddenpairsIndex = 0; updateHiddenPairsBtn(); }
+  if (except !== 'pointing')      { an.pointingActive = false; an.pointings = []; an.pointingIndex = 0; updatePointingBtn(); }
+  if (except !== 'xwing')         { an.xwingActive = false; an.xwings = []; an.xwingIndex = 0; updateXWingBtn(); }
+  if (except !== 'nakedtriples')  { an.nakedtriplesActive = false; an.nakedtriples = []; an.nakedtriplesIndex = 0; updateNakedTriplesBtn(); }
+  if (except !== 'hiddentriples') { an.hiddentriplesActive = false; an.hiddentriples = []; an.hiddentriplesIndex = 0; updateHiddenTriplesBtn(); }
+  if (except !== 'swordfish')     { an.swordfishActive = false; an.swordfishes = []; an.swordfishIndex = 0; updateSwordfishBtn(); }
+  if (except !== 'ywing')         { an.ywingActive = false; an.ywings = []; an.ywingIndex = 0; updateYWingBtn(); }
+  if (except !== 'wwing')         { an.wwingActive = false; an.wwings = []; an.wwingIndex = 0; updateWWingBtn(); }
+  if (except !== 'xychain')       { an.xychainActive = false; an.xychains = []; an.xychainIndex = 0; updateXYChainBtn(); }
+  if (except !== 'coloring')      { an.coloringActive = false; an.colorings = []; an.coloringIndex = 0; updateColoringBtn(); }
+  if (except !== 'forcingchains') { an.forcingchainsActive = false; an.forcingchains = []; an.forcingchainsIndex = 0; updateForcingChainsBtn(); }
+  if (except !== 'aic')           { an.aicActive = false; an.aics = []; an.aicIndex = 0; updateAICBtn(); }
   /* Limpa visualmente os destaques da análise cancelada */
   renderHighlights(); renderNumpad();
 }
@@ -3911,7 +3808,6 @@ function toggleSingles() {
 
   /* Cycling Naked Singles */
   if (an.singlesActive) {
-    if (an.singlesBatch) { deactivateSingles(); return; }
     if (an.singlesIndex + 1 >= an.singles.length) { deactivateSingles(); return; }
     if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
     spendEnergy('singles');
@@ -3923,7 +3819,6 @@ function toggleSingles() {
 
   /* Cycling Hidden Singles */
   if (an.hiddenActive) {
-    if (an.singlesBatch) { deactivateHiddenSingles(); return; }
     if (an.hiddensIndex + 1 >= an.hiddens.length) { deactivateHiddenSingles(); return; }
     if (!canAffordTool('singles')) { _showNoEnergyFeedback('btn-singles'); return; }
     spendEnergy('singles');
@@ -3964,7 +3859,6 @@ function toggleHiddens() {
 
   /* Cycling Hidden Singles */
   if (an.hiddenActive) {
-    if (an.hiddensBatch) { deactivateHiddens(); return; }
     if (an.hiddensIndex + 1 >= an.hiddens.length) { deactivateHiddens(); return; }
     if (!canAffordTool('hiddens')) { _showNoEnergyFeedback('btn-hiddens'); return; }
     spendEnergy('hiddens');
@@ -4034,14 +3928,14 @@ function _computeHiddenSingles() {
 
 function deactivateSingles() {
   const an = STATE.analysis;
-  an.singlesActive = false; an.singles = []; an.singlesIndex = 0; an.singlesBatch = false;
+  an.singlesActive = false; an.singles = []; an.singlesIndex = 0;
   if (!an.hiddenActive) STATE.pinnedNum = 0;
   updateSinglesBtn(); updateActionBar(); renderHighlights(); renderNumpad();
 }
 
 function deactivateHiddens() {
   const an = STATE.analysis;
-  an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0; an.hiddensBatch = false;
+  an.hiddenActive = false; an.hiddens = []; an.hiddensIndex = 0;
   if (!an.singlesActive) STATE.pinnedNum = 0;
   updateHiddensBtn(); updateActionBar(); renderHighlights(); renderNumpad();
 }
@@ -4051,7 +3945,7 @@ function executeFillSingles() {
   const an = STATE.analysis;
   if (!an.singlesActive || !an.singles.length) return;
   pushUndo();
-  const items = an.singlesBatch ? an.singles : [an.singles[an.singlesIndex]];
+  const items = [an.singles[an.singlesIndex]];
   for (const { r, c, val } of items) {
     if (STATE.puzzle[r][c] === 0) {
       STATE.puzzle[r][c] = val;
@@ -4071,7 +3965,7 @@ function executeFillHiddenSingles() {
   const an = STATE.analysis;
   if (!an.hiddenActive || !an.hiddens.length) return;
   pushUndo();
-  const items = an.hiddensBatch ? an.hiddens : [an.hiddens[an.hiddensIndex]];
+  const items = [an.hiddens[an.hiddensIndex]];
   for (const { r, c, val } of items) {
     if (STATE.puzzle[r][c] === 0) {
       STATE.puzzle[r][c] = val;
@@ -4147,11 +4041,7 @@ function updateActionBar() {
   const confirm = document.getElementById('btn-action-confirm');
   if (!bar) return;
   
-  if (!STATE.settings.helpLevel2) {
-    confirm.classList.add('hidden');
-  } else {
-    confirm.classList.remove('hidden');
-  }
+  confirm.classList.remove('hidden');
 
   const an = STATE.analysis;
 
@@ -4159,10 +4049,7 @@ function updateActionBar() {
   if (an.singlesActive) {
     bar.classList.remove('hidden');
     if (an.singles.length) {
-      if (an.singlesBatch) {
-        label.textContent   = `Únicas: ${an.singles.length} célula(s) — Preencher todas`;
-        confirm.textContent = '① Preencher todas';
-      } else {
+      {
         const s = an.singles[an.singlesIndex];
         label.textContent   = `Única ${an.singlesIndex + 1}/${an.singles.length} · nº${s.val}`;
         confirm.textContent = '① Preencher';
@@ -4180,10 +4067,7 @@ function updateActionBar() {
   if (an.hiddenActive) {
     bar.classList.remove('hidden');
     if (an.hiddens.length) {
-      if (an.hiddensBatch) {
-        label.textContent   = `Ocultas: ${an.hiddens.length} célula(s) — Preencher todas`;
-        confirm.textContent = '① Preencher todas';
-      } else {
+      {
         const h = an.hiddens[an.hiddensIndex];
         label.textContent   = `Oculta ${an.hiddensIndex + 1}/${an.hiddens.length} · nº${h.val}`;
         confirm.textContent = '① Preencher';
@@ -4201,11 +4085,7 @@ function updateActionBar() {
   if (an.nakedPairsActive) {
     bar.classList.remove('hidden');
     if (an.nakedPairs.length) {
-      if (an.nakedPairsBatch) {
-        const total = an.nakedPairs.reduce((s, np) => s + np.affected.length, 0);
-        label.textContent   = `Pares Nus: ${an.nakedPairs.length} par(es) · ${total} eliminação(ões)`;
-        confirm.textContent = '✓ Eliminar todos';
-      } else {
+      {
         const np = an.nakedPairs[an.nakedPairsIndex];
         label.textContent   = `Par Nu ${an.nakedPairsIndex + 1}/${an.nakedPairs.length} · [${np.pairNums.join(',')}] · ${np.affected.length} eliminação(ões)`;
         confirm.textContent = '✓ Eliminar';
@@ -4223,11 +4103,7 @@ function updateActionBar() {
   if (an.pointingActive) {
     bar.classList.remove('hidden');
     if (an.pointings.length) {
-      if (an.pointingBatch) {
-        const total = an.pointings.reduce((s, pt) => s + pt.targets.length, 0);
-        label.textContent   = `Apontador: ${an.pointings.length} padrão(ões) · ${total} eliminação(ões)`;
-        confirm.textContent = '↗ Atirar todos';
-      } else {
+      {
         const pt = an.pointings[an.pointingIndex];
         label.textContent   = `Apontador ${an.pointingIndex + 1}/${an.pointings.length} · nº${pt.num} · ${pt.targets.length} eliminação(ões)`;
         confirm.textContent = '↗ Atirar';
@@ -4245,11 +4121,7 @@ function updateActionBar() {
   if (an.xwingActive) {
     bar.classList.remove('hidden');
     if (an.xwings.length) {
-      if (an.xwingBatch) {
-        const total = an.xwings.reduce((s, xw) => s + xw.targets.length, 0);
-        label.textContent   = `X-Wing: ${an.xwings.length} padrão(ões) · ${total} eliminação(ões)`;
-        confirm.textContent = '♟ Eliminar todos';
-      } else {
+      {
         const xw = an.xwings[an.xwingIndex];
         label.textContent   = `X-Wing ${an.xwingIndex + 1}/${an.xwings.length} · nº${xw.num} · ${xw.targets.length} eliminação(ões)`;
         confirm.textContent = '♟ Eliminar';
@@ -4267,11 +4139,7 @@ function updateActionBar() {
   if (an.ywingActive) {
     bar.classList.remove('hidden');
     if (an.ywings.length) {
-      if (an.ywingBatch) {
-        const total = an.ywings.reduce((s, yw) => s + yw.targets.length, 0);
-        label.textContent   = `Y-Wing: ${an.ywings.length} padrão(ões) · ${total} eliminação(ões)`;
-        confirm.textContent = '♟ Eliminar todos';
-      } else {
+      {
         const yw = an.ywings[an.ywingIndex];
         label.textContent   = `Y-Wing ${an.ywingIndex + 1}/${an.ywings.length} · elimina ${yw.elimVal} · ${yw.targets.length} célula(s)`;
         confirm.textContent = '♟ Eliminar';
@@ -4289,11 +4157,7 @@ function updateActionBar() {
   if (an.wwingActive) {
     bar.classList.remove('hidden');
     if (an.wwings.length) {
-      if (an.wwingBatch) {
-        const total = an.wwings.reduce((s, ww) => s + ww.targets.length, 0);
-        label.textContent   = `W-Wing: ${an.wwings.length} padrão(ões) · ${total} eliminação(ões)`;
-        confirm.textContent = '𝕎 Eliminar todos';
-      } else {
+      {
         const ww = an.wwings[an.wwingIndex];
         label.textContent   = `W-Wing ${an.wwingIndex + 1}/${an.wwings.length} · elimina ${ww.elimVal} · ${ww.targets.length} célula(s)`;
         confirm.textContent = '𝕎 Eliminar';
@@ -4311,11 +4175,7 @@ function updateActionBar() {
   if (an.hiddenpairsActive) {
     bar.classList.remove('hidden');
     if (an.hiddenpairs.length) {
-      if (an.hiddenpairsBatch) {
-        const total = an.hiddenpairs.reduce((s, hp) => s + hp.affected.length, 0);
-        label.textContent   = `Pares Ocultos: ${an.hiddenpairs.length} par(es) · ${total} eliminação(ões)`;
-        confirm.textContent = '✓ Eliminar todos';
-      } else {
+      {
         const hp = an.hiddenpairs[an.hiddenpairsIndex];
         label.textContent   = `Par Oculto ${an.hiddenpairsIndex + 1}/${an.hiddenpairs.length} · [${hp.pairNums.join(',')}] · ${hp.affected.length} eliminação(ões)`;
         confirm.textContent = '✓ Eliminar';
@@ -4333,11 +4193,7 @@ function updateActionBar() {
   if (an.nakedtriplesActive) {
     bar.classList.remove('hidden');
     if (an.nakedtriples.length) {
-      if (an.nakedtriplesBatch) {
-        const total = an.nakedtriples.reduce((s, nt) => s + nt.affected.length, 0);
-        label.textContent   = `Triplos Nus: ${an.nakedtriples.length} triplo(s) · ${total} eliminação(ões)`;
-        confirm.textContent = '✓ Eliminar todos';
-      } else {
+      {
         const nt = an.nakedtriples[an.nakedtriplesIndex];
         label.textContent   = `Triplo Nu ${an.nakedtriplesIndex + 1}/${an.nakedtriples.length} · [${nt.tripleNums.join(',')}] · ${nt.affected.length} eliminação(ões)`;
         confirm.textContent = '✓ Eliminar';
@@ -4355,11 +4211,7 @@ function updateActionBar() {
   if (an.hiddentriplesActive) {
     bar.classList.remove('hidden');
     if (an.hiddentriples.length) {
-      if (an.hiddentriplesBatch) {
-        const total = an.hiddentriples.reduce((s, ht) => s + ht.affected.length, 0);
-        label.textContent   = `Triplos Ocultos: ${an.hiddentriples.length} triplo(s) · ${total} eliminação(ões)`;
-        confirm.textContent = '✓ Eliminar todos';
-      } else {
+      {
         const ht = an.hiddentriples[an.hiddentriplesIndex];
         label.textContent   = `Triplo Oculto ${an.hiddentriplesIndex + 1}/${an.hiddentriples.length} · [${ht.tripleNums.join(',')}] · ${ht.affected.length} eliminação(ões)`;
         confirm.textContent = '✓ Eliminar';
@@ -4377,11 +4229,7 @@ function updateActionBar() {
   if (an.swordfishActive) {
     bar.classList.remove('hidden');
     if (an.swordfishes.length) {
-      if (an.swordfishBatch) {
-        const total = an.swordfishes.reduce((s, sf) => s + sf.targets.length, 0);
-        label.textContent   = `Swordfish: ${an.swordfishes.length} padrão(ões) · ${total} eliminação(ões)`;
-        confirm.textContent = '🐟 Eliminar todos';
-      } else {
+      {
         const sf = an.swordfishes[an.swordfishIndex];
         label.textContent   = `Swordfish ${an.swordfishIndex + 1}/${an.swordfishes.length} · nº${sf.num} · ${sf.targets.length} eliminação(ões)`;
         confirm.textContent = '🐟 Eliminar';
@@ -4399,11 +4247,7 @@ function updateActionBar() {
   if (an.xychainActive) {
     bar.classList.remove('hidden');
     if (an.xychains.length) {
-      if (an.xychainBatch) {
-        const total = an.xychains.reduce((s, xy) => s + xy.targets.length, 0);
-        label.textContent   = `XY-Chain: ${an.xychains.length} cadeia(s) · ${total} eliminação(ões)`;
-        confirm.textContent = '⛓ Eliminar todos';
-      } else {
+      {
         const xy = an.xychains[an.xychainIndex];
         label.textContent   = `XY-Chain ${an.xychainIndex + 1}/${an.xychains.length} · elimina ${xy.elimVal} · ${xy.targets.length} célula(s)`;
         confirm.textContent = '⛓ Eliminar';
@@ -4421,11 +4265,7 @@ function updateActionBar() {
   if (an.coloringActive) {
     bar.classList.remove('hidden');
     if (an.colorings.length) {
-      if (an.coloringBatch) {
-        const total = an.colorings.reduce((s, co) => s + co.targets.length, 0);
-        label.textContent   = `Coloring: ${an.colorings.length} padrão(ões) · ${total} eliminação(ões)`;
-        confirm.textContent = '🎨 Eliminar todos';
-      } else {
+      {
         const co = an.colorings[an.coloringIndex];
         label.textContent   = `Coloring ${an.coloringIndex + 1}/${an.colorings.length} · nº${co.num} · ${co.targets.length} eliminação(ões)`;
         confirm.textContent = '🎨 Eliminar';
@@ -4443,10 +4283,7 @@ function updateActionBar() {
   if (an.forcingchainsActive) {
     bar.classList.remove('hidden');
     if (an.forcingchains.length) {
-      if (an.forcingchainsBatch) {
-        label.textContent   = `Forcing Chains: ${an.forcingchains.length} dedução(ões)`;
-        confirm.textContent = '⚡ Preencher todos';
-      } else {
+      {
         const fc = an.forcingchains[an.forcingchainsIndex];
         label.textContent   = `Forcing ${an.forcingchainsIndex + 1}/${an.forcingchains.length} · L${fc.r+1}·C${fc.c+1} → ${fc.val}`;
         confirm.textContent = '⚡ Preencher';
@@ -4464,11 +4301,7 @@ function updateActionBar() {
   if (an.aicActive) {
     bar.classList.remove('hidden');
     if (an.aics.length) {
-      if (an.aicBatch) {
-        const total = an.aics.reduce((s, ai) => s + ai.targets.length, 0);
-        label.textContent   = `AIC: ${an.aics.length} cadeia(s) · ${total} eliminação(ões)`;
-        confirm.textContent = '∞ Eliminar todos';
-      } else {
+      {
         const ai = an.aics[an.aicIndex];
         label.textContent   = `AIC ${an.aicIndex + 1}/${an.aics.length} · elimina ${ai.elimVal} · ${ai.targets.length} célula(s)`;
         confirm.textContent = '∞ Eliminar';
@@ -4545,21 +4378,21 @@ function updateAnalysisToolsVisibility() {
 
 function resetAnalysis() {
   STATE.analysis = {
-    singlesActive: false, singles: [], singlesIndex: 0, singlesBatch: false,
-    hiddenActive: false, hiddens: [], hiddensIndex: 0, hiddensBatch: false,
-    nakedPairsActive: false, nakedPairs: [], nakedPairsIndex: 0, nakedPairsBatch: false,
-    hiddenpairsActive: false, hiddenpairs: [], hiddenpairsIndex: 0, hiddenpairsBatch: false,
-    pointingActive: false, pointings: [], pointingIndex: 0, pointingBatch: false,
-    xwingActive: false, xwings: [], xwingIndex: 0, xwingBatch: false,
-    nakedtriplesActive: false, nakedtriples: [], nakedtriplesIndex: 0, nakedtriplesBatch: false,
-    hiddentriplesActive: false, hiddentriples: [], hiddentriplesIndex: 0, hiddentriplesBatch: false,
-    swordfishActive: false, swordfishes: [], swordfishIndex: 0, swordfishBatch: false,
-    ywingActive: false, ywings: [], ywingIndex: 0, ywingBatch: false,
-    wwingActive: false, wwings: [], wwingIndex: 0, wwingBatch: false,
-    xychainActive: false, xychains: [], xychainIndex: 0, xychainBatch: false,
-    coloringActive: false, colorings: [], coloringIndex: 0, coloringBatch: false,
-    forcingchainsActive: false, forcingchains: [], forcingchainsIndex: 0, forcingchainsBatch: false,
-    aicActive: false, aics: [], aicIndex: 0, aicBatch: false,
+    singlesActive: false, singles: [], singlesIndex: 0,
+    hiddenActive: false, hiddens: [], hiddensIndex: 0,
+    nakedPairsActive: false, nakedPairs: [], nakedPairsIndex: 0,
+    hiddenpairsActive: false, hiddenpairs: [], hiddenpairsIndex: 0,
+    pointingActive: false, pointings: [], pointingIndex: 0,
+    xwingActive: false, xwings: [], xwingIndex: 0,
+    nakedtriplesActive: false, nakedtriples: [], nakedtriplesIndex: 0,
+    hiddentriplesActive: false, hiddentriples: [], hiddentriplesIndex: 0,
+    swordfishActive: false, swordfishes: [], swordfishIndex: 0,
+    ywingActive: false, ywings: [], ywingIndex: 0,
+    wwingActive: false, wwings: [], wwingIndex: 0,
+    xychainActive: false, xychains: [], xychainIndex: 0,
+    coloringActive: false, colorings: [], coloringIndex: 0,
+    forcingchainsActive: false, forcingchains: [], forcingchainsIndex: 0,
+    aicActive: false, aics: [], aicIndex: 0,
   };
   const bar = document.getElementById('action-bar');
   if (bar) bar.classList.add('hidden');
@@ -4576,7 +4409,6 @@ function resetAnalysis() {
   updateColoringBtn();
   updateForcingChainsBtn();
   updateAICBtn();
-  updateMentorButton();
 }
 
 /* ─── X-Wing ─── */
@@ -4592,7 +4424,6 @@ function toggleXWing() {
     an.xwingIndex = 0;
     an.xwingActive = true;
   } else {
-    if (an.xwingBatch) { deactivateXWing(); return; }
     if (an.xwingIndex + 1 >= an.xwings.length) {
       deactivateXWing(); return;
     }
@@ -4606,13 +4437,13 @@ function toggleXWing() {
 
 function deactivateXWing() {
   const an = STATE.analysis;
-  an.xwingActive = false; an.xwings = []; an.xwingIndex = 0; an.xwingBatch = false;
+  an.xwingActive = false; an.xwings = []; an.xwingIndex = 0;
   updateXWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeXWing() {
   const an = STATE.analysis;
-  const wings = an.xwingBatch ? an.xwings : [an.xwings[an.xwingIndex]].filter(Boolean);
+  const wings = [an.xwings[an.xwingIndex]].filter(Boolean);
   if (!wings.length) { deactivateXWing(); return; }
   pushUndo();
   wings.forEach(xw => xw.targets.forEach(({ r, c }) => {
@@ -4701,7 +4532,6 @@ function toggleYWing() {
     an.ywingIndex = 0;
     an.ywingActive = true;
   } else {
-    if (an.ywingBatch) { deactivateYWing(); return; }
     if (an.ywingIndex + 1 >= an.ywings.length) {
       deactivateYWing(); return;
     }
@@ -4716,13 +4546,13 @@ function toggleYWing() {
 
 function deactivateYWing() {
   const an = STATE.analysis;
-  an.ywingActive = false; an.ywings = []; an.ywingIndex = 0; an.ywingBatch = false;
+  an.ywingActive = false; an.ywings = []; an.ywingIndex = 0;
   updateYWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeYWing() {
   const an = STATE.analysis;
-  const wings = an.ywingBatch ? an.ywings : [an.ywings[an.ywingIndex]].filter(Boolean);
+  const wings = [an.ywings[an.ywingIndex]].filter(Boolean);
   if (!wings.length) { deactivateYWing(); return; }
   pushUndo();
   wings.forEach(yw => yw.targets.forEach(({ r, c }) => {
@@ -4872,7 +4702,6 @@ function toggleWWing() {
     an.wwingIndex = 0;
     an.wwingActive = true;
   } else {
-    if (an.wwingBatch) { deactivateWWing(); return; }
     if (an.wwingIndex + 1 >= an.wwings.length) {
       deactivateWWing(); return;
     }
@@ -4886,28 +4715,19 @@ function toggleWWing() {
 
 function deactivateWWing() {
   const an = STATE.analysis;
-  an.wwingActive = false; an.wwings = []; an.wwingIndex = 0; an.wwingBatch = false;
+  an.wwingActive = false; an.wwings = []; an.wwingIndex = 0;
   updateWWingBtn(); updateActionBar(); renderHighlights();
 }
 
 function executeWWing() {
   const an = STATE.analysis;
-  const wings = an.wwingBatch ? an.wwings : [an.wwings[an.wwingIndex]].filter(Boolean);
+  const wings = [an.wwings[an.wwingIndex]].filter(Boolean);
   if (!wings.length) { deactivateWWing(); return; }
   pushUndo();
   wings.forEach(ww => ww.targets.forEach(({r, c}) => {
     STATE.notes[r][c].delete(ww.elimVal); updateCellContent(r, c);
   }));
   deactivateWWing(); renderHighlights();
-}
-
-function longPressWWing() {
-  const an = STATE.analysis;
-  if (!an.wwingActive) toggleWWing();
-  if (an.wwingActive && an.wwings.length > 0 && !an.wwingBatch) {
-    an.wwings = _applyBatchEnergy('wwing', an.wwings);
-    an.wwingBatch = true; updateWWingBtn(); updateActionBar(); renderHighlights();
-  }
 }
 
 function updateWWingBtn() {
@@ -4965,12 +4785,12 @@ function toggleHiddenPairs() {
 }
 function deactivateHiddenPairs() {
   const an = STATE.analysis;
-  an.hiddenpairsActive = false; an.hiddenpairs = []; an.hiddenpairsIndex = 0; an.hiddenpairsBatch = false;
+  an.hiddenpairsActive = false; an.hiddenpairs = []; an.hiddenpairsIndex = 0;
   updateHiddenPairsBtn(); updateActionBar(); renderHighlights();
 }
 function executeHiddenPairs() {
   const an = STATE.analysis;
-  const pairs = an.hiddenpairsBatch ? an.hiddenpairs : [an.hiddenpairs[an.hiddenpairsIndex]].filter(Boolean);
+  const pairs = [an.hiddenpairs[an.hiddenpairsIndex]].filter(Boolean);
   if (!pairs.length) { deactivateHiddenPairs(); return; }
   pushUndo();
   pairs.forEach(hp => hp.affected.forEach(({ r, c, nums }) => {
@@ -4983,15 +4803,6 @@ function updateHiddenPairsBtn() {
   const btn = document.getElementById('btn-hiddenpairs');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.hiddenpairsActive);
 }
-function longPressHiddenPairs() {
-  const an = STATE.analysis;
-  if (!an.hiddenpairsActive) toggleHiddenPairs();
-  if (an.hiddenpairsActive && an.hiddenpairs.length > 0) {
-    an.hiddenpairsBatch = true; updateHiddenPairsBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ─── Naked Triples ─── */
 function detectNakedTriples() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
@@ -5042,12 +4853,12 @@ function toggleNakedTriples() {
 }
 function deactivateNakedTriples() {
   const an = STATE.analysis;
-  an.nakedtriplesActive = false; an.nakedtriples = []; an.nakedtriplesIndex = 0; an.nakedtriplesBatch = false;
+  an.nakedtriplesActive = false; an.nakedtriples = []; an.nakedtriplesIndex = 0;
   updateNakedTriplesBtn(); updateActionBar(); renderHighlights();
 }
 function executeNakedTriples() {
   const an = STATE.analysis;
-  const triples = an.nakedtriplesBatch ? an.nakedtriples : [an.nakedtriples[an.nakedtriplesIndex]].filter(Boolean);
+  const triples = [an.nakedtriples[an.nakedtriplesIndex]].filter(Boolean);
   if (!triples.length) { deactivateNakedTriples(); return; }
   pushUndo();
   triples.forEach(nt => nt.affected.forEach(({ r, c, nums }) => {
@@ -5060,15 +4871,6 @@ function updateNakedTriplesBtn() {
   const btn = document.getElementById('btn-nakedtriples');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.nakedtriplesActive);
 }
-function longPressNakedTriples() {
-  const an = STATE.analysis;
-  if (!an.nakedtriplesActive) toggleNakedTriples();
-  if (an.nakedtriplesActive && an.nakedtriples.length > 0) {
-    an.nakedtriplesBatch = true; updateNakedTriplesBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ─── Hidden Triples ─── */
 function detectHiddenTriples() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
@@ -5117,12 +4919,12 @@ function toggleHiddenTriples() {
 }
 function deactivateHiddenTriples() {
   const an = STATE.analysis;
-  an.hiddentriplesActive = false; an.hiddentriples = []; an.hiddentriplesIndex = 0; an.hiddentriplesBatch = false;
+  an.hiddentriplesActive = false; an.hiddentriples = []; an.hiddentriplesIndex = 0;
   updateHiddenTriplesBtn(); updateActionBar(); renderHighlights();
 }
 function executeHiddenTriples() {
   const an = STATE.analysis;
-  const triples = an.hiddentriplesBatch ? an.hiddentriples : [an.hiddentriples[an.hiddentriplesIndex]].filter(Boolean);
+  const triples = [an.hiddentriples[an.hiddentriplesIndex]].filter(Boolean);
   if (!triples.length) { deactivateHiddenTriples(); return; }
   pushUndo();
   triples.forEach(ht => ht.affected.forEach(({ r, c, nums }) => {
@@ -5135,15 +4937,6 @@ function updateHiddenTriplesBtn() {
   const btn = document.getElementById('btn-hiddentriples');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.hiddentriplesActive);
 }
-function longPressHiddenTriples() {
-  const an = STATE.analysis;
-  if (!an.hiddentriplesActive) toggleHiddenTriples();
-  if (an.hiddentriplesActive && an.hiddentriples.length > 0) {
-    an.hiddentriplesBatch = true; updateHiddenTriplesBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ─── Swordfish ─── */
 function detectSwordfish() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
@@ -5210,12 +5003,12 @@ function toggleSwordfish() {
 }
 function deactivateSwordfish() {
   const an = STATE.analysis;
-  an.swordfishActive = false; an.swordfishes = []; an.swordfishIndex = 0; an.swordfishBatch = false;
+  an.swordfishActive = false; an.swordfishes = []; an.swordfishIndex = 0;
   updateSwordfishBtn(); updateActionBar(); renderHighlights();
 }
 function executeSwordfish() {
   const an = STATE.analysis;
-  const fishes = an.swordfishBatch ? an.swordfishes : [an.swordfishes[an.swordfishIndex]].filter(Boolean);
+  const fishes = [an.swordfishes[an.swordfishIndex]].filter(Boolean);
   if (!fishes.length) { deactivateSwordfish(); return; }
   pushUndo();
   fishes.forEach(sf => sf.targets.forEach(({ r, c }) => {
@@ -5227,15 +5020,6 @@ function updateSwordfishBtn() {
   const btn = document.getElementById('btn-swordfish');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.swordfishActive);
 }
-function longPressSwordfish() {
-  const an = STATE.analysis;
-  if (!an.swordfishActive) toggleSwordfish();
-  if (an.swordfishActive && an.swordfishes.length > 0) {
-    an.swordfishBatch = true; updateSwordfishBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ─── XY-Chain ─── */
 function detectXYChains() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
@@ -5310,12 +5094,12 @@ function toggleXYChain() {
 }
 function deactivateXYChain() {
   const an = STATE.analysis;
-  an.xychainActive = false; an.xychains = []; an.xychainIndex = 0; an.xychainBatch = false;
+  an.xychainActive = false; an.xychains = []; an.xychainIndex = 0;
   updateXYChainBtn(); updateActionBar(); renderHighlights();
 }
 function executeXYChain() {
   const an = STATE.analysis;
-  const chains = an.xychainBatch ? an.xychains : [an.xychains[an.xychainIndex]].filter(Boolean);
+  const chains = [an.xychains[an.xychainIndex]].filter(Boolean);
   if (!chains.length) { deactivateXYChain(); return; }
   pushUndo();
   chains.forEach(xy => xy.targets.forEach(({ r, c }) => {
@@ -5327,15 +5111,6 @@ function updateXYChainBtn() {
   const btn = document.getElementById('btn-xychain');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.xychainActive);
 }
-function longPressXYChain() {
-  const an = STATE.analysis;
-  if (!an.xychainActive) toggleXYChain();
-  if (an.xychainActive && an.xychains.length > 0) {
-    an.xychainBatch = true; updateXYChainBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ─── Simple Coloring ─── */
 function detectColoring() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
@@ -5455,12 +5230,12 @@ function toggleColoring() {
 }
 function deactivateColoring() {
   const an = STATE.analysis;
-  an.coloringActive = false; an.colorings = []; an.coloringIndex = 0; an.coloringBatch = false;
+  an.coloringActive = false; an.colorings = []; an.coloringIndex = 0;
   updateColoringBtn(); updateActionBar(); renderHighlights();
 }
 function executeColoring() {
   const an = STATE.analysis;
-  const colorings = an.coloringBatch ? an.colorings : [an.colorings[an.coloringIndex]].filter(Boolean);
+  const colorings = [an.colorings[an.coloringIndex]].filter(Boolean);
   if (!colorings.length) { deactivateColoring(); return; }
   pushUndo();
   colorings.forEach(co => co.targets.forEach(({ r, c }) => {
@@ -5472,15 +5247,6 @@ function updateColoringBtn() {
   const btn = document.getElementById('btn-coloring');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.coloringActive);
 }
-function longPressColoring() {
-  const an = STATE.analysis;
-  if (!an.coloringActive) toggleColoring();
-  if (an.coloringActive && an.colorings.length > 0) {
-    an.coloringBatch = true; updateColoringBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ─── Forcing Chains (simplified) ─── */
 function detectForcingChains() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
@@ -5549,12 +5315,12 @@ function toggleForcingChains() {
 }
 function deactivateForcingChains() {
   const an = STATE.analysis;
-  an.forcingchainsActive = false; an.forcingchains = []; an.forcingchainsIndex = 0; an.forcingchainsBatch = false;
+  an.forcingchainsActive = false; an.forcingchains = []; an.forcingchainsIndex = 0;
   updateForcingChainsBtn(); updateActionBar(); renderHighlights();
 }
 function executeForcingChains() {
   const an = STATE.analysis;
-  const fcs = an.forcingchainsBatch ? an.forcingchains : [an.forcingchains[an.forcingchainsIndex]].filter(Boolean);
+  const fcs = [an.forcingchains[an.forcingchainsIndex]].filter(Boolean);
   if (!fcs.length) { deactivateForcingChains(); return; }
   pushUndo();
   fcs.forEach(fc => {
@@ -5567,15 +5333,6 @@ function updateForcingChainsBtn() {
   const btn = document.getElementById('btn-forcingchains');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.forcingchainsActive);
 }
-function longPressForcingChains() {
-  const an = STATE.analysis;
-  if (!an.forcingchainsActive) toggleForcingChains();
-  if (an.forcingchainsActive && an.forcingchains.length > 0) {
-    an.forcingchainsBatch = true; updateForcingChainsBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ─── AIC (Alternating Inference Chain) ─── */
 function detectAIC() {
   const found = [];
   const puz = STATE.puzzle, notes = STATE.notes;
@@ -5641,12 +5398,12 @@ function toggleAIC() {
 }
 function deactivateAIC() {
   const an = STATE.analysis;
-  an.aicActive = false; an.aics = []; an.aicIndex = 0; an.aicBatch = false;
+  an.aicActive = false; an.aics = []; an.aicIndex = 0;
   updateAICBtn(); updateActionBar(); renderHighlights();
 }
 function executeAIC() {
   const an = STATE.analysis;
-  const aics = an.aicBatch ? an.aics : [an.aics[an.aicIndex]].filter(Boolean);
+  const aics = [an.aics[an.aicIndex]].filter(Boolean);
   if (!aics.length) { deactivateAIC(); return; }
   pushUndo();
   aics.forEach(ai => ai.targets.forEach(({ r, c }) => {
@@ -5658,193 +5415,6 @@ function updateAICBtn() {
   const btn = document.getElementById('btn-aic');
   if (btn) btn.classList.toggle('active-mode', STATE.analysis.aicActive);
 }
-function longPressAIC() {
-  const an = STATE.analysis;
-  if (!an.aicActive) toggleAIC();
-  if (an.aicActive && an.aics.length > 0) {
-    an.aicBatch = true; updateAICBtn(); updateActionBar(); renderHighlights();
-  }
-}
-
-/* ═══════════════════════════════════════
-   MENTOR MODE
-═══════════════════════════════════════ */
-const MENTOR_TEXTS = {
-  singles: {
-    title: 'Única Nua (Naked Single)',
-    steps: [
-      'Encontre uma célula vazia com apenas 1 candidato nas anotações.',
-      'Esse valor é o único possível — todos os outros foram eliminados pela linha, coluna e quadrante.',
-      'Coloque o número na célula.',
-    ]
-  },
-  hiddens: {
-    title: 'Única Oculta (Hidden Single)',
-    steps: [
-      'Escolha uma unidade (linha, coluna ou quadrante).',
-      'Procure um número que só aparece nas anotações de UMA única célula nessa unidade.',
-      'Embora a célula tenha outros candidatos, esse número só pode ir ali.',
-      'Coloque o número na célula.',
-    ]
-  },
-  nakedpairs: {
-    title: 'Par Nu (Naked Pair)',
-    steps: [
-      'Encontre 2 células na mesma unidade com os mesmos 2 candidatos.',
-      'Esses dois números estão confinados a esse par — eles irão para essas células, em alguma ordem.',
-      'Elimine esses 2 números das OUTRAS células da mesma unidade.',
-    ]
-  },
-  hiddenpairs: {
-    title: 'Par Oculto (Hidden Pair)',
-    steps: [
-      'Em uma unidade, encontre 2 números que só aparecem em exatamente 2 células.',
-      'Essas 2 células contêm esse par "escondido" — os outros candidatos são irrelevantes.',
-      'Elimine todos os OUTROS candidatos dessas 2 células, mantendo apenas o par.',
-    ]
-  },
-  pointing: {
-    title: 'Par/Triplo Apontador (Pointing)',
-    steps: [
-      'Dentro de um quadrante, encontre um número cujas posições possíveis estejam todas em UMA linha ou coluna.',
-      'Se o número vai para o quadrante, ele VAI para essa linha/coluna.',
-      'Elimine esse número das demais células dessa linha/coluna, fora do quadrante.',
-    ]
-  },
-  xwing: {
-    title: 'X-Wing',
-    steps: [
-      'Encontre um número que aparece em exatamente 2 posições em cada uma de 2 linhas.',
-      'Se essas posições estiverem nas mesmas 2 colunas, forme um retângulo.',
-      'O número vai para uma diagonal do retângulo — elimine-o das demais células dessas 2 colunas.',
-    ]
-  },
-  nakedtriples: {
-    title: 'Triplo Nu (Naked Triple)',
-    steps: [
-      'Encontre 3 células na mesma unidade cujos candidatos juntos somam no máximo 3 números distintos.',
-      'Esses 3 números estão confinados ao trio — qualquer ordem é possível, mas só entre essas 3 células.',
-      'Elimine esses 3 números das OUTRAS células da mesma unidade.',
-    ]
-  },
-  hiddentriples: {
-    title: 'Triplo Oculto (Hidden Triple)',
-    steps: [
-      'Em uma unidade, encontre 3 números que só aparecem em exatamente 3 células.',
-      'Essas 3 células têm o trio "escondido" entre os candidatos.',
-      'Elimine todos os OUTROS candidatos dessas 3 células.',
-    ]
-  },
-  swordfish: {
-    title: 'Swordfish',
-    steps: [
-      'Encontre um número com posições em ≤3 colunas em cada uma de 3 linhas.',
-      'Se essas colunas formarem um conjunto de exatamente 3, você tem um Swordfish.',
-      'O número vai para alguma combinação nessas 9 posições — elimine-o das demais células das 3 colunas.',
-    ]
-  },
-  ywing: {
-    title: 'Y-Wing (XY-Wing)',
-    steps: [
-      'Encontre uma célula "pivô" com 2 candidatos (A e B).',
-      'Encontre 2 "pincers" que vejam o pivô: um tem (A,C) e o outro tem (B,C).',
-      'Em qualquer solução, um dos pincers terá C — qualquer célula que veja AMBOS os pincers não pode ter C.',
-      'Elimine C das células que veem os dois pincers.',
-    ]
-  },
-  wwing: {
-    title: 'W-Wing',
-    steps: [
-      'Encontre 2 células bivalor idênticas (AB) que NÃO se veem diretamente.',
-      'Encontre uma "ponte": um número forte que conecta as duas células via uma unidade.',
-      'A ponte garante que B seja eliminável de células que vejam ambas as células AB.',
-    ]
-  },
-  xychain: {
-    title: 'XY-Chain',
-    steps: [
-      'Construa uma cadeia de células bivalor onde cada célula compartilha um candidato com a próxima.',
-      'O primeiro candidato da cadeia = o último candidato da cadeia (formando um "loop lógico").',
-      'Qualquer célula que veja AMBOS os extremos da cadeia não pode ter esse candidato.',
-    ]
-  },
-  coloring: {
-    title: 'Coloração Simples (Simple Coloring)',
-    steps: [
-      'Para um número, encontre pares conjugados (unidades com exatamente 2 posições) e forme uma cadeia.',
-      'Pinte alternadamente as células de 2 cores.',
-      'Regra 1: se 2 células da mesma cor se veem, essa cor é inválida — elimine o número de todas elas.',
-      'Regra 2: se uma célula vê células de AMBAS as cores, elimine o número dela.',
-    ]
-  },
-  forcingchains: {
-    title: 'Forcing Chains',
-    steps: [
-      'Tome uma célula com 2 candidatos (A e B).',
-      'Suponha A: propague todos os naked singles resultantes.',
-      'Suponha B: propague todos os naked singles resultantes.',
-      'Se ambas as suposições levam ao mesmo valor em outra célula, esse valor É certo.',
-    ]
-  },
-  aic: {
-    title: 'AIC (Alternating Inference Chain)',
-    steps: [
-      'Construa uma cadeia alternando inferências FORTES (o número vai aqui) e FRACAS (se não aqui, então ali).',
-      'Uma ligação forte: num aparece em exatamente 2 lugares em uma unidade.',
-      'Uma ligação fraca: mesmo número em 2 candidatos da mesma célula (bivalor).',
-      'Se a cadeia começa e termina com o mesmo número (link forte), células que vejam ambos os extremos podem ter esse número eliminado.',
-    ]
-  },
-};
-
-function _getActiveStrategyKey() {
-  const an = STATE.analysis;
-  if (an.singlesActive) return 'singles';
-  if (an.hiddenActive) return 'hiddens';
-  if (an.nakedPairsActive) return 'nakedpairs';
-  if (an.hiddenpairsActive) return 'hiddenpairs';
-  if (an.pointingActive) return 'pointing';
-  if (an.xwingActive) return 'xwing';
-  if (an.nakedtriplesActive) return 'nakedtriples';
-  if (an.hiddentriplesActive) return 'hiddentriples';
-  if (an.swordfishActive) return 'swordfish';
-  if (an.ywingActive) return 'ywing';
-  if (an.wwingActive) return 'wwing';
-  if (an.xychainActive) return 'xychain';
-  if (an.coloringActive) return 'coloring';
-  if (an.forcingchainsActive) return 'forcingchains';
-  if (an.aicActive) return 'aic';
-  return null;
-}
-
-function updateMentorButton() {
-  const btn = document.getElementById('btn-mentor-info');
-  if (!btn) return;
-  const key = _getActiveStrategyKey();
-  btn.classList.toggle('hidden', !STATE.settings.mentorMode || !key);
-}
-
-function showMentorForActiveAnalysis() {
-  const key = _getActiveStrategyKey();
-  if (!key) return;
-  const data = MENTOR_TEXTS[key];
-  if (!data) return;
-  document.getElementById('mentor-strategy-badge').textContent = data.title;
-  const content = document.getElementById('mentor-content');
-  content.innerHTML = data.steps.map((s, i) =>
-    `<div class="mentor-step"><span class="mentor-step-num">${i+1}</span><span>${s}</span></div>`
-  ).join('');
-  document.getElementById('mentor-panel').classList.add('mentor-visible');
-}
-
-function hideMentorPanel() {
-  document.getElementById('mentor-panel').classList.remove('mentor-visible');
-}
-
-/* ═══════════════════════════════════════
-   i18n — Language
-═══════════════════════════════════════ */
-const I18N = {
   pt: {
     facil:'Fácil', medio:'Médio', dificil:'Difícil', especialista:'Especialista', mestre:'Mestre', extremo:'Extremo',
     chooseLevel:'Escolha a dificuldade',
@@ -5917,7 +5487,7 @@ function renderAnalysisHighlights() {
         'xwing-cell', 'xwing-target', 'ywing-pivot', 'ywing-pincer', 'ywing-target',
         'wwing-cell', 'wwing-bridge', 'wwing-target',
         'xychain-cell', 'coloring-c0', 'coloring-c1', 'chain-step',
-        'genio-fill', 'genio-key', 'genio-pivot', 'genio-elim', 'genio-unit'
+        'genio-fill', 'genio-key', 'genio-pivot', 'genio-elim', 'genio-unit'  // kept for cleanup only
       );
   document.querySelectorAll('.note-digit.note-eliminate').forEach(s => s.classList.remove('note-eliminate'));
   document.querySelectorAll('.note-digit.note-hidden-single').forEach(s => s.classList.remove('note-hidden-single'));
@@ -5932,10 +5502,7 @@ function renderAnalysisHighlights() {
 
   /* Únicas — célula alvo em verde + linha/coluna/quadrante em âmbar (single) ou todas as células (batch) */
   if (an.singlesActive && an.singles.length > 0) {
-    if (an.singlesBatch) {
-      /* Batch: todos os alvos em verde, sem âmbar */
-      for (const sg of an.singles) cellElements[sg.r][sg.c].classList.add('singles-match');
-    } else {
+    {
       /* Single: célula atual + unidades em âmbar */
       const sg = an.singles[an.singlesIndex];
       if (sg) {
@@ -5953,14 +5520,7 @@ function renderAnalysisHighlights() {
 
   /* Ocultas — hidden single: verde + nota em verde; unidade responsável em âmbar (ou batch: todos) */
   if (an.hiddenActive && an.hiddens.length > 0) {
-    if (an.singlesBatch) {
-      /* Batch: todos os alvos em verde + suas notas destacadas */
-      for (const hd of an.hiddens) {
-        cellElements[hd.r][hd.c].classList.add('singles-match');
-        const span = cellElements[hd.r][hd.c].querySelector(`.note-digit[data-note="${hd.val}"]`);
-        if (span) span.classList.add('note-hidden-single');
-      }
-    } else {
+    {
       const hd = an.hiddens[an.hiddensIndex];
       if (hd) {
         /* Âmbar na unidade que "força" o número */
@@ -5987,7 +5547,7 @@ function renderAnalysisHighlights() {
 
   /* Pares Nus — padrão atual ou todos (batch) */
   if (an.nakedPairsActive && an.nakedPairs.length > 0) {
-    const pairs = an.nakedPairsBatch ? an.nakedPairs : [an.nakedPairs[an.nakedPairsIndex]].filter(Boolean);
+    const pairs = [an.nakedPairs[an.nakedPairsIndex]].filter(Boolean);
     pairs.forEach(np => {
       np.pairCells.forEach(({ r, c }) => cellElements[r][c].classList.add('pair-select'));
       np.affected.forEach(({ r, c, nums }) => {
@@ -6002,7 +5562,7 @@ function renderAnalysisHighlights() {
 
   /* Par Apontador — padrão atual ou todos (batch) */
   if (an.pointingActive && an.pointings.length > 0) {
-    const pts = an.pointingBatch ? an.pointings : [an.pointings[an.pointingIndex]].filter(Boolean);
+    const pts = [an.pointings[an.pointingIndex]].filter(Boolean);
     pts.forEach(pt => {
       pt.cells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('pointing-select');
@@ -6019,7 +5579,7 @@ function renderAnalysisHighlights() {
 
   /* X-Wing — padrão atual ou todos (batch) */
   if (an.xwingActive && an.xwings.length > 0) {
-    const wings = an.xwingBatch ? an.xwings : [an.xwings[an.xwingIndex]].filter(Boolean);
+    const wings = [an.xwings[an.xwingIndex]].filter(Boolean);
     wings.forEach(xw => {
       xw.cells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('xwing-cell');
@@ -6036,7 +5596,7 @@ function renderAnalysisHighlights() {
 
   /* Y-Wing — padrão atual ou todos (batch) */
   if (an.ywingActive && an.ywings.length > 0) {
-    const wings = an.ywingBatch ? an.ywings : [an.ywings[an.ywingIndex]].filter(Boolean);
+    const wings = [an.ywings[an.ywingIndex]].filter(Boolean);
     wings.forEach(yw => {
       const { r: pr, c: pc } = yw.pivot;
       cellElements[pr][pc].classList.add('ywing-pivot');
@@ -6061,7 +5621,7 @@ function renderAnalysisHighlights() {
 
   /* W-Wing — padrão atual ou todos (batch) */
   if (an.wwingActive && an.wwings.length > 0) {
-    const wings = an.wwingBatch ? an.wwings : [an.wwings[an.wwingIndex]].filter(Boolean);
+    const wings = [an.wwings[an.wwingIndex]].filter(Boolean);
     wings.forEach(ww => {
       ww.cells.forEach(({r, c}) => {
         cellElements[r][c].classList.add('wwing-cell');
@@ -6081,7 +5641,7 @@ function renderAnalysisHighlights() {
 
   /* Hidden Pairs — same visual as Naked Pairs */
   if (an.hiddenpairsActive && an.hiddenpairs.length > 0) {
-    const pairs = an.hiddenpairsBatch ? an.hiddenpairs : [an.hiddenpairs[an.hiddenpairsIndex]].filter(Boolean);
+    const pairs = [an.hiddenpairs[an.hiddenpairsIndex]].filter(Boolean);
     pairs.forEach(hp => {
       hp.pairCells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('pair-select');
@@ -6102,7 +5662,7 @@ function renderAnalysisHighlights() {
 
   /* Naked Triples */
   if (an.nakedtriplesActive && an.nakedtriples.length > 0) {
-    const trips = an.nakedtriplesBatch ? an.nakedtriples : [an.nakedtriples[an.nakedtriplesIndex]].filter(Boolean);
+    const trips = [an.nakedtriples[an.nakedtriplesIndex]].filter(Boolean);
     trips.forEach(nt => {
       nt.tripleCells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('triple-select');
@@ -6123,7 +5683,7 @@ function renderAnalysisHighlights() {
 
   /* Hidden Triples */
   if (an.hiddentriplesActive && an.hiddentriples.length > 0) {
-    const trips = an.hiddentriplesBatch ? an.hiddentriples : [an.hiddentriples[an.hiddentriplesIndex]].filter(Boolean);
+    const trips = [an.hiddentriples[an.hiddentriplesIndex]].filter(Boolean);
     trips.forEach(ht => {
       ht.tripleCells.forEach(({ r, c }) => {
         cellElements[r][c].classList.add('triple-select');
@@ -6144,7 +5704,7 @@ function renderAnalysisHighlights() {
 
   /* Swordfish */
   if (an.swordfishActive && an.swordfishes.length > 0) {
-    const fishes = an.swordfishBatch ? an.swordfishes : [an.swordfishes[an.swordfishIndex]].filter(Boolean);
+    const fishes = [an.swordfishes[an.swordfishIndex]].filter(Boolean);
     fishes.forEach(sf => {
       sf.cells.forEach(({r, c}) => {
         cellElements[r][c].classList.add('xwing-cell');
@@ -6161,7 +5721,7 @@ function renderAnalysisHighlights() {
 
   /* XY-Chain — animate chain steps */
   if (an.xychainActive && an.xychains.length > 0) {
-    const chains = an.xychainBatch ? an.xychains : [an.xychains[an.xychainIndex]].filter(Boolean);
+    const chains = [an.xychains[an.xychainIndex]].filter(Boolean);
     chains.forEach(xy => {
       xy.chain.forEach(({ r, c }, idx) => {
         const el = cellElements[r][c];
@@ -6183,7 +5743,7 @@ function renderAnalysisHighlights() {
 
   /* Coloring */
   if (an.coloringActive && an.colorings.length > 0) {
-    const colorings = an.coloringBatch ? an.colorings : [an.colorings[an.coloringIndex]].filter(Boolean);
+    const colorings = [an.colorings[an.coloringIndex]].filter(Boolean);
     colorings.forEach(co => {
       (co.comp0 || []).forEach(({ r, c }) => {
         cellElements[r][c].classList.add('coloring-c0');
@@ -6205,16 +5765,15 @@ function renderAnalysisHighlights() {
 
   /* Forcing Chains */
   if (an.forcingchainsActive && an.forcingchains.length > 0) {
-    const fcs = an.forcingchainsBatch ? an.forcingchains : [an.forcingchains[an.forcingchainsIndex]].filter(Boolean);
+    const fcs = [an.forcingchains[an.forcingchainsIndex]].filter(Boolean);
     fcs.forEach(fc => {
-      if (fc.sourceR !== undefined) cellElements[fc.sourceR][fc.sourceC].classList.add('genio-key');
       cellElements[fc.r][fc.c].classList.add('singles-match');
     });
   }
 
   /* AIC */
   if (an.aicActive && an.aics.length > 0) {
-    const aics = an.aicBatch ? an.aics : [an.aics[an.aicIndex]].filter(Boolean);
+    const aics = [an.aics[an.aicIndex]].filter(Boolean);
     aics.forEach(aic => {
       aic.chain.forEach(({ r, c, num }, idx) => {
         const el = cellElements[r][c];
@@ -6231,7 +5790,6 @@ function renderAnalysisHighlights() {
     });
   }
 
-  updateMentorButton();
 }
 
 function checkCompletions(r, c) {
@@ -6342,7 +5900,6 @@ function syncSettingsUI() {
   toggle('cfg-enableYWing',          s.enableYWing);
 
   toggle('cfg-enableWWing',          s.enableWWing);
-  toggle('cfg-mentorMode',           s.mentorMode);
   toggle('cfg-filterByDifficulty',   s.filterByDifficulty);
   toggle('cfg-enableHiddenPairs',    s.enableHiddenPairs);
   toggle('cfg-enableNakedTriples',   s.enableNakedTriples);
@@ -6438,440 +5995,5 @@ function checkIOSBanner() {
   const dismissed = localStorage.getItem('ios-banner-dismissed');
   if (isIOS && !isInStandalone && !dismissed) {
     document.getElementById('ios-banner').classList.remove('hidden');
-  }
-}
-
-/* ═══════════════════════════════════════
-   GÊNIO DA LÂMPADA — solucionador secreto
-   Ativado com 3 cliques rápidos em #score-val
-   Tabuleiro permanece visível com highlights animados
-═══════════════════════════════════════ */
-
-let _genioClicks = 0;
-let _genioClickTimer = null;
-
-function _attachGenioTrigger() {
-  const energyLbl = document.getElementById('energy-label');
-  if (energyLbl) {
-    energyLbl.addEventListener('click', () => {
-      if (!STATE.puzzle || STATE.paused) { _genioClicks = 0; return; }
-      _genioClicks++;
-      clearTimeout(_genioClickTimer);
-      if (_genioClicks >= 3) {
-        _genioClicks = 0;
-        activateGenio();
-      } else {
-        _genioClickTimer = setTimeout(() => { _genioClicks = 0; }, 700);
-      }
-    });
-  }
-  /* Mantém o listener no score-val (oculto) como fallback */
-  const scoreEl = document.getElementById('score-val');
-  if (scoreEl) {
-    scoreEl.addEventListener('click', () => {
-      if (!STATE.puzzle || STATE.paused) { _genioClicks = 0; return; }
-      _genioClicks++;
-      clearTimeout(_genioClickTimer);
-      if (_genioClicks >= 3) {
-        _genioClicks = 0;
-        activateGenio();
-      } else {
-        _genioClickTimer = setTimeout(() => { _genioClicks = 0; }, 700);
-      }
-    });
-  }
-  document.getElementById('btn-genio-cancel').addEventListener('click', _hideGenioPanel);
-}
-
-/* Formata coordenada legível */
-function _gCell(r, c) { return `L${r + 1}·C${c + 1}`; }
-
-/* ── Highlights no tabuleiro ── */
-function _clearGenioHighlights() {
-  if (!cellElements.length || !cellElements[0]) return;
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      cellElements[r][c].classList.remove('genio-fill', 'genio-key', 'genio-pivot', 'genio-elim', 'genio-unit');
-  document.querySelectorAll('.note-genio-elim, .note-genio-key').forEach(s =>
-    s.classList.remove('note-genio-elim', 'note-genio-key'));
-}
-
-function _applyGenioHighlights(move) {
-  _clearGenioHighlights();
-  if (move.type === 'fill') {
-    const { r, c, val, strategy } = move;
-    cellElements[r][c].classList.add('genio-fill');
-    /* Contexto: linha, coluna e quadrante */
-    const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
-    for (let i = 0; i < 9; i++) {
-      if (i !== c) cellElements[r][i].classList.add('genio-unit');
-      if (i !== r) cellElements[i][c].classList.add('genio-unit');
-    }
-    for (let rr = br; rr < br + 3; rr++)
-      for (let cc = bc; cc < bc + 3; cc++)
-        if (!(rr === r && cc === c)) cellElements[rr][cc].classList.add('genio-unit');
-    /* Para Única Oculta, destaca a nota alvo */
-    if (strategy === 'Única Oculta') {
-      const span = cellElements[r][c].querySelector(`.note-digit[data-note="${val}"]`);
-      if (span) span.classList.add('note-genio-key');
-    }
-    /* Para Hidden Single: âmbar na unidade forçadora */
-    if (strategy === 'Única Oculta' && move.data) {
-      const hd = move.data;
-      for (let rr = 0; rr < 9; rr++) for (let cc = 0; cc < 9; cc++) {
-        if (rr === r && cc === c) continue;
-        let inUnit = false;
-        if (hd.unitType === 'row' && rr === hd.unitIdx) inUnit = true;
-        if (hd.unitType === 'col' && cc === hd.unitIdx) inUnit = true;
-        if (hd.unitType === 'box') {
-          const ubr = Math.floor(hd.unitIdx / 3) * 3, ubc = (hd.unitIdx % 3) * 3;
-          if (rr >= ubr && rr < ubr + 3 && cc >= ubc && cc < ubc + 3) inUnit = true;
-        }
-        if (inUnit) cellElements[rr][cc].classList.add('genio-unit');
-      }
-    }
-  } else {
-    const d = move.data;
-    if (move.strategy === 'Par Nu') {
-      d.pairCells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
-      d.affected.forEach(({ r, c, nums }) => {
-        cellElements[r][c].classList.add('genio-elim');
-        nums.forEach(n => {
-          const s = cellElements[r][c].querySelector(`.note-digit[data-note="${n}"]`);
-          if (s) s.classList.add('note-genio-elim');
-        });
-      });
-    } else if (move.strategy === 'Par Apontador') {
-      d.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
-      d.targets.forEach(({ r, c }) => {
-        cellElements[r][c].classList.add('genio-elim');
-        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.num}"]`);
-        if (s) s.classList.add('note-genio-elim');
-      });
-    } else if (move.strategy === 'X-Wing') {
-      d.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
-      d.targets.forEach(({ r, c }) => {
-        cellElements[r][c].classList.add('genio-elim');
-        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.num}"]`);
-        if (s) s.classList.add('note-genio-elim');
-      });
-    } else if (move.strategy === 'Y-Wing') {
-      cellElements[d.pivot.r][d.pivot.c].classList.add('genio-pivot');
-      d.pincers.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
-      d.targets.forEach(({ r, c }) => {
-        cellElements[r][c].classList.add('genio-elim');
-        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.elimVal}"]`);
-        if (s) s.classList.add('note-genio-elim');
-      });
-    } else if (move.strategy === 'W-Wing') {
-      d.cells.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-key'));
-      d.bridge.forEach(({ r, c }) => cellElements[r][c].classList.add('genio-unit'));
-      d.targets.forEach(({ r, c }) => {
-        cellElements[r][c].classList.add('genio-elim');
-        const s = cellElements[r][c].querySelector(`.note-digit[data-note="${d.elimVal}"]`);
-        if (s) s.classList.add('note-genio-elim');
-      });
-    }
-  }
-}
-
-/* ── Painel deslizante ── */
-function _showGenioPanel(move) {
-  _applyGenioHighlights(move);
-  document.getElementById('genio-strategy').textContent = move.strategy;
-  const explEl = document.getElementById('genio-explain');
-  if (explEl) explEl.textContent = move.shortHint || '';
-  document.getElementById('btn-genio-confirm').onclick = () => {
-    _hideGenioPanel();
-    _execGenioMove(move);
-  };
-  document.getElementById('genio-panel').classList.add('genio-visible');
-}
-
-function _hideGenioPanel() {
-  document.getElementById('genio-panel').classList.remove('genio-visible');
-  _clearGenioHighlights();
-}
-
-function activateGenio() {
-  if (!STATE.puzzle) return;
-
-  /* Garante notas populadas */
-  let hasNotes = false;
-  outer: for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size > 0) { hasNotes = true; break outer; }
-  if (!hasNotes) applyAutoAnnotations();
-
-  let move = null;
-
-  /* ── 1. Única Nua ── */
-  outer1: for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 1) {
-        const val = [...STATE.notes[r][c]][0];
-        move = {
-          type: 'fill', r, c, val, strategy: 'Única Nua', data: null,
-          shortHint: `${_gCell(r, c)} → ${val}`
-        };
-        break outer1;
-      }
-
-  /* ── 2. Única Oculta ── */
-  if (!move) {
-    const hiddens = _computeHiddenSingles();
-    if (hiddens.length > 0) {
-      const h = hiddens[0];
-      move = {
-        type: 'fill', r: h.r, c: h.c, val: h.val, strategy: 'Única Oculta', data: h,
-        shortHint: `${_gCell(h.r, h.c)} → ${h.val}`
-      };
-    }
-  }
-
-  /* ── 3. Par Nu ── */
-  if (!move) {
-    const pairs = detectNakedPairs();
-    if (pairs.length > 0) {
-      const np = pairs[0];
-      const totalElim = np.affected.reduce((s, a) => s + a.nums.size, 0);
-      move = {
-        type: 'elim', strategy: 'Par Nu', data: np,
-        shortHint: `Elimina ${totalElim} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          np.affected.forEach(({ r, c, nums }) => { nums.forEach(n => STATE.notes[r][c].delete(n)); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 4. Par Oculto ── */
-  if (!move) {
-    const hpairs = detectHiddenPairs();
-    if (hpairs.length > 0) {
-      const hp = hpairs[0];
-      const totalElim = hp.affected.reduce((s, a) => s + a.nums.size, 0);
-      move = {
-        type: 'elim', strategy: 'Par Oculto', data: hp,
-        shortHint: `Elimina ${totalElim} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          hp.affected.forEach(({ r, c, nums }) => { nums.forEach(n => STATE.notes[r][c].delete(n)); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 5. Par Apontador ── */
-  if (!move) {
-    const pts = detectPointingPairs();
-    if (pts.length > 0) {
-      const pt = pts[0];
-      move = {
-        type: 'elim', strategy: 'Par Apontador', data: pt,
-        shortHint: `Elimina ${pt.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          pt.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(pt.num); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 6. Triplo Nu ── */
-  if (!move) {
-    const triples = detectNakedTriples();
-    if (triples.length > 0) {
-      const nt = triples[0];
-      const totalElim = nt.affected.reduce((s, a) => s + a.nums.size, 0);
-      move = {
-        type: 'elim', strategy: 'Triplo Nu', data: nt,
-        shortHint: `Elimina ${totalElim} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          nt.affected.forEach(({ r, c, nums }) => { nums.forEach(n => STATE.notes[r][c].delete(n)); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 7. Triplo Oculto ── */
-  if (!move) {
-    const htriples = detectHiddenTriples();
-    if (htriples.length > 0) {
-      const ht = htriples[0];
-      const totalElim = ht.affected.reduce((s, a) => s + a.nums.size, 0);
-      move = {
-        type: 'elim', strategy: 'Triplo Oculto', data: ht,
-        shortHint: `Elimina ${totalElim} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          ht.affected.forEach(({ r, c, nums }) => { nums.forEach(n => STATE.notes[r][c].delete(n)); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 8. X-Wing ── */
-  if (!move) {
-    const xwings = detectXWings();
-    if (xwings.length > 0) {
-      const xw = xwings[0];
-      move = {
-        type: 'elim', strategy: 'X-Wing', data: xw,
-        shortHint: `Elimina ${xw.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          xw.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(xw.num); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 9. Swordfish ── */
-  if (!move) {
-    const swords = detectSwordfish();
-    if (swords.length > 0) {
-      const sf = swords[0];
-      move = {
-        type: 'elim', strategy: 'Swordfish', data: sf,
-        shortHint: `Elimina ${sf.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          sf.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(sf.num); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 10. Y-Wing ── */
-  if (!move) {
-    const ywings = detectYWings();
-    if (ywings.length > 0) {
-      const yw = ywings[0];
-      move = {
-        type: 'elim', strategy: 'Y-Wing', data: yw,
-        shortHint: `Elimina ${yw.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          yw.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(yw.elimVal); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 11. W-Wing ── */
-  if (!move) {
-    const wwings = detectWWings();
-    if (wwings.length > 0) {
-      const ww = wwings[0];
-      move = {
-        type: 'elim', strategy: 'W-Wing', data: ww,
-        shortHint: `Elimina ${ww.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          ww.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(ww.elimVal); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 12. XY-Chain ── */
-  if (!move) {
-    const xychains = detectXYChains();
-    if (xychains.length > 0) {
-      const xy = xychains[0];
-      move = {
-        type: 'elim', strategy: 'XY-Chain', data: xy,
-        shortHint: `Elimina ${xy.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          xy.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(xy.elimVal); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 13. Coloring ── */
-  if (!move) {
-    const colorings = detectColoring();
-    if (colorings.length > 0) {
-      const co = colorings[0];
-      move = {
-        type: 'elim', strategy: 'Coloring', data: co,
-        shortHint: `Elimina ${co.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          co.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(co.num); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 14. Forcing Chains ── */
-  if (!move) {
-    const fcs = detectForcingChains();
-    if (fcs.length > 0) {
-      const fc = fcs[0];
-      move = {
-        type: 'fill', r: fc.r, c: fc.c, val: fc.val, strategy: 'Forcing Chains', data: fc,
-        shortHint: `${_gCell(fc.r, fc.c)} → ${fc.val}`
-      };
-    }
-  }
-
-  /* ── 15. AIC ── */
-  if (!move) {
-    const aics = detectAIC();
-    if (aics.length > 0) {
-      const ai = aics[0];
-      move = {
-        type: 'elim', strategy: 'AIC', data: ai,
-        shortHint: `Elimina ${ai.targets.length} candidato(s)`,
-        exec: () => {
-          pushUndo();
-          ai.targets.forEach(({ r, c }) => { STATE.notes[r][c].delete(ai.elimVal); updateCellContent(r, c); });
-          renderHighlights();
-        },
-      };
-    }
-  }
-
-  /* ── 16. Força Bruta ── */
-  if (!move) {
-    for (let r = 0; r < 9 && !move; r++)
-      for (let c = 0; c < 9 && !move; c++)
-        if (STATE.puzzle[r][c] === 0) {
-          const val = STATE.solution[r][c];
-          move = {
-            type: 'fill', r, c, val, strategy: 'Força Bruta', data: null,
-            shortHint: `${_gCell(r, c)} → ${val}`
-          };
-        }
-  }
-
-  if (!move) return;
-  _showGenioPanel(move);
-}
-
-function _execGenioMove(move) {
-  if (move.type === 'fill') {
-    STATE.selectedRow = move.r;
-    STATE.selectedCol = move.c;
-    doPlaceNumber(move.r, move.c, move.val);
-  } else {
-    move.exec();
   }
 }

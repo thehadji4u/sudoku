@@ -78,7 +78,7 @@
     </div>
 
     <div class="diff-copyright">
-      <span class="app-version">v1.116</span>
+      <span class="app-version">v1.117</span>
       <span class="copyright-sep">·</span>
       <span>© 2026 HadjiWare</span>
     </div>
@@ -125,7 +125,6 @@
           <span class="ghdr-lbl">Tempo</span>
           <span class="ghdr-val" id="timer-val">0:00</span>
         </div>
-        <button class="ghdr-pause hidden" id="btn-mentor-info" title="Mentor">🎓</button>
         <button class="ghdr-pause" id="btn-pause" title="Pausar">⏸</button>
       </div>
     </header>
@@ -568,16 +567,6 @@
       </div>
 
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Modo Mentor 🎓</div>
-          <div class="setting-desc">Adiciona botão de explicação detalhada ao ativar uma análise</div>
-        </div>
-        <div class="toggle-wrap">
-          <input type="checkbox" class="toggle-input" id="cfg-mentorMode">
-          <label class="toggle-track" for="cfg-mentorMode"></label>
-        </div>
-      </div>
 
       <div class="setting-row">
         <div class="setting-info">
@@ -590,27 +579,6 @@
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Nível de Ajuda</div>
-          <div class="setting-desc">Nível 1 (só ilumina células) ou 2 (avançado). Nvl 1 custa metade.</div>
-        </div>
-        <div class="toggle-wrap">
-          <input type="checkbox" class="toggle-input" id="cfg-helpLevel2">
-          <label class="toggle-track" for="cfg-helpLevel2"></label>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Uso em Lote (Toque Longo)</div>
-          <div class="setting-desc">Permite executar todas as dicas de uma vez pagando proporcionalmente</div>
-        </div>
-        <div class="toggle-wrap">
-          <input type="checkbox" class="toggle-input" id="cfg-enableLongPressBatch">
-          <label class="toggle-track" for="cfg-enableLongPressBatch"></label>
-        </div>
-      </div>
 
       <div class="settings-section-title">Ferramentas de Análise 🟢 Fácil</div>
 
@@ -859,38 +827,6 @@
 
   </div><!-- /modal-overlay -->
 
-  <!-- Painel Gênio da Lâmpada (fora do overlay — tabuleiro permanece visível) -->
-  <div id="genio-panel">
-    <div class="genio-handle"></div>
-    <div class="genio-panel-header">
-      <span class="genio-lamp">🧞</span>
-      <div class="genio-panel-title">
-        <span class="genio-title-text">Gênio da Lâmpada</span>
-        <span class="genio-strategy-badge" id="genio-strategy">—</span>
-      </div>
-    </div>
-    <p class="genio-explain" id="genio-explain"></p>
-    <div class="genio-btns">
-      <button class="btn-secondary" id="btn-genio-cancel">✕ Fechar</button>
-      <button class="btn-primary" id="btn-genio-confirm">✨ Realizar</button>
-    </div>
-  </div>
-
-  <!-- Painel Mentor (fora do overlay — tabuleiro permanece visível) -->
-  <div id="mentor-panel">
-    <div class="genio-handle"></div>
-    <div class="genio-panel-header">
-      <span class="genio-lamp">🎓</span>
-      <div class="genio-panel-title">
-        <span class="genio-title-text">Mentor</span>
-        <span class="genio-strategy-badge" id="mentor-strategy-badge">—</span>
-      </div>
-    </div>
-    <div class="mentor-content" id="mentor-content"></div>
-    <div class="genio-btns">
-      <button class="btn-secondary" id="btn-mentor-close">✕ Fechar</button>
-    </div>
-  </div>
 
   <!-- Loading -->
   <div id="loading-overlay" class="hidden">
