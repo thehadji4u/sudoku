@@ -3132,7 +3132,6 @@ function getHiddenQuadsForNum(n) {
     if (seen.has(key)) return false; seen.add(key); return true;
   });
 }
-}
 
 /**
  * Retorna todos os naked pairs que contêm o número n.
