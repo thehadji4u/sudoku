@@ -1151,96 +1151,11 @@ function renderHighlights() {
     });
   }
 
-  /* P3 — hidden pair */
+  /* P3 — naked pair */
   const p2Active = !p0Active && !p1Active && hsMode >= 1 && activeNum > 0 &&
                    (getHiddenSinglesForNum(activeNum).length > 0 || getNoteHiddenSinglesForNum(activeNum).length > 0);
-  const hpMode = settings.hiddenPairMode || 0;
-  if (!p0Active && !p1Active && !p2Active && hpMode >= 1 && STATE.puzzle && activeNum > 0) {
-    const pairs = getHiddenPairsForNum(activeNum).filter(p => p.targets.length > 0);
-    if (pairs.length > 0) {
-      const {cells, pairNums, targets} = pairs[0];
-      const pairNumSet = new Set(pairNums);
-      cells.forEach(([r, c]) => {
-        const el = cellElements[r][c];
-        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel')) {
-          el.classList.add('hp-source');
-          pairNums.forEach(n => {
-            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
-            if (noteEl) noteEl.classList.add('note-pn-blue');
-          });
-          // Non-pair notes = removal targets
-          STATE.notes[r][c].forEach(num => {
-            if (!pairNumSet.has(num)) {
-              const noteEl = el.querySelector(`.note-digit[data-note="${num}"]`);
-              if (noteEl) noteEl.classList.add('note-pn-red');
-            }
-          });
-        }
-      });
-    }
-  }
-
-  /* P4 — hidden triple */
-  const p3Active = !p0Active && !p1Active && !p2Active && hpMode >= 1 && activeNum > 0 &&
-                   getHiddenPairsForNum(activeNum).some(p => p.targets.length > 0);
-  const htMode = settings.hiddenTripleMode || 0;
-  if (!p0Active && !p1Active && !p2Active && !p3Active && htMode >= 1 && STATE.puzzle && activeNum > 0) {
-    const triples = getHiddenTriplesForNum(activeNum).filter(t => t.targets.length > 0);
-    if (triples.length > 0) {
-      const {cells, tripleNums, targets} = triples[0];
-      const tripleNumSet = new Set(tripleNums);
-      cells.forEach(([r, c]) => {
-        const el = cellElements[r][c];
-        if (!el.classList.contains('selected')) {
-          el.classList.add('ht-source');
-          tripleNums.forEach(n => {
-            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
-            if (noteEl) noteEl.classList.add('note-pn-blue');
-          });
-          STATE.notes[r][c].forEach(num => {
-            if (!tripleNumSet.has(num)) {
-              const noteEl = el.querySelector(`.note-digit[data-note="${num}"]`);
-              if (noteEl) noteEl.classList.add('note-pn-red');
-            }
-          });
-        }
-      });
-    }
-  }
-
-  /* P5 — hidden quad */
-  const p4Active = !p0Active && !p1Active && !p2Active && !p3Active && htMode >= 1 && activeNum > 0 &&
-                   getHiddenTriplesForNum(activeNum).some(t => t.targets.length > 0);
-  const hqMode = settings.hiddenQuadMode || 0;
-  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && hqMode >= 1 && STATE.puzzle && activeNum > 0) {
-    const quads = getHiddenQuadsForNum(activeNum).filter(q => q.targets.length > 0);
-    if (quads.length > 0) {
-      const {cells, quadNums, targets} = quads[0];
-      const quadNumSet = new Set(quadNums);
-      cells.forEach(([r, c]) => {
-        const el = cellElements[r][c];
-        if (!el.classList.contains('selected')) {
-          el.classList.add('hq-source');
-          quadNums.forEach(n => {
-            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
-            if (noteEl) noteEl.classList.add('note-pn-blue');
-          });
-          STATE.notes[r][c].forEach(num => {
-            if (!quadNumSet.has(num)) {
-              const noteEl = el.querySelector(`.note-digit[data-note="${num}"]`);
-              if (noteEl) noteEl.classList.add('note-pn-red');
-            }
-          });
-        }
-      });
-    }
-  }
-
-  /* P6 — naked pair */
-  const p5Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active && hqMode >= 1 && activeNum > 0 &&
-                   getHiddenQuadsForNum(activeNum).some(q => q.targets.length > 0);
   const npMode = settings.nakedPairMode || 0;
-  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
+  if (!p0Active && !p1Active && !p2Active && npMode >= 1 && STATE.puzzle && activeNum > 0) {
     const pairs = getNakedPairsForNum(activeNum).filter(p => p.targets.length > 0);
     if (pairs.length > 0) {
       const {pair, targets} = pairs[0];
@@ -1266,11 +1181,38 @@ function renderHighlights() {
     }
   }
 
-  /* P7 — naked triple */
-  const p6Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && npMode >= 1 && activeNum > 0 &&
+  /* P4 — hidden pair: source cells = par oculto, nota activeNum em vermelho */
+  const p3Active = !p0Active && !p1Active && !p2Active && npMode >= 1 && activeNum > 0 &&
                    getNakedPairsForNum(activeNum).some(({targets}) => targets.length > 0);
+  const hpMode = settings.hiddenPairMode || 0;
+  if (!p0Active && !p1Active && !p2Active && !p3Active && hpMode >= 1 && STATE.puzzle && activeNum > 0) {
+    const pairs = getHiddenPairsForNum(activeNum).filter(p => p.targets.length > 0);
+    if (pairs.length > 0) {
+      const {cells, pairNums} = pairs[0];
+      cells.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected') && !el.classList.contains('highlight-sel')) {
+          el.classList.add('hp-source');
+          // Dígitos do par oculto em azul (razão)
+          pairNums.forEach(n => {
+            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-blue');
+          });
+          // activeNum em vermelho (será eliminado)
+          if (STATE.notes[r][c].has(activeNum)) {
+            const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-red');
+          }
+        }
+      });
+    }
+  }
+
+  /* P5 — naked triple */
+  const p4Active = !p0Active && !p1Active && !p2Active && !p3Active && hpMode >= 1 && activeNum > 0 &&
+                   getHiddenPairsForNum(activeNum).some(p => p.targets.length > 0);
   const ntMode = settings.p3Mode || 0;
-  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && !p6Active && ntMode >= 1 && STATE.puzzle && activeNum > 0) {
+  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && ntMode >= 1 && STATE.puzzle && activeNum > 0) {
     const triples = getNakedTriplesForNum(activeNum).filter(t => t.targets.length > 0);
     if (triples.length > 0) {
       const {sourceCells, nums, targets} = triples[0];
@@ -1295,11 +1237,36 @@ function renderHighlights() {
     }
   }
 
-  /* P8 — naked quad */
-  const p7Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && !p6Active && ntMode >= 1 && activeNum > 0 &&
+  /* P6 — hidden triple */
+  const p5Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active && ntMode >= 1 && activeNum > 0 &&
                    getNakedTriplesForNum(activeNum).some(({targets}) => targets.length > 0);
+  const htMode = settings.hiddenTripleMode || 0;
+  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && htMode >= 1 && STATE.puzzle && activeNum > 0) {
+    const triples = getHiddenTriplesForNum(activeNum).filter(t => t.targets.length > 0);
+    if (triples.length > 0) {
+      const {cells, tripleNums} = triples[0];
+      cells.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected')) {
+          el.classList.add('ht-source');
+          tripleNums.forEach(n => {
+            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-blue');
+          });
+          if (STATE.notes[r][c].has(activeNum)) {
+            const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-red');
+          }
+        }
+      });
+    }
+  }
+
+  /* P7 — naked quad */
+  const p6Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && htMode >= 1 && activeNum > 0 &&
+                   getHiddenTriplesForNum(activeNum).some(t => t.targets.length > 0);
   const nqMode = settings.p4Mode || 0;
-  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && !p6Active && !p7Active && nqMode >= 1 && STATE.puzzle && activeNum > 0) {
+  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && !p6Active && nqMode >= 1 && STATE.puzzle && activeNum > 0) {
     const quads = getNakedQuadsForNum(activeNum).filter(q => q.targets.length > 0);
     if (quads.length > 0) {
       const {sourceCells, nums, targets} = quads[0];
@@ -1324,33 +1291,48 @@ function renderHighlights() {
     }
   }
 
+  /* P8 — hidden quad */
+  const p7Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && !p6Active && nqMode >= 1 && activeNum > 0 &&
+                   getNakedQuadsForNum(activeNum).some(({targets}) => targets.length > 0);
+  const hqMode = settings.hiddenQuadMode || 0;
+  if (!p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && !p6Active && !p7Active && hqMode >= 1 && STATE.puzzle && activeNum > 0) {
+    const quads = getHiddenQuadsForNum(activeNum).filter(q => q.targets.length > 0);
+    if (quads.length > 0) {
+      const {cells, quadNums} = quads[0];
+      cells.forEach(([r, c]) => {
+        const el = cellElements[r][c];
+        if (!el.classList.contains('selected')) {
+          el.classList.add('hq-source');
+          quadNums.forEach(n => {
+            const noteEl = el.querySelector(`.note-digit[data-note="${n}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-blue');
+          });
+          if (STATE.notes[r][c].has(activeNum)) {
+            const noteEl = el.querySelector(`.note-digit[data-note="${activeNum}"]`);
+            if (noteEl) noteEl.classList.add('note-pn-red');
+          }
+        }
+      });
+    }
+  }
+
   /* Indicadores */
   {
     let pnLabel = '';
     const p8Active = !p0Active && !p1Active && !p2Active && !p3Active && !p4Active && !p5Active && !p6Active && !p7Active &&
-                     nqMode >= 1 && activeNum > 0 &&
-                     getNakedQuadsForNum(activeNum).some(({targets}) => targets.length > 0);
+                     hqMode >= 1 && activeNum > 0 &&
+                     getHiddenQuadsForNum(activeNum).some(q => q.targets.length > 0);
 
     if (activeNum > 0 && !STATE.gameOver) {
-      if (p0Active) {
-        if (p0Targets.length > 0) pnLabel = 'Auto-Remoção';
-      } else if (p1Active) {
-        if (getNakedSinglesForNum(activeNum).length + getNoteNakedsForNum(activeNum).length > 0) pnLabel = 'Naked Single';
-      } else if (p2Active) {
-        if (getHiddenSinglesForNum(activeNum).length + getNoteHiddenSinglesForNum(activeNum).length > 0) pnLabel = 'Hidden Single';
-      } else if (p3Active) {
-        if (getHiddenPairsForNum(activeNum).some(p => p.targets.length > 0)) pnLabel = 'Hidden Pair';
-      } else if (p4Active) {
-        if (getHiddenTriplesForNum(activeNum).some(t => t.targets.length > 0)) pnLabel = 'Hidden Triple';
-      } else if (p5Active) {
-        if (getHiddenQuadsForNum(activeNum).some(q => q.targets.length > 0)) pnLabel = 'Hidden Quad';
-      } else if (p6Active) {
-        if (getNakedPairsForNum(activeNum).some(p => p.targets.length > 0)) pnLabel = 'Naked Pair';
-      } else if (p7Active) {
-        if (getNakedTriplesForNum(activeNum).some(t => t.targets.length > 0)) pnLabel = 'Naked Triple';
-      } else if (p8Active) {
-        if (getNakedQuadsForNum(activeNum).some(qd => qd.targets.length > 0)) pnLabel = 'Naked Quad';
-      }
+      if (p0Active)      { if (p0Targets.length > 0) pnLabel = 'Auto-Remoção'; }
+      else if (p1Active) { if (getNakedSinglesForNum(activeNum).length + getNoteNakedsForNum(activeNum).length > 0) pnLabel = 'Naked Single'; }
+      else if (p2Active) { if (getHiddenSinglesForNum(activeNum).length + getNoteHiddenSinglesForNum(activeNum).length > 0) pnLabel = 'Hidden Single'; }
+      else if (p3Active) { if (getNakedPairsForNum(activeNum).some(p => p.targets.length > 0)) pnLabel = 'Naked Pair'; }
+      else if (p4Active) { if (getHiddenPairsForNum(activeNum).some(p => p.targets.length > 0)) pnLabel = 'Hidden Pair'; }
+      else if (p5Active) { if (getNakedTriplesForNum(activeNum).some(t => t.targets.length > 0)) pnLabel = 'Naked Triple'; }
+      else if (p6Active) { if (getHiddenTriplesForNum(activeNum).some(t => t.targets.length > 0)) pnLabel = 'Hidden Triple'; }
+      else if (p7Active) { if (getNakedQuadsForNum(activeNum).some(q => q.targets.length > 0)) pnLabel = 'Naked Quad'; }
+      else if (p8Active) { if (getHiddenQuadsForNum(activeNum).some(q => q.targets.length > 0)) pnLabel = 'Hidden Quad'; }
     }
     const indicatorEl = document.getElementById('active-pn-indicator');
     if (indicatorEl) indicatorEl.textContent = pnLabel;
@@ -2781,29 +2763,29 @@ function triggerPowerFunctions(num, sourceEl, isLongPress = false) {
                     getNoteHiddenSinglesForNum(num).length > 0;
     if (hasWork) { triggerHiddenSingleFill(num, sourceEl); return; }
   }
-  /* P3 — hidden pair */
-  if (p3 >= 2) {
-    if (getHiddenPairsForNum(num).some(p => p.targets.length > 0)) { triggerHiddenPairElim(num, sourceEl); return; }
-  }
-  /* P4 — hidden triple */
-  if (p4 >= 2) {
-    if (getHiddenTriplesForNum(num).some(t => t.targets.length > 0)) { triggerHiddenTripleElim(num, sourceEl); return; }
-  }
-  /* P5 — hidden quad */
-  if (p5 >= 2) {
-    if (getHiddenQuadsForNum(num).some(q => q.targets.length > 0)) { triggerHiddenQuadElim(num, sourceEl); return; }
-  }
-  /* P6 — naked pair */
+  /* P3 — naked pair */
   if (p6 >= 2) {
     if (getNakedPairsForNum(num).some(p => p.targets.length > 0)) { triggerNakedPairElim(num, sourceEl); return; }
   }
-  /* P7 — naked triple */
+  /* P4 — hidden pair */
+  if (p3 >= 2) {
+    if (getHiddenPairsForNum(num).some(p => p.targets.length > 0)) { triggerHiddenPairElim(num, sourceEl); return; }
+  }
+  /* P5 — naked triple */
   if (p7 >= 2) {
     if (getNakedTriplesForNum(num).some(t => t.targets.length > 0)) { triggerNakedTripleElim(num, sourceEl); return; }
   }
-  /* P8 — naked quad */
+  /* P6 — hidden triple */
+  if (p4 >= 2) {
+    if (getHiddenTriplesForNum(num).some(t => t.targets.length > 0)) { triggerHiddenTripleElim(num, sourceEl); return; }
+  }
+  /* P7 — naked quad */
   if (p8 >= 2) {
     if (getNakedQuadsForNum(num).some(q => q.targets.length > 0)) { triggerNakedQuadElim(num, sourceEl); return; }
+  }
+  /* P8 — hidden quad */
+  if (p5 >= 2) {
+    if (getHiddenQuadsForNum(num).some(q => q.targets.length > 0)) { triggerHiddenQuadElim(num, sourceEl); return; }
   }
 }
 
@@ -3024,83 +3006,30 @@ let _hqGen = 0;  // P5 hidden quads
 ═══════════════════════════════════════ */
 
 /**
- * Hidden Pair: dois dígitos que aparecem como candidatos em exatamente 2 células
- * de uma unidade. Todos os outros candidatos nessas 2 células podem ser eliminados.
- * Retorna [{cells:[[r1,c1],[r2,c2]], pairNums:[n,m], targets:[[r,c,digit],...]}]
+ * Hidden Pair: encontra pares ocultos {A, B} (onde A≠n e B≠n) que abrangem células
+ * contendo n — ou seja, n pode ser ELIMINADO dessas células pelo par oculto.
+ * Retorna [{cells:[[r1,c1],[r2,c2]], pairNums:[A,B], targets:[[r,c,n],...]}]
  */
 function getHiddenPairsForNum(n) {
   if (!STATE.puzzle || !STATE.notes) return [];
   const results = [];
   const checkUnit = (cells) => {
     const emptyCells = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0);
-    // Cells containing n
-    const nCells = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(n));
-    if (nCells.length !== 2) return;
-    // Find another digit m that appears in exactly the same 2 cells
-    for (let m = 1; m <= 9; m++) {
-      if (m === n) continue;
-      const mCells = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(m));
-      if (mCells.length !== 2) continue;
-      if (mCells[0][0] !== nCells[0][0] || mCells[0][1] !== nCells[0][1] ||
-          mCells[1][0] !== nCells[1][0] || mCells[1][1] !== nCells[1][1]) continue;
-      // Hidden pair {n, m} in nCells — collect non-pair digits to remove
-      const pairNums = new Set([n, m]);
-      const targets = [];
-      nCells.forEach(([r,c]) => {
-        STATE.notes[r][c].forEach(num => {
-          if (!pairNums.has(num)) targets.push([r, c, num]);
-        });
-      });
-      if (targets.length > 0)
-        results.push({ cells: nCells, pairNums: [n, m], targets });
-    }
-  };
-  for (let i = 0; i < 9; i++) {
-    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
-    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
-    const br=Math.floor(i/3)*3, bc=(i%3)*3;
-    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
-  }
-  const seen = new Set();
-  return results.filter(({cells,pairNums}) => {
-    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+[...pairNums].sort().join(',');
-    if (seen.has(key)) return false; seen.add(key); return true;
-  });
-}
-
-/**
- * Hidden Triple: três dígitos que aparecem como candidatos em exatamente 3 células
- * de uma unidade. Todos os outros candidatos nessas 3 células podem ser eliminados.
- */
-function getHiddenTriplesForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
-  const results = [];
-  const checkUnit = (cells) => {
-    const emptyCells = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0);
-    // Build map digit → candidate cells (size 2 or 3 only)
-    const digitMap = new Map();
-    for (let d = 1; d <= 9; d++) {
-      const dc = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(d));
-      if (dc.length >= 2 && dc.length <= 3) digitMap.set(d, dc);
-    }
-    if (!digitMap.has(n)) return;
-    const others = [...digitMap.keys()].filter(d => d !== n);
-    for (let i = 0; i < others.length - 1; i++) {
-      for (let j = i + 1; j < others.length; j++) {
-        const [m, p] = [others[i], others[j]];
-        const cellSet = new Set();
-        [n, m, p].forEach(d => digitMap.get(d).forEach(([r,c]) => cellSet.add(r+','+c)));
-        if (cellSet.size !== 3) continue;
-        const tripleCells = [...cellSet].map(k => k.split(',').map(Number));
-        const tripleNums = new Set([n, m, p]);
-        const targets = [];
-        tripleCells.forEach(([r,c]) => {
-          STATE.notes[r][c].forEach(num => {
-            if (!tripleNums.has(num)) targets.push([r, c, num]);
-          });
-        });
+    for (let a = 1; a <= 8; a++) {
+      if (a === n) continue;
+      const aCells = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(a));
+      if (aCells.length !== 2) continue;
+      for (let b = a + 1; b <= 9; b++) {
+        if (b === n) continue;
+        const bCells = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(b));
+        if (bCells.length !== 2) continue;
+        if (aCells[0][0] !== bCells[0][0] || aCells[0][1] !== bCells[0][1] ||
+            aCells[1][0] !== bCells[1][0] || aCells[1][1] !== bCells[1][1]) continue;
+        // Par oculto {a,b} confirmado. n pode ser eliminado das células que o contêm.
+        const targets = aCells.filter(([r,c]) => STATE.notes[r][c].has(n))
+                              .map(([r,c]) => [r, c, n]);
         if (targets.length > 0)
-          results.push({ cells: tripleCells, tripleNums: [n, m, p], targets });
+          results.push({ cells: aCells, pairNums: [a, b], targets });
       }
     }
   };
@@ -3111,14 +3040,58 @@ function getHiddenTriplesForNum(n) {
     checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
   }
   const seen = new Set();
-  return results.filter(({cells,tripleNums}) => {
-    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+[...tripleNums].sort().join(',');
+  return results.filter(({cells,pairNums}) => {
+    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+pairNums.slice().sort().join(',');
     if (seen.has(key)) return false; seen.add(key); return true;
   });
 }
 
 /**
- * Hidden Quad: quatro dígitos em exatamente 4 células de uma unidade.
+ * Hidden Triple: encontra triplos ocultos {A,B,C} (onde nenhum é n) que abrangem células
+ * contendo n — ou seja, n pode ser ELIMINADO dessas células pelo triplo oculto.
+ */
+function getHiddenTriplesForNum(n) {
+  if (!STATE.puzzle || !STATE.notes) return [];
+  const results = [];
+  const checkUnit = (cells) => {
+    const emptyCells = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0);
+    const digitMap = new Map();
+    for (let d = 1; d <= 9; d++) {
+      if (d === n) continue;
+      const dc = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(d));
+      if (dc.length >= 2 && dc.length <= 3) digitMap.set(d, dc);
+    }
+    const digits = [...digitMap.keys()];
+    for (let i = 0; i < digits.length - 2; i++)
+    for (let j = i+1; j < digits.length - 1; j++)
+    for (let k = j+1; k < digits.length; k++) {
+      const [a, b, c] = [digits[i], digits[j], digits[k]];
+      const cellSet = new Set();
+      [a, b, c].forEach(d => digitMap.get(d).forEach(([r,c]) => cellSet.add(r+','+c)));
+      if (cellSet.size !== 3) continue;
+      const tripleCells = [...cellSet].map(s => s.split(',').map(Number));
+      const targets = tripleCells.filter(([r,c]) => STATE.notes[r][c].has(n))
+                                 .map(([r,c]) => [r, c, n]);
+      if (targets.length > 0)
+        results.push({ cells: tripleCells, tripleNums: [a, b, c], targets });
+    }
+  };
+  for (let i = 0; i < 9; i++) {
+    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
+    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
+    const br=Math.floor(i/3)*3, bc=(i%3)*3;
+    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
+  }
+  const seen = new Set();
+  return results.filter(({cells,tripleNums}) => {
+    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+tripleNums.slice().sort().join(',');
+    if (seen.has(key)) return false; seen.add(key); return true;
+  });
+}
+
+/**
+ * Hidden Quad: encontra quádruplos ocultos {A,B,C,D} (onde nenhum é n) que abrangem
+ * células contendo n — ou seja, n pode ser ELIMINADO dessas células.
  */
 function getHiddenQuadsForNum(n) {
   if (!STATE.puzzle || !STATE.notes) return [];
@@ -3127,28 +3100,24 @@ function getHiddenQuadsForNum(n) {
     const emptyCells = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0);
     const digitMap = new Map();
     for (let d = 1; d <= 9; d++) {
+      if (d === n) continue;
       const dc = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(d));
       if (dc.length >= 2 && dc.length <= 4) digitMap.set(d, dc);
     }
-    if (!digitMap.has(n)) return;
-    const others = [...digitMap.keys()].filter(d => d !== n);
-    for (let i = 0; i < others.length - 2; i++)
-    for (let j = i+1; j < others.length - 1; j++)
-    for (let k = j+1; k < others.length; k++) {
-      const [m, p, q] = [others[i], others[j], others[k]];
+    const digits = [...digitMap.keys()];
+    for (let i = 0; i < digits.length - 3; i++)
+    for (let j = i+1; j < digits.length - 2; j++)
+    for (let k = j+1; k < digits.length - 1; k++)
+    for (let l = k+1; l < digits.length; l++) {
+      const [a, b, c, dg] = [digits[i], digits[j], digits[k], digits[l]];
       const cellSet = new Set();
-      [n, m, p, q].forEach(d => digitMap.get(d).forEach(([r,c]) => cellSet.add(r+','+c)));
+      [a, b, c, dg].forEach(d => digitMap.get(d).forEach(([r,c]) => cellSet.add(r+','+c)));
       if (cellSet.size !== 4) continue;
       const quadCells = [...cellSet].map(s => s.split(',').map(Number));
-      const quadNums = new Set([n, m, p, q]);
-      const targets = [];
-      quadCells.forEach(([r,c]) => {
-        STATE.notes[r][c].forEach(num => {
-          if (!quadNums.has(num)) targets.push([r, c, num]);
-        });
-      });
+      const targets = quadCells.filter(([r,c]) => STATE.notes[r][c].has(n))
+                               .map(([r,c]) => [r, c, n]);
       if (targets.length > 0)
-        results.push({ cells: quadCells, quadNums: [n, m, p, q], targets });
+        results.push({ cells: quadCells, quadNums: [a, b, c, dg], targets });
     }
   };
   for (let i = 0; i < 9; i++) {
@@ -3159,9 +3128,10 @@ function getHiddenQuadsForNum(n) {
   }
   const seen = new Set();
   return results.filter(({cells,quadNums}) => {
-    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+[...quadNums].sort().join(',');
+    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+quadNums.slice().sort().join(',');
     if (seen.has(key)) return false; seen.add(key); return true;
   });
+}
 }
 
 /**
