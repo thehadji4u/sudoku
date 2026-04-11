@@ -1866,13 +1866,14 @@ html, body {
   overflow: hidden;
   min-width: 0;
 }
-#btn-paint.paint-active .ctrl-icon-wrap {
+#btn-paint.paint-active .ctrl-icon-wrap,
+#btn-paint.paint-active .paint-label-text {
   display: none; /* esconde layout padrão */
 }
-#paint-half-off, #paint-half-color {
+#paint-half-ok, #paint-half-color {
   display: none;
 }
-#btn-paint.paint-active #paint-half-off,
+#btn-paint.paint-active #paint-half-ok,
 #btn-paint.paint-active #paint-half-color {
   display: flex;
   flex-direction: column;
@@ -1889,50 +1890,57 @@ html, body {
   border: none;
   background: none;
 }
-#btn-paint.paint-active #paint-half-off {
+#btn-paint.paint-active #paint-half-ok {
   background: #F1F5F9;
-  color: #64748B;
+  color: #16A34A;
   border-radius: 12px 0 0 12px;
   border-right: 1px solid rgba(0,0,0,0.08);
+  font-size: 16px;
 }
-#btn-paint.paint-active #paint-half-off:active { background: #E2E8F0; }
-#btn-paint.paint-active #paint-half-color.color-green {
-  background: linear-gradient(135deg, #16A34A, #22C55E);
+#btn-paint.paint-active #paint-half-ok:active { background: #E2E8F0; }
+#btn-paint.paint-active #paint-half-color {
   color: #fff;
   border-radius: 0 12px 12px 0;
-  box-shadow: inset 0 0 8px rgba(34,197,94,0.4);
+  transition: background 0.15s;
 }
-#btn-paint.paint-active #paint-half-color.color-red {
-  background: linear-gradient(135deg, #DC2626, #EF4444);
-  color: #fff;
-  border-radius: 0 12px 12px 0;
-  box-shadow: inset 0 0 8px rgba(239,68,68,0.4);
+#btn-paint.paint-active #paint-half-color:active { opacity: 0.82; }
+.paint-half-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.85);
 }
-#btn-paint.paint-active #paint-half-color:active { opacity: 0.85; }
-.paint-half-icon { font-size: 14px; line-height: 1; }
 .paint-half-label { font-size: 9px; font-weight: 700; }
 
-/* Dial em modo pintura — verde glow ou vermelho glow */
-body.paint-mode-green .num-btn:not(.done) {
-  color: #16A34A !important;
-  text-shadow: 0 0 8px #4ADE80, 0 0 16px #86EFAC;
+/* Dial em modo pintura — glow com cor ativa (via CSS custom property) */
+body.paint-mode-active .num-btn:not(.done) {
+  color: var(--paint-color) !important;
+  text-shadow: 0 0 8px var(--paint-color), 0 0 16px var(--paint-color);
 }
-body.paint-mode-red .num-btn:not(.done) {
-  color: #DC2626 !important;
-  text-shadow: 0 0 8px #EF4444, 0 0 16px #FCA5A5;
-}
-body.paint-mode-green .num-bar-power { background: #4ADE80 !important; }
-body.paint-mode-red   .num-bar-power { background: #EF4444 !important; }
+body.paint-mode-active .num-bar-power { background: var(--paint-color) !important; }
 
-/* Anotações pintadas — fundo colorido no dígito */
-.note-digit.paint-green {
-  background: #16A34A !important;
-  color: #fff !important;
-  border-radius: 2px;
+/* Picker de 12 cores */
+#paint-color-picker {
+  z-index: 9999;
+  background: #1E293B;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.1);
 }
-.note-digit.paint-red {
-  background: #DC2626 !important;
-  color: #fff !important;
-  border-radius: 2px;
+.paint-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
 }
+.paint-picker-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.paint-picker-dot:hover  { transform: scale(1.18); }
+.paint-picker-dot.active { border-color: #fff; transform: scale(1.12); }
 

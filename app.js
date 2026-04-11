@@ -161,15 +161,42 @@ let _toolLongPressTriggered = false;
 /* Modo Colorir */
 const PAINT_STATE = {
   active: false,       // modo pintura ligado
-  color: 'green',      // 'green' | 'red'
-  marks: {},           // { 'r,c': Set<num> } pintados em verde
-  marksRed: {},        // { 'r,c': Set<num> } pintados em vermelho
+  color: '#22C55E',    // hex da cor ativa
+  marks: {},           // { 'r,c': { [num]: hexColor } }
 };
-function _getPaintSet(r, c, color) {
-  const map = color === 'red' ? PAINT_STATE.marksRed : PAINT_STATE.marks;
-  const key = `${r},${c}`;
-  if (!map[key]) map[key] = new Set();
-  return map[key];
+
+/* 12 cores básicas, marcantes, ordenadas por tom */
+const PAINT_COLORS = [
+  { hex: '#EF4444', name: 'Vermelho'  },
+  { hex: '#F97316', name: 'Laranja'   },
+  { hex: '#F59E0B', name: 'Âmbar'     },
+  { hex: '#EAB308', name: 'Amarelo'   },
+  { hex: '#84CC16', name: 'Lima'      },
+  { hex: '#22C55E', name: 'Verde'     },
+  { hex: '#14B8A6', name: 'Turquesa'  },
+  { hex: '#06B6D4', name: 'Ciano'     },
+  { hex: '#3B82F6', name: 'Azul'      },
+  { hex: '#6366F1', name: 'Índigo'    },
+  { hex: '#A855F7', name: 'Violeta'   },
+  { hex: '#EC4899', name: 'Rosa'      },
+];
+function _colorName(hex) {
+  return (PAINT_COLORS.find(c => c.hex === hex) || { name: 'Cor' }).name;
+}
+function _cyclePaintColor() {
+  const idx = PAINT_COLORS.findIndex(c => c.hex === PAINT_STATE.color);
+  PAINT_STATE.color = PAINT_COLORS[(idx + 1) % PAINT_COLORS.length].hex;
+  updatePaintBtn();
+  renderNumpad();
+}
+function _clearAllPaintMarks() {
+  PAINT_STATE.marks = {};
+  if (STATE.puzzle) {
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        updateCellContent(r, c);
+    renderHighlights();
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -804,6 +831,10 @@ function startGame(difficulty) {
     };
     resetAnalysis();
 
+    /* Limpa estado de pintura ao iniciar novo jogo */
+    PAINT_STATE.active = false;
+    PAINT_STATE.marks  = {};
+
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
         if (puzzle[r][c] !== 0) STATE.givens.add(`${r},${c}`);
@@ -953,17 +984,17 @@ function updateCellContent(r, c) {
 
 function buildNotesHTML(noteSet, r, c) {
   let html = '<div class="notes-grid">';
-  const gSet = PAINT_STATE.marks[`${r},${c}`] || new Set();
-  const rSet = PAINT_STATE.marksRed[`${r},${c}`] || new Set();
+  const cellMarks = PAINT_STATE.marks[`${r},${c}`] || {};
   for (let n = 1; n <= 9; n++) {
     const active = noteSet.has(n);
     let cls = 'note-digit';
+    let style = '';
     if (active) {
       cls += ' active';
-      if (rSet.has(n)) cls += ' paint-red';
-      else if (gSet.has(n)) cls += ' paint-green';
+      const markColor = cellMarks[n];
+      if (markColor) style = ` style="background:${markColor};color:#fff;"`;
     }
-    html += `<span class="${cls}" data-note="${n}">${active ? n : ''}</span>`;
+    html += `<span class="${cls}"${style} data-note="${n}">${active ? n : ''}</span>`;
   }
   html += '</div>';
   return html;
@@ -1433,13 +1464,13 @@ function handleNumberInput(num) {
   if (PAINT_STATE.active && num > 0) {
     if (STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(num)) {
       const color = PAINT_STATE.color;
-      const thisSet = _getPaintSet(r, c, color);
-      const otherSet = _getPaintSet(r, c, color === 'green' ? 'red' : 'green');
-      if (thisSet.has(num)) {
-        thisSet.delete(num); // toggle off
+      const key = `${r},${c}`;
+      if (!PAINT_STATE.marks[key]) PAINT_STATE.marks[key] = {};
+      const current = PAINT_STATE.marks[key][num];
+      if (current === color) {
+        delete PAINT_STATE.marks[key][num]; // mesma cor → toggle off
       } else {
-        otherSet.delete(num); // remove cor oposta
-        thisSet.add(num);
+        PAINT_STATE.marks[key][num] = color; // sem cor ou cor diferente → aplica/substitui
       }
       updateCellContent(r, c);
     }
@@ -2156,40 +2187,109 @@ function _setupPaintBtn() {
       <span class="ctrl-mode-tag" id="paint-mode-tag">OFF</span>
     </span>
     <span class="paint-label-text">Colorir</span>
-    <div id="paint-half-off">
-      <span class="paint-half-icon">❌</span>
-      <span class="paint-half-label">OFF</span>
+    <div id="paint-half-ok">
+      <span class="paint-half-icon">✔</span>
+      <span class="paint-half-label">OK</span>
     </div>
-    <div id="paint-half-color" class="color-green">
-      <span class="paint-half-icon" id="paint-half-icon">🟢</span>
-      <span class="paint-half-label" id="paint-half-label">Verde</span>
+    <div id="paint-half-color">
+      <span class="paint-half-swatch" id="paint-half-swatch"></span>
+      <span class="paint-half-label" id="paint-half-label">Cor</span>
     </div>`;
 
-  /* Clique no botão principal (modo OFF): ativa pintura verde */
+  const LONG_MS = 600;
+  let _btnLP = false, _okLP = false, _colorLP = false;
+  let _btnT = null, _okT = null, _colorT = null;
+
+  /* ── Botão inativo: clique ativa, long press limpa marcas ── */
+  btn.addEventListener('pointerdown', (e) => {
+    if (PAINT_STATE.active) return;
+    _btnLP = false;
+    _btnT = setTimeout(() => { _btnLP = true; _clearAllPaintMarks(); }, LONG_MS);
+  });
+  btn.addEventListener('pointerup',     () => { if (_btnT) { clearTimeout(_btnT); _btnT = null; } });
+  btn.addEventListener('pointercancel', () => { if (_btnT) { clearTimeout(_btnT); _btnT = null; } });
   btn.addEventListener('click', (e) => {
-    if (PAINT_STATE.active) return; /* halves handle clicks when active */
-    activatePaintMode('green');
+    if (PAINT_STATE.active) return;
+    if (_btnLP) { _btnLP = false; return; }
+    if (!STATE.puzzle || STATE.paused) return;
+    activatePaintMode();
   });
 
-  /* Clique no halvo esquerdo (OFF) */
-  document.getElementById('paint-half-off').addEventListener('click', (e) => {
+  /* ── Halvo OK: clique desativa mantendo marcas, long press abre picker ── */
+  const halfOk = document.getElementById('paint-half-ok');
+  halfOk.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    deactivatePaintMode();
+    _okLP = false;
+    _okT = setTimeout(() => { _okLP = true; _showPaintColorPicker(halfOk); }, LONG_MS);
+  });
+  halfOk.addEventListener('pointerup',     (e) => { e.stopPropagation(); if (_okT) { clearTimeout(_okT); _okT = null; } });
+  halfOk.addEventListener('pointercancel', (e) => { e.stopPropagation(); if (_okT) { clearTimeout(_okT); _okT = null; } });
+  halfOk.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (_okLP) { _okLP = false; return; }
+    deactivatePaintMode(true); /* keepMarks = true */
   });
 
-  /* Clique no halvo direito (Cor) */
-  document.getElementById('paint-half-color').addEventListener('click', (e) => {
+  /* ── Halvo Cor: clique cicla cor, long press abre picker ── */
+  const halfColor = document.getElementById('paint-half-color');
+  halfColor.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    const next = PAINT_STATE.color === 'green' ? 'red' : 'green';
-    PAINT_STATE.color = next;
-    updatePaintBtn();
-    renderNumpad();
+    _colorLP = false;
+    _colorT = setTimeout(() => { _colorLP = true; _showPaintColorPicker(halfColor); }, LONG_MS);
   });
+  halfColor.addEventListener('pointerup',     (e) => { e.stopPropagation(); if (_colorT) { clearTimeout(_colorT); _colorT = null; } });
+  halfColor.addEventListener('pointercancel', (e) => { e.stopPropagation(); if (_colorT) { clearTimeout(_colorT); _colorT = null; } });
+  halfColor.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (_colorLP) { _colorLP = false; return; }
+    _cyclePaintColor();
+  });
+}
+
+function _showPaintColorPicker(anchorEl) {
+  _hidePaintColorPicker();
+  const picker = document.createElement('div');
+  picker.id = 'paint-color-picker';
+  picker.innerHTML = `<div class="paint-picker-grid">${
+    PAINT_COLORS.map(c =>
+      `<div class="paint-picker-dot${PAINT_STATE.color === c.hex ? ' active' : ''}"
+            data-hex="${c.hex}" style="background:${c.hex}" title="${c.name}"></div>`
+    ).join('')
+  }</div>`;
+
+  picker.querySelectorAll('.paint-picker-dot').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      PAINT_STATE.color = el.dataset.hex;
+      updatePaintBtn();
+      renderNumpad();
+      _hidePaintColorPicker();
+    });
+  });
+
+  document.body.appendChild(picker);
+
+  /* Posiciona acima do elemento âncora */
+  const rect = anchorEl.getBoundingClientRect();
+  picker.style.position = 'fixed';
+  picker.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+  requestAnimationFrame(() => {
+    const pw = picker.offsetWidth;
+    const left = rect.left + rect.width / 2 - pw / 2;
+    picker.style.left = `${Math.max(8, Math.min(left, window.innerWidth - pw - 8))}px`;
+  });
+
+  setTimeout(() => document.addEventListener('click', _hidePaintColorPicker, { once: true }), 0);
+}
+
+function _hidePaintColorPicker() {
+  const el = document.getElementById('paint-color-picker');
+  if (el) el.remove();
 }
 
 function activatePaintMode(color) {
   PAINT_STATE.active = true;
-  PAINT_STATE.color = color || 'green';
+  if (color) PAINT_STATE.color = color;
   /* Desativa notes mode se estiver ativo */
   if (STATE.notesMode) {
     STATE.notesMode = false;
@@ -2199,15 +2299,15 @@ function activatePaintMode(color) {
   renderNumpad();
 }
 
-function deactivatePaintMode() {
+function deactivatePaintMode(keepMarks = false) {
   PAINT_STATE.active = false;
-  /* Limpa todas as marcas visuais */
-  PAINT_STATE.marks = {};
-  PAINT_STATE.marksRed = {};
+  if (!keepMarks) {
+    PAINT_STATE.marks = {};
+  }
   updatePaintBtn();
   renderNumpad();
-  /* Redesenha todas as células para remover pinturas */
-  if (STATE.puzzle) {
+  /* Redesenha células apenas se limpou as marcas */
+  if (STATE.puzzle && !keepMarks) {
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
         updateCellContent(r, c);
@@ -2218,22 +2318,25 @@ function deactivatePaintMode() {
 function updatePaintBtn() {
   const btn = document.getElementById('btn-paint');
   if (!btn) return;
-  const halfColor = document.getElementById('paint-half-color');
-  const halfIcon  = document.getElementById('paint-half-icon');
-  const halfLabel = document.getElementById('paint-half-label');
+  const halfColor  = document.getElementById('paint-half-color');
+  const halfSwatch = document.getElementById('paint-half-swatch');
+  const halfLabel  = document.getElementById('paint-half-label');
 
   if (PAINT_STATE.active) {
     btn.classList.add('paint-active', 'active-mode');
     if (halfColor) {
-      halfColor.className = `color-${PAINT_STATE.color}`;
-      if (halfIcon)  halfIcon.textContent  = PAINT_STATE.color === 'green' ? '🟢' : '🔴';
-      if (halfLabel) halfLabel.textContent = PAINT_STATE.color === 'green' ? 'Verde' : 'Verm.';
+      halfColor.style.background = PAINT_STATE.color;
+      halfColor.style.boxShadow  = `inset 0 0 8px ${PAINT_STATE.color}88`;
     }
-    document.body.classList.toggle('paint-mode-green', PAINT_STATE.color === 'green');
-    document.body.classList.toggle('paint-mode-red',   PAINT_STATE.color === 'red');
+    if (halfSwatch) halfSwatch.style.background = '#fff';
+    if (halfLabel)  halfLabel.textContent = _colorName(PAINT_STATE.color);
+    document.body.style.setProperty('--paint-color', PAINT_STATE.color);
+    document.body.classList.add('paint-mode-active');
+    document.body.classList.remove('paint-mode-green', 'paint-mode-red');
   } else {
     btn.classList.remove('paint-active', 'active-mode');
-    document.body.classList.remove('paint-mode-green', 'paint-mode-red');
+    document.body.style.removeProperty('--paint-color');
+    document.body.classList.remove('paint-mode-active', 'paint-mode-green', 'paint-mode-red');
   }
 }
 
