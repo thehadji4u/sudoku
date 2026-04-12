@@ -1910,19 +1910,25 @@ function formatTime(s) {
 ═══════════════════════════════════════ */
 function saveSession() {
   if (!STATE.puzzle || STATE.gameOver) return;
-  const session = {
-    puzzle:       STATE.puzzle,
-    solution:     STATE.solution,
-    givens:       [...STATE.givens],
-    notes:        STATE.notes.map(row => row.map(s => [...s])),
-    difficulty:   STATE.difficulty,
-    errors:       STATE.errors,
-    score:        STATE.score,
-    timerSeconds: STATE.timerSeconds,
-    notesMode:    STATE.notesMode,
-    undoCount:    STATE.undoCount,
-  };
-  localStorage.setItem('sudoku-session', JSON.stringify(session));
+  try {
+    const session = {
+      puzzle:       STATE.puzzle,
+      solution:     STATE.solution,
+      givens:       [...STATE.givens],
+      notes:        STATE.notes.map(row => row.map(s => [...s])),
+      difficulty:   STATE.difficulty,
+      errors:       STATE.errors,
+      score:        STATE.score,
+      timerSeconds: STATE.timerSeconds,
+      notesMode:    STATE.notesMode,
+      undoCount:    STATE.undoCount,
+      paintMarks:   PAINT_STATE.marks,
+      paintColor:   PAINT_STATE.color,
+    };
+    localStorage.setItem('sudoku-session', JSON.stringify(session));
+  } catch(e) {
+    /* falha silenciosa — localStorage cheio ou indisponível */
+  }
 }
 
 function loadSession() {
@@ -1946,54 +1952,67 @@ function checkSavedSession() {
 function resumeSession() {
   const s = loadSession();
   if (!s) return;
-  clearSession();
+  /* Restaura o estado ANTES de limpar a sessão do localStorage:
+     se algo falhar durante a restauração, a sessão permanece disponível */
+  try {
+    STATE.puzzle       = s.puzzle;
+    STATE.solution     = s.solution;
+    STATE.givens       = new Set(s.givens);
+    STATE.notes        = s.notes.map(row => row.map(arr => new Set(arr)));
+    STATE.difficulty   = s.difficulty;
+    STATE.errors       = s.errors;
+    STATE.score        = s.score;
+    STATE.timerSeconds = s.timerSeconds;
+    STATE.notesMode    = s.notesMode || false;
+    STATE.selectedRow  = -1;
+    STATE.selectedCol  = -1;
+    STATE.undoStack    = [];
+    STATE.undoCount    = s.undoCount || 0;
+    STATE.paused       = false;
+    STATE.fillNotes    = false;
+    STATE.pinnedNum    = 0;
+    STATE.selectedNum  = 0;
+    STATE.simulator    = {
+      active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
+      savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
+    };
 
-  STATE.puzzle       = s.puzzle;
-  STATE.solution     = s.solution;
-  STATE.givens       = new Set(s.givens);
-  STATE.notes        = s.notes.map(row => row.map(arr => new Set(arr)));
-  STATE.difficulty   = s.difficulty;
-  STATE.errors       = s.errors;
-  STATE.score        = s.score;
-  STATE.timerSeconds = s.timerSeconds;
-  STATE.notesMode    = s.notesMode || false;
-  STATE.selectedRow  = -1;
-  STATE.selectedCol  = -1;
-  STATE.undoStack    = [];
-  STATE.undoCount    = s.undoCount || 0;
-  STATE.paused       = false;
-  STATE.fillNotes    = false;
-  STATE.pinnedNum    = 0;
-  STATE.selectedNum  = 0;
-  STATE.simulator    = {
-    active: false, undoStart: 0, placements: new Map(), nextSeq: 0,
-    savedPuzzle: null, savedNotes: null, savedErrors: 0, savedScore: 0,
-  };
+    /* Restaura marcas de cor (se existirem na sessão salva) */
+    PAINT_STATE.active = false;
+    PAINT_STATE.marks  = s.paintMarks || {};
+    if (s.paintColor) PAINT_STATE.color = s.paintColor;
 
-  document.getElementById('pause-overlay').classList.add('hidden');
-  document.getElementById('btn-pause').textContent = '⏸';
-  document.getElementById('btn-pause').title = 'Pausar';
-  document.getElementById('session-resume').classList.add('hidden');
-  document.getElementById('difficulty-badge').textContent = DIFF_NAMES[s.difficulty];
+    document.getElementById('pause-overlay').classList.add('hidden');
+    document.getElementById('btn-pause').textContent = '⏸';
+    document.getElementById('btn-pause').title = 'Pausar';
+    document.getElementById('session-resume').classList.add('hidden');
+    document.getElementById('difficulty-badge').textContent = DIFF_NAMES[s.difficulty];
 
-  updateTimerDisplay();
-  stopTimer();
-  startTimer();
-  renderBoard();
-  renderNumpad();
-  updateNotesBtn();
-  updateScoreDisplay();
-  updateEnergyBar();
-  updateErrorDisplay();
-  updateBestScore();
-  updateProgressBar();
-  updateFillBtn();
-  updateFillBtnVisibility();
-  updateSimBtn();
-  updateControlsForSimMode();
-  resetAnalysis();
-  updateAnalysisToolsVisibility();
-  showGameScreen();
+    updateTimerDisplay();
+    stopTimer();
+    startTimer();
+    renderBoard();
+    renderNumpad();
+    updateNotesBtn();
+    updatePaintBtn();
+    updateScoreDisplay();
+    updateEnergyBar();
+    updateErrorDisplay();
+    updateBestScore();
+    updateProgressBar();
+    updateFillBtn();
+    updateFillBtnVisibility();
+    updateSimBtn();
+    updateControlsForSimMode();
+    resetAnalysis();
+    updateAnalysisToolsVisibility();
+    showGameScreen();
+
+    /* Só apaga a sessão do localStorage após restauração bem-sucedida */
+    clearSession();
+  } catch(e) {
+    /* Restauração falhou — mantém sessão no localStorage para próxima tentativa */
+  }
 }
 
 /* ═══════════════════════════════════════
