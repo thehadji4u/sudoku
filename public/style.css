@@ -1944,3 +1944,90 @@ body.paint-mode-active .num-bar-power { background: var(--paint-color) !importan
 .paint-picker-dot:hover  { transform: scale(1.18); }
 .paint-picker-dot.active { border-color: #fff; transform: scale(1.12); }
 
+
+/* ═══════════════════════════════════════════
+   ACESSIBILIDADE
+   ═══════════════════════════════════════════ */
+
+/* Indicador de foco visível para navegação por teclado (antes ausente). */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Não mostra o anel de foco para cliques de mouse/toque. */
+:focus:not(:focus-visible) { outline: none; }
+
+/* Respeita usuários que pedem menos movimento (antes: 15+ animações sem guarda). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TEMA ESCURO (foundational — via prefers-color-scheme)
+   Sobrescreve os tokens + os fundos de célula hardcoded essenciais.
+   Cores de acento das animações de poderes ainda podem precluir polimento visual.
+   ═══════════════════════════════════════════ */
+:root { color-scheme: light dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0F172A;
+    --surface: #1E293B;
+    --surface2: #334155;
+    --border: #475569;
+    --border-box: #94A3B8;
+    --accent: #3B82F6;
+    --accent-light: #1E3A8A;
+    --accent-mid: #1E3A8A;
+    --accent-dim: #172554;
+    --text-primary: #E2E8F0;
+    --text-given: #F1F5F9;
+    --text-user: #60A5FA;
+    --text-note: #94A3B8;
+    --text-muted: #64748B;
+    --error-bg: #7F1D1D;
+    --error-text: #F87171;
+    --success: #4ADE80;
+    --shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Fundos de célula hardcoded → equivalentes escuros (legibilidade) */
+  :root:not([data-theme='light']) .cell.given { background: #243044; }
+  :root:not([data-theme='light']) .cell.highlight-sel { background: #1E3A5F; }
+  :root:not([data-theme='light']) .cell.highlight-match { background: #14432A; }
+  :root:not([data-theme='light']) .cell.same-num { background: #1E40AF; }
+  :root:not([data-theme='light']) .cell.selected { background: #2563EB !important; }
+}
+
+/* Permite forçar tema escuro manualmente no futuro (html[data-theme="dark"]). */
+:root[data-theme='dark'] {
+  --bg: #0F172A;
+  --surface: #1E293B;
+  --surface2: #334155;
+  --border: #475569;
+  --border-box: #94A3B8;
+  --accent: #3B82F6;
+  --accent-light: #1E3A8A;
+  --accent-mid: #1E3A8A;
+  --accent-dim: #172554;
+  --text-primary: #E2E8F0;
+  --text-given: #F1F5F9;
+  --text-user: #60A5FA;
+  --text-note: #94A3B8;
+  --text-muted: #64748B;
+  --error-bg: #7F1D1D;
+  --error-text: #F87171;
+  --success: #4ADE80;
+  --shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+:root[data-theme='dark'] .cell.given { background: #243044; }
+:root[data-theme='dark'] .cell.highlight-sel { background: #1E3A5F; }
+:root[data-theme='dark'] .cell.highlight-match { background: #14432A; }
+:root[data-theme='dark'] .cell.same-num { background: #1E40AF; }
+:root[data-theme='dark'] .cell.selected { background: #2563EB !important; }

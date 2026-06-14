@@ -344,6 +344,7 @@ function buildNumpad() {
     const btn = document.createElement('button');
     btn.className = 'num-btn';
     btn.dataset.num = n;
+    btn.setAttribute('aria-label', `Número ${n}`);
     btn.innerHTML =
       `<span class="num-digit">${n}</span>` +
       `<div class="num-bars">` +

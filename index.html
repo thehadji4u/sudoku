@@ -91,7 +91,7 @@
 
     <header id="game-header">
       <div class="ghdr-top">
-        <button class="ghdr-icon" id="btn-back" title="Voltar">‹</button>
+        <button class="ghdr-icon" id="btn-back" title="Voltar" aria-label="Voltar">‹</button>
         <div id="energy-container">
           <div id="energy-top-row">
             <span id="energy-icon">⚡</span>
@@ -103,7 +103,7 @@
           </div>
         </div>
         <span id="score-val" class="game-score" style="display:none">0</span>
-        <button class="ghdr-icon" id="btn-settings-game" title="Configurações"><svg class="gear-svg" viewBox="0 0 24 24"
+        <button class="ghdr-icon" id="btn-settings-game" title="Configurações" aria-label="Configurações"><svg class="gear-svg" aria-hidden="true" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path
@@ -125,7 +125,7 @@
           <span class="ghdr-lbl">Tempo</span>
           <span class="ghdr-val" id="timer-val">0:00</span>
         </div>
-        <button class="ghdr-pause" id="btn-pause" title="Pausar">⏸</button>
+        <button class="ghdr-pause" id="btn-pause" title="Pausar" aria-label="Pausar">⏸</button>
       </div>
     </header>
 
@@ -269,7 +269,7 @@
   <div class="modal-overlay hidden" id="modal-overlay">
 
     <!-- Modal Aviso Novo Jogo -->
-    <div class="modal-sheet hidden" id="modal-newgame-warn">
+    <div class="modal-sheet hidden" id="modal-newgame-warn" role="dialog" aria-modal="true" aria-label="Jogo em andamento">
       <div class="modal-handle"></div>
       <h2 class="modal-title">⚠️ Jogo em andamento</h2>
       <p class="modal-warn-body">Iniciar um novo jogo vai descartar o progresso atual. Tem certeza?</p>
@@ -280,7 +280,7 @@
     </div>
 
     <!-- Modal Configurações -->
-    <div class="modal-sheet" id="modal-settings">
+    <div class="modal-sheet" id="modal-settings" role="dialog" aria-modal="true" aria-label="Configurações">
       <div class="modal-handle"></div>
       <button class="settings-close-btn" id="btn-settings-close">✕</button>
       <h2 class="modal-title">Configurações</h2>
@@ -807,7 +807,7 @@
     </div>
 
     <!-- Modal Ranking -->
-    <div class="modal-sheet hidden" id="modal-ranking">
+    <div class="modal-sheet hidden" id="modal-ranking" role="dialog" aria-modal="true" aria-label="Ranking">
       <div class="modal-handle"></div>
       <h2 class="modal-title">🏆 Ranking</h2>
       <div class="rank-tabs" id="rank-tabs"></div>
@@ -826,7 +826,7 @@
     </div>
 
     <!-- Modal Vitória -->
-    <div class="modal-sheet hidden" id="modal-victory">
+    <div class="modal-sheet hidden" id="modal-victory" role="dialog" aria-modal="true" aria-label="Vitória">
       <div class="modal-handle"></div>
       <div class="result-icon">🎉</div>
       <div class="result-title">Parabéns!</div>
@@ -851,7 +851,7 @@
     </div>
 
     <!-- Modal Game Over -->
-    <div class="modal-sheet hidden" id="modal-gameover">
+    <div class="modal-sheet hidden" id="modal-gameover" role="dialog" aria-modal="true" aria-label="Fim de jogo">
       <div class="modal-handle"></div>
       <div class="result-icon">💀</div>
       <div class="result-title">Game Over</div>
