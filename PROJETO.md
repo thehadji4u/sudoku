@@ -1,5 +1,11 @@
 # Sudoku PWA — Documentação Técnica Completa
 
+> ⚠️ **DOCUMENTO HISTÓRICO / DESATUALIZADO.** Descreve o estado em v1.85 (P0–P5) e o
+> fluxo de deploy manual antigo. Para o estado atual da refatoração, consulte
+> **[README.md](./README.md)** (arquitetura, scripts, deploy) e
+> **[AUDITORIA.md](./AUDITORIA.md)** (auditoria técnica e plano). Mantido apenas como
+> referência das decisões de gameplay (sistema de poderes/animações).
+
 > **Versão atual:** v1.85 | **Branch de desenvolvimento:** `claude/fix-error-penalty-system-gtM3d`
 > **Repositório:** `thehadji4u/sudoku` (GitHub, rodando como GitHub Pages)
 

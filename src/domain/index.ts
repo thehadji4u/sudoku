@@ -21,4 +21,15 @@ export {
 
 export { shuffle, solveRandom, solve, countSolutions, hasUniqueSolution } from './solver';
 
-export { DIFFICULTY, generate, getMultiplier, getDifficultyList } from './generator';
+export {
+  DIFFICULTY,
+  DIFFICULTY_ORDER,
+  generate,
+  generateGraded,
+  getMultiplier,
+  getDifficultyList,
+} from './generator';
+export type { GradedPuzzle, GradedOptions } from './generator';
+
+export { grade } from './grader';
+export type { GradeResult, TechniqueName } from './grader';

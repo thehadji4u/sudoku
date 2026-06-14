@@ -786,14 +786,24 @@ function attachToolBtn(btnId, tapFn) {
 /* ═══════════════════════════════════════
    CICLO DO JOGO
 ═══════════════════════════════════════ */
+/* Geração de puzzle: usa o Web Worker graduado (window.SudokuGeneratorAsync)
+   quando disponível; cai no gerador síncrono legado caso contrário. */
+function _generatePuzzleAsync(difficulty) {
+  if (window.SudokuGeneratorAsync) {
+    return window.SudokuGeneratorAsync.generate(difficulty).catch(
+      () => new Promise(res => setTimeout(() => res(SudokuGenerator.generate(difficulty)), 0))
+    );
+  }
+  return new Promise(res => setTimeout(() => res(SudokuGenerator.generate(difficulty)), 30));
+}
+
 function startGame(difficulty) {
   STATE.gameOver   = false;
   STATE.difficulty = difficulty;
   showLoading(true);
 
-  /* Geração em macrotask para não travar a UI */
-  setTimeout(() => {
-    const { puzzle, solution } = SudokuGenerator.generate(difficulty);
+  /* Geração assíncrona (Web Worker quando disponível) para não travar a UI */
+  _generatePuzzleAsync(difficulty).then(({ puzzle, solution }) => {
 
     STATE.puzzle    = puzzle;
     STATE.solution  = solution;
@@ -866,7 +876,7 @@ function startGame(difficulty) {
     showLoading(false);
     showGameScreen();
     if (STATE.settings.fillAllNotes) setTimeout(_triggerGameStartP0, 400);
-  }, 30);
+  });
 }
 
 function restartGame() {

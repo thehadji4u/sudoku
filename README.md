@@ -55,10 +55,22 @@ A refatoração segue o padrão _strangler fig_: a base nova (tipada, testada) �
 - [x] **Fase 1–3:** auditoria, documentação de estado e plano (ver `AUDITORIA.md`)
 - [x] **Tooling:** Vite + TypeScript + ESLint + Prettier + Vitest + CI (0 vulnerabilidades)
 - [x] **Domínio extraído:** engine de Sudoku tipado e coberto por testes em `src/domain/`
-- [ ] **Próximo:** integrar o domínio ao app (gerador em Web Worker + dificuldade graduada por técnica)
+- [x] **Engine integrado (corrige os 3 CRÍTICOS da auditoria):**
+  - **Web Worker** (`src/worker/`) — geração fora da main thread, **fim do congelamento** de 3–4 s
+  - **Dificuldade graduada por técnica** (`techniques.ts` + `grader.ts`) — não mais só contagem de pistas
+  - `mestre` ≠ `extremo`: `extremo` pode exigir adivinhação; os demais níveis têm **teto de técnica garantido**
 - [ ] Quebrar `public/app.js` em módulos (`state/`, `render/`, `input/`, `powers/`, `analysis/`)
 - [ ] Acessibilidade (focus-visible, role=dialog, prefers-reduced-motion) + dark mode
 - [ ] Ícones PWA maskable (PNG 192/512)
+
+### Sobre a graduação de dificuldade (limitação conhecida e honesta)
+
+O gerador agora cava buracos respeitando o **teto de técnica** do nível, garantindo que um puzzle
+**nunca seja mais difícil que o rótulo** e que `facil` exija apenas _singles_. Como a dificuldade
+do Sudoku é descontínua, puzzles que **exigem** trios/X-Wing como gargalo são raros: por isso os
+níveis altos (`especialista`/`mestre`) são _best-effort_ e podem cair um pouco abaixo do alvo,
+enquanto `extremo` é distinto e confiável (exige busca/adivinhação). Evolução futura: banco de
+puzzles curados ou geração por simetria para reforçar os níveis altos.
 
 ## Deploy
 
