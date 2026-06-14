@@ -3131,39 +3131,11 @@ let _hqGen = 0;  // P5 hidden quads
  * Retorna [{cells:[[r1,c1],[r2,c2]], pairNums:[A,B], targets:[[r,c,n],...]}]
  */
 function getHiddenPairsForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
-  const results = [];
-  const checkUnit = (cells) => {
-    const emptyCells = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0);
-    for (let a = 1; a <= 8; a++) {
-      if (a === n) continue;
-      const aCells = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(a));
-      if (aCells.length !== 2) continue;
-      for (let b = a + 1; b <= 9; b++) {
-        if (b === n) continue;
-        const bCells = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(b));
-        if (bCells.length !== 2) continue;
-        if (aCells[0][0] !== bCells[0][0] || aCells[0][1] !== bCells[0][1] ||
-            aCells[1][0] !== bCells[1][0] || aCells[1][1] !== bCells[1][1]) continue;
-        // Par oculto {a,b} confirmado. n pode ser eliminado das células que o contêm.
-        const targets = aCells.filter(([r,c]) => STATE.notes[r][c].has(n))
-                              .map(([r,c]) => [r, c, n]);
-        if (targets.length > 0)
-          results.push({ cells: aCells, pairNums: [a, b], targets });
-      }
-    }
-  };
-  for (let i = 0; i < 9; i++) {
-    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
-    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
-    const br=Math.floor(i/3)*3, bc=(i%3)*3;
-    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
-  }
-  const seen = new Set();
-  return results.filter(({cells,pairNums}) => {
-    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+pairNums.slice().sort().join(',');
-    if (seen.has(key)) return false; seen.add(key); return true;
-  });
+  /* Lógica pura extraída para src/app/hidden-sets.ts (verificada por testes
+     diferenciais contra a implementação original). Fail-safe: [] se ausente. */
+  const H = window.SudokuApp?.hiddenSets;
+  if (!H || !STATE.puzzle || !STATE.notes) return [];
+  return H.getHiddenPairs(STATE.puzzle, STATE.notes, n);
 }
 
 /**
@@ -3171,42 +3143,9 @@ function getHiddenPairsForNum(n) {
  * contendo n — ou seja, n pode ser ELIMINADO dessas células pelo triplo oculto.
  */
 function getHiddenTriplesForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
-  const results = [];
-  const checkUnit = (cells) => {
-    const emptyCells = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0);
-    const digitMap = new Map();
-    for (let d = 1; d <= 9; d++) {
-      if (d === n) continue;
-      const dc = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(d));
-      if (dc.length >= 2 && dc.length <= 3) digitMap.set(d, dc);
-    }
-    const digits = [...digitMap.keys()];
-    for (let i = 0; i < digits.length - 2; i++)
-    for (let j = i+1; j < digits.length - 1; j++)
-    for (let k = j+1; k < digits.length; k++) {
-      const [a, b, c] = [digits[i], digits[j], digits[k]];
-      const cellSet = new Set();
-      [a, b, c].forEach(d => digitMap.get(d).forEach(([r,c]) => cellSet.add(r+','+c)));
-      if (cellSet.size !== 3) continue;
-      const tripleCells = [...cellSet].map(s => s.split(',').map(Number));
-      const targets = tripleCells.filter(([r,c]) => STATE.notes[r][c].has(n))
-                                 .map(([r,c]) => [r, c, n]);
-      if (targets.length > 0)
-        results.push({ cells: tripleCells, tripleNums: [a, b, c], targets });
-    }
-  };
-  for (let i = 0; i < 9; i++) {
-    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
-    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
-    const br=Math.floor(i/3)*3, bc=(i%3)*3;
-    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
-  }
-  const seen = new Set();
-  return results.filter(({cells,tripleNums}) => {
-    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+tripleNums.slice().sort().join(',');
-    if (seen.has(key)) return false; seen.add(key); return true;
-  });
+  const H = window.SudokuApp?.hiddenSets;
+  if (!H || !STATE.puzzle || !STATE.notes) return [];
+  return H.getHiddenTriples(STATE.puzzle, STATE.notes, n);
 }
 
 /**
@@ -3214,43 +3153,9 @@ function getHiddenTriplesForNum(n) {
  * células contendo n — ou seja, n pode ser ELIMINADO dessas células.
  */
 function getHiddenQuadsForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
-  const results = [];
-  const checkUnit = (cells) => {
-    const emptyCells = cells.filter(([r,c]) => STATE.puzzle[r][c] === 0);
-    const digitMap = new Map();
-    for (let d = 1; d <= 9; d++) {
-      if (d === n) continue;
-      const dc = emptyCells.filter(([r,c]) => STATE.notes[r][c].has(d));
-      if (dc.length >= 2 && dc.length <= 4) digitMap.set(d, dc);
-    }
-    const digits = [...digitMap.keys()];
-    for (let i = 0; i < digits.length - 3; i++)
-    for (let j = i+1; j < digits.length - 2; j++)
-    for (let k = j+1; k < digits.length - 1; k++)
-    for (let l = k+1; l < digits.length; l++) {
-      const [a, b, c, dg] = [digits[i], digits[j], digits[k], digits[l]];
-      const cellSet = new Set();
-      [a, b, c, dg].forEach(d => digitMap.get(d).forEach(([r,c]) => cellSet.add(r+','+c)));
-      if (cellSet.size !== 4) continue;
-      const quadCells = [...cellSet].map(s => s.split(',').map(Number));
-      const targets = quadCells.filter(([r,c]) => STATE.notes[r][c].has(n))
-                               .map(([r,c]) => [r, c, n]);
-      if (targets.length > 0)
-        results.push({ cells: quadCells, quadNums: [a, b, c, dg], targets });
-    }
-  };
-  for (let i = 0; i < 9; i++) {
-    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
-    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
-    const br=Math.floor(i/3)*3, bc=(i%3)*3;
-    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
-  }
-  const seen = new Set();
-  return results.filter(({cells,quadNums}) => {
-    const key = cells.map(([r,c])=>r+','+c).sort().join('|')+'x'+quadNums.slice().sort().join(',');
-    if (seen.has(key)) return false; seen.add(key); return true;
-  });
+  const H = window.SudokuApp?.hiddenSets;
+  if (!H || !STATE.puzzle || !STATE.notes) return [];
+  return H.getHiddenQuads(STATE.puzzle, STATE.notes, n);
 }
 
 /**
