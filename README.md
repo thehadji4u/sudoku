@@ -41,7 +41,9 @@ sudoku/
 │   │   └── __tests__/
 │   ├── app/              # ✅ lógica de app extraída do monólito (pura, testada)
 │   │   ├── progression.ts#    desbloqueio de níveis
-│   │   └── ranking.ts    #    cálculo do ranking
+│   │   ├── ranking.ts    #    cálculo do ranking
+│   │   ├── hidden-sets.ts#    detecção P6–P8 ocultos (teste diferencial)
+│   │   └── naked-sets.ts #    detecção P6–P8 nus (teste diferencial)
 │   └── worker/           # ✅ Web Worker de geração
 ├── public/               # ⚠️ LEGADO (servido verbatim) — em migração p/ src/
 │   ├── app.js            #    monólito (~6600 linhas) — sendo decomposto em fatias

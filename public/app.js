@@ -3165,42 +3165,11 @@ function getHiddenQuadsForNum(n) {
  * targets = células da mesma unidade que têm n como anotação (candidatos a eliminar).
  */
 function getNakedPairsForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
-  const results = [];
-
-  const checkUnit = (cells) => {
-    const bi = cells.filter(([r,c]) =>
-      STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size === 2);
-    for (let i = 0; i < bi.length; i++) {
-      for (let j = i + 1; j < bi.length; j++) {
-        const [r1,c1] = bi[i], [r2,c2] = bi[j];
-        const ns1 = STATE.notes[r1][c1], ns2 = STATE.notes[r2][c2];
-        if (ns1.size === 2 && [...ns1].every(x => ns2.has(x)) && ns1.has(n)) {
-          const targets = cells.filter(([r,c]) =>
-            (r !== r1 || c !== c1) && (r !== r2 || c !== c2) &&
-            STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
-          if (targets.length) results.push({ pair: [[r1,c1],[r2,c2]], targets });
-        }
-      }
-    }
-  };
-
-  for (let i = 0; i < 9; i++) {
-    checkUnit(Array.from({length:9}, (_,j) => [i,j]));          // row
-    checkUnit(Array.from({length:9}, (_,j) => [j,i]));          // col
-    const br = Math.floor(i/3)*3, bc = (i%3)*3;
-    checkUnit(Array.from({length:9}, (_,k) => [br+Math.floor(k/3), bc+k%3])); // box
-  }
-
-  /* deduplica pares iguais (podem aparecer em múltiplas unidades) */
-  const seen = new Set();
-  return results.filter(({pair, targets}) => {
-    const key = pair.map(([r,c]) => r+','+c).sort().join('|') + '>' +
-                targets.map(([r,c]) => r+','+c).sort().join('|');
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  /* Lógica pura extraída para src/app/naked-sets.ts (verificada por testes
+     diferenciais contra a implementação original). Fail-safe: [] se ausente. */
+  const N = window.SudokuApp?.nakedSets;
+  if (!N || !STATE.puzzle || !STATE.notes) return [];
+  return N.getNakedPairs(STATE.puzzle, STATE.notes, n);
 }
 
 /* ═══════════════════════════════════════
@@ -3486,66 +3455,15 @@ function _processNpQueue(gen, num, sourceEl, queue) {
 
 /** Returns naked triple/quad entries containing num as target candidates */
 function getNakedTriplesForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
-  const results = [];
-  const checkUnit = (cells) => {
-    const bi = cells.filter(([r,c]) =>
-      STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size >= 2 && STATE.notes[r][c].size <= 3);
-    for (let i=0;i<bi.length-2;i++)
-    for (let j=i+1;j<bi.length-1;j++)
-    for (let k=j+1;k<bi.length;k++) {
-      const trio = [bi[i],bi[j],bi[k]];
-      const union = new Set(trio.flatMap(([r,c]) => [...STATE.notes[r][c]]));
-      if (union.size !== 3 || !union.has(n)) continue;
-      const targets = cells.filter(([r,c]) =>
-        !trio.some(([tr,tc]) => tr===r&&tc===c) &&
-        STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
-      if (targets.length) results.push({ sourceCells: trio, nums: [...union], targets });
-    }
-  };
-  for (let i=0;i<9;i++) {
-    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
-    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
-    const br=Math.floor(i/3)*3, bc=(i%3)*3;
-    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
-  }
-  const seen = new Set();
-  return results.filter(({sourceCells,targets}) => {
-    const key = sourceCells.map(([r,c])=>r+','+c).sort().join('|')+'>'+targets.map(([r,c])=>r+','+c).sort().join('|');
-    if (seen.has(key)) return false; seen.add(key); return true;
-  });
+  const N = window.SudokuApp?.nakedSets;
+  if (!N || !STATE.puzzle || !STATE.notes) return [];
+  return N.getNakedTriples(STATE.puzzle, STATE.notes, n);
 }
 
 function getNakedQuadsForNum(n) {
-  if (!STATE.puzzle || !STATE.notes) return [];
-  const results = [];
-  const checkUnit = (cells) => {
-    const bi = cells.filter(([r,c]) =>
-      STATE.puzzle[r][c] === 0 && STATE.notes[r][c].size >= 2 && STATE.notes[r][c].size <= 4);
-    for (let i=0;i<bi.length-3;i++)
-    for (let j=i+1;j<bi.length-2;j++)
-    for (let k=j+1;k<bi.length-1;k++)
-    for (let l=k+1;l<bi.length;l++) {
-      const quad = [bi[i],bi[j],bi[k],bi[l]];
-      const union = new Set(quad.flatMap(([r,c]) => [...STATE.notes[r][c]]));
-      if (union.size !== 4 || !union.has(n)) continue;
-      const targets = cells.filter(([r,c]) =>
-        !quad.some(([qr,qc])=>qr===r&&qc===c) &&
-        STATE.puzzle[r][c] === 0 && STATE.notes[r][c].has(n));
-      if (targets.length) results.push({ sourceCells: quad, nums: [...union], targets });
-    }
-  };
-  for (let i=0;i<9;i++) {
-    checkUnit(Array.from({length:9},(_,j)=>[i,j]));
-    checkUnit(Array.from({length:9},(_,j)=>[j,i]));
-    const br=Math.floor(i/3)*3, bc=(i%3)*3;
-    checkUnit(Array.from({length:9},(_,k)=>[br+Math.floor(k/3),bc+k%3]));
-  }
-  const seen = new Set();
-  return results.filter(({sourceCells,targets}) => {
-    const key = sourceCells.map(([r,c])=>r+','+c).sort().join('|')+'>'+targets.map(([r,c])=>r+','+c).sort().join('|');
-    if (seen.has(key)) return false; seen.add(key); return true;
-  });
+  const N = window.SudokuApp?.nakedSets;
+  if (!N || !STATE.puzzle || !STATE.notes) return [];
+  return N.getNakedQuads(STATE.puzzle, STATE.notes, n);
 }
 
 function triggerNakedTripleElim(num, fallbackEl) {

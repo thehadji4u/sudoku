@@ -11,6 +11,7 @@ import type { Difficulty } from './domain/types';
 import * as progression from './app/progression';
 import * as ranking from './app/ranking';
 import * as hiddenSets from './app/hidden-sets';
+import * as nakedSets from './app/naked-sets';
 
 export interface AsyncGenerateResult {
   puzzle: number[][];
@@ -40,6 +41,7 @@ declare global {
       progression: typeof progression;
       ranking: typeof ranking;
       hiddenSets: typeof hiddenSets;
+      nakedSets: typeof nakedSets;
     };
     // Gerador síncrono legado (public/sudoku-generator.js).
     SudokuGenerator?: {
@@ -103,7 +105,7 @@ function setup(): void {
   }
 
   window.SudokuGeneratorAsync = { generate };
-  window.SudokuApp = { progression, ranking, hiddenSets };
+  window.SudokuApp = { progression, ranking, hiddenSets, nakedSets };
 }
 
 setup();
