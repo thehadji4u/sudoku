@@ -15,19 +15,19 @@ simulador, modo pintura, ranking, sessão persistida). Está **funcional e no ar
 
 Porém, foi construída ao longo de muitas sessões sem arquitetura, e isso cobra preço:
 
-| # | Severidade | Problema | Evidência |
-|---|-----------|----------|-----------|
-| 1 | **CRÍTICO** | `mestre` e `extremo` são **a mesma dificuldade na prática** | medido: ambos ~57 buracos; alvos 58-61 e 62-64 nunca são atingidos |
-| 2 | **CRÍTICO** | Geração **trava a UI por ~3–4 s** nos níveis altos | medido: 3814 ms (mestre), 3116 ms (extremo) por puzzle, no main thread |
-| 3 | **CRÍTICO** | Dificuldade medida **só por nº de pistas**, não por técnica lógica | `DIFFICULTY` em `sudoku-generator.js` só define `removeMin/Max` |
-| 4 | **ALTO** | Monólito de **6631 linhas** (`app.js`), sem módulos | 1 arquivo, ~84 `addEventListener`, funções de 300+ linhas |
-| 5 | **ALTO** | **~1000 linhas duplicadas** nos handlers P3–P8 | triplets `get/trigger/_processQueue` com ~85% de sobreposição |
-| 6 | **ALTO** | Ícones PWA **quebrados** | `manifest.json` aponta `icon-192.png`/`icon-512.png` inexistentes |
-| 7 | **MÉDIO** | **Acessibilidade** ausente | sem `role="dialog"`, sem `:focus-visible`, sem `prefers-reduced-motion` |
-| 8 | **MÉDIO** | **Sem testes, sem lint, sem CI, sem `package.json`** | projeto estático puro |
-| 9 | **MÉDIO** | **Sem dark mode** apesar de tokens CSS | só tema claro; 52 `!important` |
-| 10 | **BAIXO** | Documentação (`PROJETO.md`) **desatualizada** | documenta v1.85/P0-P5; código é v1.131/P0-P8 |
-| 11 | **BAIXO** | Risco de segurança | XSS: **baixo** (nenhum texto livre do usuário entra em HTML) |
+| #   | Severidade  | Problema                                                           | Evidência                                                               |
+| --- | ----------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| 1   | **CRÍTICO** | `mestre` e `extremo` são **a mesma dificuldade na prática**        | medido: ambos ~57 buracos; alvos 58-61 e 62-64 nunca são atingidos      |
+| 2   | **CRÍTICO** | Geração **trava a UI por ~3–4 s** nos níveis altos                 | medido: 3814 ms (mestre), 3116 ms (extremo) por puzzle, no main thread  |
+| 3   | **CRÍTICO** | Dificuldade medida **só por nº de pistas**, não por técnica lógica | `DIFFICULTY` em `sudoku-generator.js` só define `removeMin/Max`         |
+| 4   | **ALTO**    | Monólito de **6631 linhas** (`app.js`), sem módulos                | 1 arquivo, ~84 `addEventListener`, funções de 300+ linhas               |
+| 5   | **ALTO**    | **~1000 linhas duplicadas** nos handlers P3–P8                     | triplets `get/trigger/_processQueue` com ~85% de sobreposição           |
+| 6   | **ALTO**    | Ícones PWA **quebrados**                                           | `manifest.json` aponta `icon-192.png`/`icon-512.png` inexistentes       |
+| 7   | **MÉDIO**   | **Acessibilidade** ausente                                         | sem `role="dialog"`, sem `:focus-visible`, sem `prefers-reduced-motion` |
+| 8   | **MÉDIO**   | **Sem testes, sem lint, sem CI, sem `package.json`**               | projeto estático puro                                                   |
+| 9   | **MÉDIO**   | **Sem dark mode** apesar de tokens CSS                             | só tema claro; 52 `!important`                                          |
+| 10  | **BAIXO**   | Documentação (`PROJETO.md`) **desatualizada**                      | documenta v1.85/P0-P5; código é v1.131/P0-P8                            |
+| 11  | **BAIXO**   | Risco de segurança                                                 | XSS: **baixo** (nenhum texto livre do usuário entra em HTML)            |
 
 **Conclusão:** o motor de jogo precisa de correção **antes** de qualquer cosmética — hoje dois
 níveis anunciados são indistinguíveis e o jogo congela ao iniciar partidas difíceis. A base de
@@ -51,6 +51,7 @@ sudoku/
 ```
 
 **Características:**
+
 - **Sem sistema de módulos** — tudo no escopo de `app.js` via IIFE implícita / globais.
 - **Estado** centralizado em um objeto `STATE` (bom!) + ~15 globais soltas (`_p0Gen`, `_nsGen`,
   timers de long-press, `PAINT_STATE`...).
@@ -58,6 +59,7 @@ sudoku/
 - **Sem separação domínio/UI** — regras de Sudoku (técnicas lógicas) misturadas com manipulação de DOM e animações.
 
 ### Anti-patterns e code smells identificados
+
 - **God file / God function:** `renderHighlights` (362), `renderAnalysisHighlights` (316),
   `updateActionBar` (282), `setupSettingsEvents` (236), `attachEvents` (169), `doPlaceNumber` (118).
 - **Copy-paste em escala:** cada poder/análise (par, trio, quad, escondido…) repete a mesma
@@ -85,10 +87,12 @@ extremo       56  58  57.1            100% único   3116 ms   ← alvo 62-64 NÃ
 ```
 
 ### O que está **correto**
+
 - `isValid`, `solveRandom` (backtracking com embaralhamento) e `countSolutions` (com `limit`)
   estão corretos. **100% dos puzzles gerados têm solução única** — a garantia de unicidade funciona.
 
 ### O que está **errado** (CRÍTICO)
+
 1. **Alvos impossíveis.** Sudokus de solução única praticamente nunca passam de ~58 buracos
    (o mínimo conhecido de pistas é 17 = 64 buracos, mas é raríssimo e exige busca dedicada).
    `removeCells` é guloso e simplesmente **para quando não consegue remover mais** mantendo
@@ -99,11 +103,12 @@ extremo       56  58  57.1            100% único   3116 ms   ← alvo 62-64 NÃ
    **no main thread** (só há um `setTimeout(…, 30)` antes). Em celular, a tela **congela** ao
    começar uma partida difícil.
 3. **Dificuldade ≠ técnica.** A dificuldade é definida **apenas pela contagem de buracos**. Não há
-   nenhuma avaliação de *quais técnicas* o puzzle exige. Um puzzle "fácil" com 40 buracos pode, por
+   nenhuma avaliação de _quais técnicas_ o puzzle exige. Um puzzle "fácil" com 40 buracos pode, por
    azar, exigir técnicas avançadas; um "difícil" pode ser resolvível só com naked singles. O rótulo
    **não corresponde** à dificuldade real percebida.
 
 ### Recomendação para o engine (Fase 4)
+
 - Implementar um **solver lógico graduado** (naked/hidden singles → pairs/triples → pointing →
   X-wing…). A lógica das técnicas **já existe** dentro de `app.js` (sistema de análises) — deve ser
   **extraída para um módulo de domínio reutilizável** e usada tanto pelo jogo quanto pelo gerador.
@@ -119,7 +124,7 @@ extremo       56  58  57.1            100% único   3116 ms   ← alvo 62-64 NÃ
 
 - **Bloqueio principal:** geração de puzzle no main thread (§2). Maior gargalo de UX do app.
 - `renderHighlights()` reconstrói/limpa classes das 81 células a cada interação. Não é o gargalo
-  hoje, mas é candidato a *dirty-flag* / atualização incremental.
+  hoje, mas é candidato a _dirty-flag_ / atualização incremental.
 - `updateCellContent` faz `el.innerHTML = …` por célula — recriação de DOM por digitação. Aceitável,
   porém poderia atualizar apenas o necessário.
 - Sem `requestAnimationFrame` para coordenar animações (uso intenso de `setTimeout` encadeado).
@@ -140,7 +145,7 @@ extremo       56  58  57.1            100% único   3116 ms   ← alvo 62-64 NÃ
 
 - ✅ `lang="pt-BR"` e viewport corretos.
 - ❌ **Sem landmarks semânticos** (`<main>`, `<nav>`, `<header>` reais) — tudo `div`.
-- ❌ Modais **sem** `role="dialog"`, `aria-modal`, `aria-label`, sem *focus trap*.
+- ❌ Modais **sem** `role="dialog"`, `aria-modal`, `aria-label`, sem _focus trap_.
 - ❌ **Nenhum** estilo `:focus-visible` — navegação por teclado sem indicador visível.
 - ❌ Botões só-ícone com `title` mas **sem `aria-label`**.
 - ❌ Board é `div#board` sem semântica/`aria` (idealmente `role="grid"`).
@@ -180,6 +185,7 @@ Princípio: **preservar o domínio valioso, eliminar o caos estrutural.** Recome
 **incremental e verificável**, não reescrita do zero (a lógica de técnicas de Sudoku já é um ativo).
 
 ### Ordem proposta (cada passo deixa o app funcionando)
+
 1. **Engine primeiro (corrige os 3 CRÍTICOS):** extrair domínio Sudoku puro
    (`src/domain/`): validação, solver graduado por técnica, gerador. Geração em **Web Worker**.
    Redefinir dificuldades por técnica. **Cobrir com testes** (unicidade, validade, graduação).
@@ -195,6 +201,7 @@ Princípio: **preservar o domínio valioso, eliminar o caos estrutural.** Recome
    offline já existe. Priorizar: dark mode, melhorias mobile/a11y, ícones PWA corretos.
 
 ### Decisão necessária do dono do projeto (bloqueia a Fase 4)
+
 A escolha de **tooling/arquitetura** muda todo o trabalho subsequente e afeta o deploy atual
 (GitHub Pages sem build). Ver pergunta no chat.
 
@@ -202,20 +209,20 @@ A escolha de **tooling/arquitetura** muda todo o trabalho subsequente e afeta o 
 
 ## 9. Apêndice — funções/linhas de referência (app.js)
 
-| Região | Linhas (aprox.) |
-|--------|-----------------|
-| STATE + constantes | 1–253 |
-| init / lifecycle | 324–364 |
-| `attachEvents` | 369–537 |
-| `setupSettingsEvents` | 539–774 |
-| `startGame` | 789–870 |
-| render (board/notes) | 932–1018 |
-| `renderHighlights` (362 l.) | 1020–1381 |
-| input / `doPlaceNumber` | 1437–1638 |
-| persistência (sessão/ranking/settings) | 1911–2061 |
-| poderes P0–P8 | 2700–3802 |
-| `animateCellTravel` | 2932–2972 |
-| ferramentas de análise | 4182–6017 |
-| i18n | 6025–6086 |
-| `renderAnalysisHighlights` (316 l.) | 6086–6401 |
-| `syncSettingsUI` | 6487–6619 |
+| Região                                 | Linhas (aprox.) |
+| -------------------------------------- | --------------- |
+| STATE + constantes                     | 1–253           |
+| init / lifecycle                       | 324–364         |
+| `attachEvents`                         | 369–537         |
+| `setupSettingsEvents`                  | 539–774         |
+| `startGame`                            | 789–870         |
+| render (board/notes)                   | 932–1018        |
+| `renderHighlights` (362 l.)            | 1020–1381       |
+| input / `doPlaceNumber`                | 1437–1638       |
+| persistência (sessão/ranking/settings) | 1911–2061       |
+| poderes P0–P8                          | 2700–3802       |
+| `animateCellTravel`                    | 2932–2972       |
+| ferramentas de análise                 | 4182–6017       |
+| i18n                                   | 6025–6086       |
+| `renderAnalysisHighlights` (316 l.)    | 6086–6401       |
+| `syncSettingsUI`                       | 6487–6619       |

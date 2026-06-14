@@ -1,0 +1,8 @@
+dist/
+node_modules/
+coverage/
+public/
+samples/
+package-lock.json
+index.html
+PROJETO.md
