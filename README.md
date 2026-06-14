@@ -30,14 +30,21 @@ npm run format     # Prettier (escreve)
 sudoku/
 ├── index.html            # entry do Vite
 ├── src/
-│   └── domain/           # ✅ DOMÍNIO TIPADO (puro, sem DOM) — com testes
-│       ├── types.ts      #    tipos (Board, Difficulty, …)
-│       ├── board.ts      #    criação/validação de tabuleiro
-│       ├── solver.ts     #    solver, contagem de soluções
-│       ├── generator.ts  #    geração de puzzles (unicidade garantida)
-│       └── __tests__/    #    testes unitários
+│   ├── main.ts           # bootstrap: expõe window.SudokuGeneratorAsync e window.SudokuApp
+│   ├── domain/           # ✅ DOMÍNIO TIPADO (puro, sem DOM) — com testes
+│   │   ├── types.ts      #    tipos (Board, Difficulty, …)
+│   │   ├── board.ts      #    criação/validação de tabuleiro
+│   │   ├── solver.ts     #    solver, contagem de soluções
+│   │   ├── techniques.ts #    técnicas lógicas (singles, pares, X-Wing, …)
+│   │   ├── grader.ts     #    classificação de dificuldade por técnica
+│   │   ├── generator.ts  #    geração de puzzles (unicidade + graduada)
+│   │   └── __tests__/
+│   ├── app/              # ✅ lógica de app extraída do monólito (pura, testada)
+│   │   ├── progression.ts#    desbloqueio de níveis
+│   │   └── ranking.ts    #    cálculo do ranking
+│   └── worker/           # ✅ Web Worker de geração
 ├── public/               # ⚠️ LEGADO (servido verbatim) — em migração p/ src/
-│   ├── app.js            #    monólito de ~6600 linhas (a ser modularizado)
+│   ├── app.js            #    monólito (~6600 linhas) — sendo decomposto em fatias
 │   ├── style.css
 │   ├── sudoku-generator.js
 │   ├── sw.js

@@ -9,6 +9,7 @@
 import GeneratorWorker from './worker/generator.worker?worker';
 import type { Difficulty } from './domain/types';
 import * as progression from './app/progression';
+import * as ranking from './app/ranking';
 
 export interface AsyncGenerateResult {
   puzzle: number[][];
@@ -36,6 +37,7 @@ declare global {
     // Lógica pura extraída do monólito (consumida por public/app.js).
     SudokuApp?: {
       progression: typeof progression;
+      ranking: typeof ranking;
     };
     // Gerador síncrono legado (public/sudoku-generator.js).
     SudokuGenerator?: {
@@ -99,7 +101,7 @@ function setup(): void {
   }
 
   window.SudokuGeneratorAsync = { generate };
-  window.SudokuApp = { progression };
+  window.SudokuApp = { progression, ranking };
 }
 
 setup();

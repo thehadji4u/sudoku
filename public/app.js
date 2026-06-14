@@ -2025,7 +2025,7 @@ function loadRanking() {
 }
 
 function saveToRanking() {
-  const ranking = loadRanking();
+  const existing = loadRanking();
   const entry = {
     difficulty:  STATE.difficulty,
     score:       STATE.score,
@@ -2033,21 +2033,17 @@ function saveToRanking() {
     errors:      STATE.errors,
     date:        new Date().toISOString(),
   };
-  ranking.push(entry);
 
-  /* Top 20 por dificuldade */
-  const filtered = ranking
-    .filter(e => e.difficulty === STATE.difficulty)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 20);
-  const others = ranking.filter(e => e.difficulty !== STATE.difficulty);
-  const merged = [...others, ...filtered].sort((a, b) => b.score - a.score);
-  localStorage.setItem('sudoku-ranking', JSON.stringify(merged));
-
-  const pos = filtered.findIndex(e => e === entry || (
-    e.score === entry.score && e.timeSeconds === entry.timeSeconds
-  )) + 1;
-  return pos || null;
+  /* Lógica pura extraída para src/app/ranking.ts (fallback seguro se ausente) */
+  const R = window.SudokuApp?.ranking;
+  if (R) {
+    const { merged, position } = R.computeRankingUpdate(existing, entry, 20);
+    localStorage.setItem('sudoku-ranking', JSON.stringify(merged));
+    return position;
+  }
+  existing.push(entry);
+  localStorage.setItem('sudoku-ranking', JSON.stringify(existing));
+  return null;
 }
 
 function loadSettings() {
