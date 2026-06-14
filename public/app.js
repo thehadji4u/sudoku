@@ -262,13 +262,10 @@ function addCompletion(diff) {
   localStorage.setItem('sudoku-completions', JSON.stringify(c));
 }
 function isDiffUnlocked(diff) {
-  if (_allUnlocked) return true;
-  const req = DIFF_UNLOCK_REQUIRED[diff];
-  if (req === 0) return true;
-  const idx = DIFF_ORDER.indexOf(diff);
-  if (idx <= 0) return true;
-  const prevDiff = DIFF_ORDER[idx - 1];
-  return (getCompletions()[prevDiff] || 0) >= req;
+  /* Lógica pura extraída para src/app/progression.ts (fail-open se não carregar) */
+  const P = window.SudokuApp?.progression;
+  if (!P) return true;
+  return P.isUnlocked(DIFF_ORDER, DIFF_UNLOCK_REQUIRED, getCompletions(), diff, _allUnlocked);
 }
 function updateDiffButtons() {
   const completions = getCompletions();
@@ -280,19 +277,13 @@ function updateDiffButtons() {
     const unlocked = isDiffUnlocked(diff);
     btn.classList.toggle('locked', !unlocked);
   });
-  // Find first locked
-  for (const diff of DIFF_ORDER) {
-    if (!isDiffUnlocked(diff)) {
-      const idx = DIFF_ORDER.indexOf(diff);
-      const prevDiff = DIFF_ORDER[idx - 1];
-      const req = DIFF_UNLOCK_REQUIRED[diff];
-      const have = completions[prevDiff] || 0;
-      const remaining = req - have;
-      const diffLabel = DIFF_NAMES[diff] || diff;
-      const prevLabel = DIFF_NAMES[prevDiff] || prevDiff;
-      nextLockText = `🔒 Faltam ${remaining} partida(s) de ${prevLabel} para desbloquear ${diffLabel}`;
-      break;
-    }
+  // Próximo nível bloqueado (lógica pura em src/app/progression.ts)
+  const P = window.SudokuApp?.progression;
+  const next = P ? P.nextUnlock(DIFF_ORDER, DIFF_UNLOCK_REQUIRED, completions, _allUnlocked) : null;
+  if (next) {
+    const diffLabel = DIFF_NAMES[next.diff] || next.diff;
+    const prevLabel = DIFF_NAMES[next.prevDiff] || next.prevDiff;
+    nextLockText = `🔒 Faltam ${next.remaining} partida(s) de ${prevLabel} para desbloquear ${diffLabel}`;
   }
   const infoEl = document.getElementById('next-unlock-info');
   const textEl = document.getElementById('next-unlock-text');
