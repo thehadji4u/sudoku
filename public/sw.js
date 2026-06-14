@@ -1,5 +1,5 @@
-/* Service Worker — network-first para HTML, cache-first para assets — build:20260413-1 */
-const CACHE = 'sudoku-v131';
+/* Service Worker — network-first; versão injetada no build a partir do package.json */
+const CACHE = 'sudoku-v%APP_VERSION%';
 const ASSETS = [
   './index.html',
   './style.css',

@@ -1,6 +1,6 @@
 {
   "name": "sudoku-pwa",
-  "version": "1.131.0",
+  "version": "1.132.0",
   "private": true,
   "type": "module",
   "description": "Sudoku PWA com múltiplos níveis, poderes e ferramentas de análise",
@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@types/node": "^22.19.21",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.17.0",
