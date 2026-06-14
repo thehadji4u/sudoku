@@ -36,6 +36,31 @@ análises) é valiosa e correta o suficiente para ser **extraída e organizada**
 
 ---
 
+## 0.1 Status de Remediação (atualizado)
+
+| #   | Problema                          | Status          | Como foi resolvido / pendência                                                                             |
+| --- | --------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | `mestre` ≡ `extremo`              | ✅ resolvido    | dificuldade graduada por técnica; `extremo` exige adivinhação, demais têm teto                             |
+| 2   | Geração trava a UI 3–4 s          | ✅ resolvido    | geração em Web Worker (`src/worker`)                                                                       |
+| 3   | Dificuldade só por nº de pistas   | ✅ resolvido    | solver lógico + `grader` por técnica                                                                       |
+| 4   | Monólito `app.js`                 | 🟡 em curso     | tooling Vite+TS; fatias puras extraídas (progressão, ranking, detecção de poderes); ~6631→6452 linhas      |
+| 5   | ~1000 linhas duplicadas P3–P8     | 🟡 parcial      | **detecção** unificada e testada (hidden/naked sets); resta a _plumbing_ de animação (exige QA em browser) |
+| 6   | Ícones PWA quebrados              | ✅ resolvido    | manifest aponta só o SVG existente                                                                         |
+| 7   | Acessibilidade ausente            | ✅ resolvido    | `:focus-visible`, `prefers-reduced-motion`, `role=dialog`/`aria-*`                                         |
+| 8   | Sem testes/lint/CI/`package.json` | ✅ resolvido    | Vite+TS+ESLint+Prettier+Vitest+CI, 0 vulnerabilidades, 40 testes                                           |
+| 9   | Sem dark mode                     | 🟡 foundational | tema escuro via `prefers-color-scheme` (cores de acento das animações podem precisar de polimento visual)  |
+| 10  | Doc desatualizada                 | ✅ resolvido    | `README.md` atual; `PROJETO.md` marcado como histórico                                                     |
+| 11  | Bump de versão manual (3 lugares) | ✅ resolvido    | versão única em `package.json`, injetada no build (`index.html` + `sw.js`)                                 |
+
+**Pendências (exigem QA em browser, fora do alcance de testes automáticos):**
+
+- Unificar a _plumbing_ de animação dos poderes (`trigger*` / `_process*Queue`).
+- Continuar a decomposição do `app.js` (render/input/estado) em módulos.
+- Polimento visual do tema escuro nas animações de poderes.
+- Versionamento de schema do `localStorage` (migração defensiva).
+
+---
+
 ## 1. Arquitetura Atual
 
 ```
