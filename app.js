@@ -2079,8 +2079,22 @@ function showLoading(show) {
   document.getElementById('loading-overlay').classList.toggle('hidden', !show);
 }
 
+/* Respeita a preferência de sistema por movimento reduzido. Lido a cada
+   chamada para acompanhar mudanças feitas com a app aberta. */
+function _prefersReducedMotion() {
+  return typeof window.matchMedia === 'function' &&
+         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/* Timer do fechamento animado do modal (ver closeAllModals) */
+let _modalCloseTimer = null;
+
 function openModal(id) {
   const overlay = document.getElementById('modal-overlay');
+  /* Um fechamento pode estar a meio da animação — cancela antes de reabrir,
+     senão o timer pendente esconderia o modal recém-aberto. */
+  if (_modalCloseTimer) { clearTimeout(_modalCloseTimer); _modalCloseTimer = null; }
+  overlay.classList.remove('closing');
   /* Oculta todos os sheets */
   overlay.querySelectorAll('.modal-sheet').forEach(s => s.classList.add('hidden'));
   /* Mostra o pedido */
@@ -2088,10 +2102,26 @@ function openModal(id) {
   overlay.classList.remove('hidden');
 }
 
+/* Fecha com animação de saída: a folha desce e o fundo esvanece antes do
+   display:none. Antes o modal simplesmente desaparecia de um frame para o
+   outro, o que destoava da entrada animada. */
 function closeAllModals() {
-  document.getElementById('modal-overlay').classList.add('hidden');
-  document.getElementById('modal-overlay')
-    .querySelectorAll('.modal-sheet').forEach(s => s.classList.add('hidden'));
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+
+  const hideNow = () => {
+    _modalCloseTimer = null;
+    overlay.classList.remove('closing');
+    overlay.classList.add('hidden');
+    overlay.querySelectorAll('.modal-sheet').forEach(s => s.classList.add('hidden'));
+  };
+
+  if (_modalCloseTimer) clearTimeout(_modalCloseTimer);
+  if (_prefersReducedMotion()) { hideNow(); return; }
+
+  overlay.classList.add('closing');
+  /* Casado com a duração de overlay-exit/sheet-exit no style.css */
+  _modalCloseTimer = setTimeout(hideNow, 180);
 }
 
 function openSettings() {
@@ -2932,12 +2962,20 @@ function triggerPowerFunctions(num, sourceEl, isLongPress = false) {
 function animateCellTravel(sourceEl, targetEl, opts = {}) {
   const {
     color    = '#F59E0B',
-    duration = 500,
-    splashMs = 430,
     guard    = () => true,
     onArrive = () => {},
     onDone   = () => {},
   } = opts;
+  let { duration = 500, splashMs = 430 } = opts;
+
+  /* Movimento reduzido: o voo é decorativo, mas onArrive/onDone carregam a
+     lógica do jogo e precisam continuar rodando na mesma ordem. Encurtamos a
+     duração em vez de ocultar a partícula — assim a ação parece instantânea
+     em vez de travada. (CSS não alcança element.animate().) */
+  if (_prefersReducedMotion()) {
+    duration = 1;
+    splashMs = 1;
+  }
 
   const fromRect = sourceEl.getBoundingClientRect();
   const toRect   = targetEl.getBoundingClientRect();
